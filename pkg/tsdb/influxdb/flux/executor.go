@@ -12,20 +12,21 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/http"
 
 	"github.com/grafana/grafana/pkg/infra/log"
+	"github.com/grafana/grafana/pkg/tsdb/influxdb/query"
 )
 
 const maxPointsEnforceFactor float64 = 10
 
 // executeQuery runs a flux query using the queryModel to interpolate the query and the runner to execute it.
 // maxSeries somehow limits the response.
-func executeQuery(ctx context.Context, logger log.Logger, query queryModel, runner queryRunner, maxSeries int) (dr backend.DataResponse) {
+func executeQuery(ctx context.Context, logger log.Logger, query queryModel, querier query.Querier[*api.QueryTableResult], maxSeries int) (dr backend.DataResponse) {
 	dr = backend.DataResponse{}
 
 	flux := interpolate(query)
 
 	logger.Debug("Executing Flux query", "flux", flux)
 
-	tables, err := runner.runQuery(ctx, flux)
+	tables, err := querier.Do(ctx, flux)
 	if err != nil {
 		var influxHttpError *http.Error
 		if errors.As(err, &influxHttpError) {
@@ -122,5 +123,6 @@ func readDataFrames(logger log.Logger, result *api.QueryTableResult, maxPoints i
 	if result.Err() != nil {
 		dr.Error = result.Err()
 	}
+
 	return dr
 }

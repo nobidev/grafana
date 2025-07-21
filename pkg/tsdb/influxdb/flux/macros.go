@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/gtime"
+	"github.com/grafana/grafana/pkg/tsdb/influxdb/models"
 )
 
 // $__interval_ms is the exact value in milliseconds
@@ -24,7 +25,7 @@ func interpolateInterval(flux string, interval time.Duration) string {
 
 var fluxVariableFilterExp = regexp.MustCompile(`(?m)(v)\.([a-zA-Z]+)`)
 
-func interpolateFluxSpecificVariables(query queryModel) string {
+func interpolateFluxSpecificVariables(query models.FluxQueryModel) string {
 	rawQuery := query.RawQuery
 	flux := query.RawQuery
 
@@ -65,7 +66,7 @@ func interpolateFluxSpecificVariables(query queryModel) string {
 	return flux
 }
 
-func interpolate(query queryModel) string {
+func interpolate(query models.FluxQueryModel) string {
 	flux := interpolateFluxSpecificVariables(query)
 	flux = interpolateInterval(flux, query.Interval)
 	return flux

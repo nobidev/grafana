@@ -1,4 +1,4 @@
-package fsql
+package flightsql
 
 import (
 	"context"

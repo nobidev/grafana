@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/drone/runner-go/logger"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/tracing"
 
 	"github.com/grafana/grafana/pkg/infra/log"
-	"github.com/grafana/grafana/pkg/tsdb/influxdb/flux"
-	"github.com/grafana/grafana/pkg/tsdb/influxdb/fsql"
+	"github.com/grafana/grafana/pkg/tsdb/influxdb/handlers"
 	"github.com/grafana/grafana/pkg/tsdb/influxdb/influxql"
 	"github.com/grafana/grafana/pkg/tsdb/influxdb/models"
 )
@@ -48,7 +48,7 @@ func CheckFluxHealth(ctx context.Context, dsInfo *models.DatasourceInfo,
 	req *backend.CheckHealthRequest) (*backend.CheckHealthResult,
 	error) {
 	logger := logger.FromContext(ctx)
-	ds, err := flux.Query(ctx, dsInfo, backend.QueryDataRequest{
+	ds, err := handlers.HandleFluxQuery(ctx, dsInfo, backend.QueryDataRequest{
 		PluginContext: req.PluginContext,
 		Queries: []backend.DataQuery{
 			{
@@ -115,7 +115,7 @@ func CheckInfluxQLHealth(ctx context.Context, dsInfo *models.DatasourceInfo, req
 }
 
 func CheckSQLHealth(ctx context.Context, dsInfo *models.DatasourceInfo, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	ds, err := fsql.Query(ctx, dsInfo, backend.QueryDataRequest{
+	ds, err := handlers.HandleSQLQuery(ctx, dsInfo, backend.QueryDataRequest{
 		PluginContext: req.PluginContext,
 		Queries: []backend.DataQuery{
 			{

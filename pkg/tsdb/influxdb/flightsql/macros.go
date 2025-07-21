@@ -1,4 +1,4 @@
-package fsql
+package flightsql
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 )
 
-var macros = sqlutil.Macros{
+var Macros = sqlutil.Macros{
 	"dateBin":        macroDateBin(""),
 	"dateBinAlias":   macroDateBin("_binned"),
 	"interval":       macroInterval,

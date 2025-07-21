@@ -1,4 +1,4 @@
-package fsql
+package flightsql
 
 import (
 	"fmt"
@@ -83,7 +83,7 @@ func TestNewQueryDataResponse(t *testing.T) {
 	assert.NoError(t, err)
 
 	query := sqlutil.Query{Format: sqlutil.FormatOptionTable}
-	resp := newQueryDataResponse(errReader{RecordReader: reader}, query, metadata.MD{})
+	resp := NewFrame(errReader{RecordReader: reader}, query, metadata.MD{})
 	assert.NoError(t, resp.Error)
 	assert.Len(t, resp.Frames, 1)
 	assert.Len(t, resp.Frames[0].Fields, 14)

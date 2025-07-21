@@ -1,4 +1,4 @@
-package flux
+package models
 
 import (
 	"encoding/json"
@@ -6,21 +6,19 @@ import (
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-
-	"github.com/grafana/grafana/pkg/tsdb/influxdb/models"
 )
 
-// queryOptions represents datasource configuration options
-type queryOptions struct {
+// FluxQueryOptions represents datasource configuration options
+type FluxQueryOptions struct {
 	Bucket        string `json:"bucket"`
 	DefaultBucket string `json:"defaultBucket"`
 	Organization  string `json:"organization"`
 }
 
-// queryModel represents a query.
-type queryModel struct {
-	RawQuery string       `json:"query"`
-	Options  queryOptions `json:"options"`
+// FluxQueryModel represents a query.
+type FluxQueryModel struct {
+	RawQuery string           `json:"query"`
+	Options  FluxQueryOptions `json:"options"`
 
 	// Not from JSON
 	TimeRange     backend.TimeRange `json:"-"`
@@ -29,9 +27,9 @@ type queryModel struct {
 	Interval      time.Duration     `json:"-"`
 }
 
-func getQueryModel(query backend.DataQuery, timeRange backend.TimeRange,
-	dsInfo *models.DatasourceInfo) (*queryModel, error) {
-	model := &queryModel{}
+func NewFluxQueryModel(query backend.DataQuery, timeRange backend.TimeRange,
+	dsInfo *DatasourceInfo) (*FluxQueryModel, error) {
+	model := &FluxQueryModel{}
 	if err := json.Unmarshal(query.JSON, model); err != nil {
 		return nil, fmt.Errorf("error reading query: %w", err)
 	}

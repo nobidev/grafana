@@ -1,4 +1,4 @@
-package fsql
+package models
 
 import (
 	"encoding/json"
@@ -9,13 +9,13 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 )
 
-type queryModel struct {
+type SQLQueryModel struct {
 	*sqlutil.Query
 }
 
-// queryRequest is an inbound query request as part of a batch of queries sent
+// SQLQueryRequest is an inbound query request as part of a batch of queries sent
 // to [(*FlightSQLDatasource).QueryData].
-type queryRequest struct {
+type SQLQueryRequest struct {
 	RefID                string `json:"refId"`
 	RawQuery             string `json:"rawSql"`
 	IntervalMilliseconds int    `json:"intervalMs"`
@@ -23,8 +23,8 @@ type queryRequest struct {
 	Format               string `json:"format"`
 }
 
-func getQueryModel(dataQuery backend.DataQuery) (*queryModel, error) {
-	var q queryRequest
+func NewSQLQueryModel(dataQuery backend.DataQuery) (*SQLQueryModel, error) {
+	var q SQLQueryRequest
 	if err := json.Unmarshal(dataQuery.JSON, &q); err != nil {
 		return nil, fmt.Errorf("unmarshal json: %w", err)
 	}
@@ -50,11 +50,11 @@ func getQueryModel(dataQuery backend.DataQuery) (*queryModel, error) {
 
 	// Process macros and generate raw fsql to be sent to
 	// influxdb backend for execution.
-	sql, err := sqlutil.Interpolate(query, macros)
-	if err != nil {
-		return nil, fmt.Errorf("macro interpolation: %w", err)
-	}
-	query.RawSQL = sql
+	// sql, err := sqlutil.Interpolate(query, flightsql.Macros)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("macro interpolation: %w", err)
+	// }
+	// query.RawSQL = sql
 
-	return &queryModel{query}, nil
+	return &SQLQueryModel{query}, nil
 }

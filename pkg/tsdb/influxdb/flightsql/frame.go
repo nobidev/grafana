@@ -1,4 +1,4 @@
-package fsql
+package flightsql
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/scalar"
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana-plugin-sdk-go/data/sqlutil"
 	"google.golang.org/grpc/metadata"
@@ -23,26 +23,11 @@ import (
 // let users hit that for now until we decide how to proceed.
 const rowLimit = 1_000_000
 
-type recordReader interface {
-	Next() bool
-	Schema() *arrow.Schema
-	Record() arrow.Record
-	Err() error
-}
-
-// newQueryDataResponse builds a [backend.DataResponse] from a stream of
-// [arrow.Record]s.
-//
-// The backend.DataResponse contains a single [data.Frame].
-func newQueryDataResponse(reader recordReader, query sqlutil.Query, headers metadata.MD) backend.DataResponse {
-	var resp backend.DataResponse
+// NewFrame builds a [data.Frame] from a stream of [arrow.Record]s, while capturing query metadata.
+func NewFrame(reader *flight.Reader, query sqlutil.Query, headers metadata.MD) (*data.Frame, error) {
 	frame, err := frameForRecords(reader)
 	if err != nil {
-		resp.Error = err
-	}
-	if frame.Rows() == 0 {
-		resp.Frames = data.Frames{}
-		return resp
+		return nil, err
 	}
 
 	frame.Meta.Custom = map[string]any{
@@ -54,16 +39,13 @@ func newQueryDataResponse(reader recordReader, query sqlutil.Query, headers meta
 	switch query.Format {
 	case sqlutil.FormatOptionTimeSeries:
 		if _, idx := frame.FieldByName("time"); idx == -1 {
-			resp.Error = fmt.Errorf("no time column found")
-			return resp
+			return nil, fmt.Errorf("no time column found")
 		}
 
 		if frame.TimeSeriesSchema().Type == data.TimeSeriesTypeLong {
-			var err error
 			frame, err = data.LongToWide(frame, nil)
 			if err != nil {
-				resp.Error = err
-				return resp
+				return nil, err
 			}
 		}
 	case sqlutil.FormatOptionTable:
@@ -72,17 +54,16 @@ func newQueryDataResponse(reader recordReader, query sqlutil.Query, headers meta
 		// TODO(brett): We need to find out what this actually is and if its
 		// worth supporting. Pass through as "table" for now.
 	default:
-		resp.Error = fmt.Errorf("unsupported format")
+		return nil, fmt.Errorf("unsupported format")
 	}
 
-	resp.Frames = data.Frames{frame}
-	return resp
+	return frame, nil
 }
 
 // frameForRecords creates a [data.Frame] from a stream of [arrow.Record]s.
-func frameForRecords(reader recordReader) (*data.Frame, error) {
+func frameForRecords(reader *flight.Reader) (*data.Frame, error) {
 	var (
-		frame = newFrame(reader.Schema())
+		frame = newFrameFromSchema(reader.Schema())
 		rows  int64
 	)
 	for reader.Next() {
@@ -109,8 +90,8 @@ func frameForRecords(reader recordReader) (*data.Frame, error) {
 	return frame, nil
 }
 
-// newFrame builds a new Data Frame from an Arrow Schema.
-func newFrame(schema *arrow.Schema) *data.Frame {
+// NewFrameFromSchema builds a new Data Frame from an Arrow Schema.
+func newFrameFromSchema(schema *arrow.Schema) *data.Frame {
 	fields := schema.Fields()
 	df := &data.Frame{
 		Fields: make([]*data.Field, len(fields)),

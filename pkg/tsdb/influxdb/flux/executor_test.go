@@ -21,6 +21,7 @@ import (
 
 	"github.com/grafana/grafana/pkg/components/simplejson"
 	"github.com/grafana/grafana/pkg/tsdb/influxdb/models"
+	"github.com/grafana/grafana/pkg/tsdb/influxdb/query"
 	"github.com/grafana/grafana/pkg/util"
 )
 
@@ -28,12 +29,13 @@ import (
 // TestData -- reads result from saved files
 // --------------------------------------------------------------
 
-// MockRunner reads local file path for testdata.
-type MockRunner struct {
+// MockQuerier reads local file path for testdata.
+type MockQuerier struct {
+	query.Querier[*api.QueryTableResult]
 	testDataPath string
 }
 
-func (r *MockRunner) runQuery(ctx context.Context, q string) (*api.QueryTableResult, error) {
+func (r *MockQuerier) Run(ctx context.Context, query string) (*api.QueryTableResult, error) {
 	bytes, err := os.ReadFile(filepath.Join("testdata", r.testDataPath))
 	if err != nil {
 		return nil, err
@@ -54,18 +56,24 @@ func (r *MockRunner) runQuery(ctx context.Context, q string) (*api.QueryTableRes
 	defer server.Close()
 
 	client := influxdb2.NewClient(server.URL, "a")
-	return client.QueryAPI("x").Query(ctx, q)
+	return client.QueryAPI("x").Query(ctx, query)
+}
+
+// Close is a no-op for MockQuerier.
+func (r *MockQuerier) Close() error {
+	return nil
 }
 
 func executeMockedQuery(t *testing.T, name string, query queryModel) *backend.DataResponse {
-	runner := &MockRunner{
+	querier := &MockQuerier{
 		testDataPath: name + ".csv",
 	}
+
 	if query.MaxSeries == 0 {
 		query.MaxSeries = 50
 	}
 
-	dr := executeQuery(context.Background(), glog, query, runner, query.MaxSeries)
+	dr := executeQuery(context.Background(), glog, query, querier, query.MaxSeries)
 	return &dr
 }
 
@@ -227,13 +235,13 @@ func TestRealQuery(t *testing.T) {
 			Timeout: 30 * time.Second,
 		}
 
-		runner, err := runnerFromDataSource(dsInfo)
+		querier, err := query.NewFluxQuerier(dsInfo)
 		require.NoError(t, err)
 
 		dr := executeQuery(context.Background(), glog, queryModel{
 			MaxDataPoints: 100,
 			RawQuery:      "buckets()",
-		}, runner, 50)
+		}, querier, 50)
 		experimental.CheckGoldenJSONResponse(t, "testdata", "buckets-real.golden", &dr, true)
 	})
 }

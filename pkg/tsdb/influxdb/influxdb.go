@@ -10,8 +10,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/tracing"
 
-	"github.com/grafana/grafana/pkg/tsdb/influxdb/flux"
-	"github.com/grafana/grafana/pkg/tsdb/influxdb/fsql"
+	"github.com/grafana/grafana/pkg/tsdb/influxdb/handlers"
 
 	"github.com/grafana/grafana/pkg/infra/httpclient"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -110,11 +109,11 @@ func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) 
 
 	switch dsInfo.Version {
 	case influxVersionFlux:
-		return flux.Query(ctx, dsInfo, *req)
+		return handlers.HandleFluxQuery(ctx, dsInfo, *req)
 	case influxVersionInfluxQL:
 		return influxql.Query(ctx, tracer, dsInfo, req)
 	case influxVersionSQL:
-		return fsql.Query(ctx, dsInfo, *req)
+		return handlers.HandleSQLQuery(ctx, dsInfo, *req)
 	default:
 		return nil, fmt.Errorf("unknown influxdb version")
 	}

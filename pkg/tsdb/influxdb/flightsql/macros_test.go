@@ -1,4 +1,4 @@
-package fsql
+package flightsql
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMacros(t *testing.T) {
+func TestSQLMacros(t *testing.T) {
 	from, _ := time.Parse(time.RFC3339, "2023-01-01T00:00:00Z")
 
 	query := sqlutil.Query{
@@ -55,7 +55,7 @@ func TestMacros(t *testing.T) {
 	}
 	for _, c := range cs {
 		t.Run(c.in, func(t *testing.T) {
-			sql, err := sqlutil.Interpolate(query.WithSQL(c.in), macros)
+			sql, err := sqlutil.Interpolate(query.WithSQL(c.in), SQL)
 			require.NoError(t, err)
 			require.Equal(t, c.out, sql)
 		})
