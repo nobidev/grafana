@@ -990,4 +990,8 @@ const (
 	// FlagNewClickhouseConfigPageDesign
 	// Enables new design for the Clickhouse data source configuration page
 	FlagNewClickhouseConfigPageDesign = "newClickhouseConfigPageDesign"
+
+	// FlagSharedPreferencesRTKQ
+	// Enables the new SharedPreferences component using RTK Query
+	FlagSharedPreferencesRTKQ = "sharedPreferencesRTKQ"
 )

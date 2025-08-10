@@ -1093,4 +1093,8 @@ export interface FeatureToggles {
   * @default false
   */
   newClickhouseConfigPageDesign?: boolean;
+  /**
+  * Enables the new SharedPreferences component using RTK Query
+  */
+  sharedPreferencesRTKQ?: boolean;
 }

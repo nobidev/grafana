@@ -2867,6 +2867,19 @@
     },
     {
       "metadata": {
+        "name": "sharedPreferencesRTKQ",
+        "resourceVersion": "1754829629538",
+        "creationTimestamp": "2025-08-10T12:40:29Z"
+      },
+      "spec": {
+        "description": "Enables the new SharedPreferences component using RTK Query",
+        "stage": "experimental",
+        "codeowner": "@grafana/grafana-frontend-platform",
+        "frontend": true
+      }
+    },
+    {
+      "metadata": {
         "name": "sharingDashboardImage",
         "resourceVersion": "1753448760331",
         "creationTimestamp": "2025-07-25T13:06:00Z"

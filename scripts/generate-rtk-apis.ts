@@ -39,7 +39,16 @@ const config: ConfigFile = {
       hooks: true,
       apiFile: '../public/app/features/preferences/api/user/baseAPI.ts',
       apiImport: 'baseAPI',
-      filterEndpoints: ['getUserPreferences', 'updateUserPreferences', 'patchUserPreferences'],
+      filterEndpoints: [
+        'getUserPreferences',
+        'updateUserPreferences',
+        'patchUserPreferences',
+        'getTeamPreferences',
+        'updateTeamPreferences',
+        'getOrgPreferences',
+        'updateOrgPreferences',
+        'patchOrgPreferences',
+      ],
     },
     '../public/app/api/clients/iam/v0alpha1/endpoints.gen.ts': {
       schemaFile: '../data/openapi/iam.grafana.app-v0alpha1.json',

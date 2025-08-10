@@ -1894,6 +1894,13 @@ var (
 			Owner:        grafanaPartnerPluginsSquad,
 			Expression:   "false",
 		},
+		{
+			Name:         "sharedPreferencesRTKQ",
+			Description:  "Enables the new SharedPreferences component using RTK Query",
+			Stage:        FeatureStageExperimental,
+			FrontendOnly: true,
+			Owner:        grafanaFrontendPlatformSquad,
+		},
 	}
 )
 

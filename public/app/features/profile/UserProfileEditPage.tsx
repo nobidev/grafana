@@ -2,10 +2,11 @@ import { connect, ConnectedProps } from 'react-redux';
 import { useMount } from 'react-use';
 
 import { PluginExtensionPoints } from '@grafana/data';
-import { usePluginComponents } from '@grafana/runtime';
+import { usePluginComponents, config } from '@grafana/runtime';
 import { Stack } from '@grafana/ui';
 import { Page } from 'app/core/components/Page/Page';
 import SharedPreferences from 'app/core/components/SharedPreferences/SharedPreferences';
+import { SharedPreferencesV2 } from 'app/core/components/SharedPreferences/SharedPreferencesV2';
 import { StoreState } from 'app/types/store';
 
 import UserOrganizations from './UserOrganizations';
@@ -69,7 +70,11 @@ export function UserProfileEditPage({
         <UserProfileEditTabs components={components}>
           <Stack direction="column" gap={2} data-testid="user-profile-edit-page">
             <UserProfileEditForm updateProfile={updateUserProfile} isSavingUser={isUpdating} user={user} />
-            <SharedPreferences resourceUri="user" preferenceType="user" />
+            {config.featureToggles.sharedPreferencesRTKQ ? (
+              <SharedPreferencesV2 resourceUri="user" preferenceType="user" />
+            ) : (
+              <SharedPreferences resourceUri="user" preferenceType="user" />
+            )}
             <Stack direction="column" gap={6}>
               <UserTeams isLoading={teamsAreLoading} teams={teams} />
               <UserOrganizations isLoading={orgsAreLoading} setUserOrg={changeUserOrg} orgs={orgs} user={user} />

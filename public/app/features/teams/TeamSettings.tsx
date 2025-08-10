@@ -2,10 +2,12 @@ import { useForm } from 'react-hook-form';
 import { ConnectedProps, connect } from 'react-redux';
 
 import { Trans, t } from '@grafana/i18n';
+import { config } from '@grafana/runtime';
 import { Button, Field, FieldSet, Input, Stack } from '@grafana/ui';
 import { TeamRolePicker } from 'app/core/components/RolePicker/TeamRolePicker';
 import { useRoleOptions } from 'app/core/components/RolePicker/hooks';
 import { SharedPreferences } from 'app/core/components/SharedPreferences/SharedPreferences';
+import { SharedPreferencesV2 } from 'app/core/components/SharedPreferences/SharedPreferencesV2';
 import { contextSrv } from 'app/core/services/context_srv';
 import { AccessControlAction } from 'app/types/accessControl';
 import { Team } from 'app/types/teams';
@@ -85,7 +87,11 @@ export const TeamSettings = ({ team, updateTeam }: Props) => {
           </Button>
         </FieldSet>
       </form>
-      <SharedPreferences resourceUri={`teams/${team.id}`} disabled={!canWriteTeamSettings} preferenceType="team" />
+      {config.featureToggles.sharedPreferencesRTKQ ? (
+        <SharedPreferencesV2 preferenceType="team" teamId={team.id.toString()} disabled={!canWriteTeamSettings} />
+      ) : (
+        <SharedPreferences resourceUri={`teams/${team.id}`} disabled={!canWriteTeamSettings} preferenceType="team" />
+      )}
     </Stack>
   );
 };

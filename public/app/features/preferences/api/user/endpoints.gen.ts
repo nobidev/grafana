@@ -1,6 +1,25 @@
 import { baseAPI as api } from './baseAPI';
 const injectedRtkApi = api.injectEndpoints({
   endpoints: (build) => ({
+    getOrgPreferences: build.query<GetOrgPreferencesApiResponse, GetOrgPreferencesApiArg>({
+      query: () => ({ url: `/org/preferences` }),
+    }),
+    patchOrgPreferences: build.mutation<PatchOrgPreferencesApiResponse, PatchOrgPreferencesApiArg>({
+      query: (queryArg) => ({ url: `/org/preferences`, method: 'PATCH', body: queryArg.patchPrefsCmd }),
+    }),
+    updateOrgPreferences: build.mutation<UpdateOrgPreferencesApiResponse, UpdateOrgPreferencesApiArg>({
+      query: (queryArg) => ({ url: `/org/preferences`, method: 'PUT', body: queryArg.updatePrefsCmd }),
+    }),
+    getTeamPreferences: build.query<GetTeamPreferencesApiResponse, GetTeamPreferencesApiArg>({
+      query: (queryArg) => ({ url: `/teams/${queryArg.teamId}/preferences` }),
+    }),
+    updateTeamPreferences: build.mutation<UpdateTeamPreferencesApiResponse, UpdateTeamPreferencesApiArg>({
+      query: (queryArg) => ({
+        url: `/teams/${queryArg.teamId}/preferences`,
+        method: 'PUT',
+        body: queryArg.updatePrefsCmd,
+      }),
+    }),
     getUserPreferences: build.query<GetUserPreferencesApiResponse, GetUserPreferencesApiArg>({
       query: () => ({ url: `/user/preferences` }),
     }),
@@ -14,6 +33,28 @@ const injectedRtkApi = api.injectEndpoints({
   overrideExisting: false,
 });
 export { injectedRtkApi as generatedAPI };
+export type GetOrgPreferencesApiResponse = /** status 200 (empty) */ PreferencesSpec;
+export type GetOrgPreferencesApiArg = void;
+export type PatchOrgPreferencesApiResponse =
+  /** status 200 An OKResponse is returned if the request was successful. */ SuccessResponseBody;
+export type PatchOrgPreferencesApiArg = {
+  patchPrefsCmd: PatchPrefsCmd;
+};
+export type UpdateOrgPreferencesApiResponse =
+  /** status 200 An OKResponse is returned if the request was successful. */ SuccessResponseBody;
+export type UpdateOrgPreferencesApiArg = {
+  updatePrefsCmd: UpdatePrefsCmd;
+};
+export type GetTeamPreferencesApiResponse = /** status 200 (empty) */ PreferencesSpec;
+export type GetTeamPreferencesApiArg = {
+  teamId: string;
+};
+export type UpdateTeamPreferencesApiResponse =
+  /** status 200 An OKResponse is returned if the request was successful. */ SuccessResponseBody;
+export type UpdateTeamPreferencesApiArg = {
+  teamId: string;
+  updatePrefsCmd: UpdatePrefsCmd;
+};
 export type GetUserPreferencesApiResponse = /** status 200 (empty) */ PreferencesSpec;
 export type GetUserPreferencesApiArg = void;
 export type PatchUserPreferencesApiResponse =
@@ -102,5 +143,13 @@ export type UpdatePrefsCmd = {
   timezone?: 'utc' | 'browser';
   weekStart?: string;
 };
-export const { useGetUserPreferencesQuery, usePatchUserPreferencesMutation, useUpdateUserPreferencesMutation } =
-  injectedRtkApi;
+export const {
+  useGetOrgPreferencesQuery,
+  usePatchOrgPreferencesMutation,
+  useUpdateOrgPreferencesMutation,
+  useGetTeamPreferencesQuery,
+  useUpdateTeamPreferencesMutation,
+  useGetUserPreferencesQuery,
+  usePatchUserPreferencesMutation,
+  useUpdateUserPreferencesMutation,
+} = injectedRtkApi;

@@ -2,9 +2,11 @@ import { PureComponent } from 'react';
 import { ConnectedProps, connect } from 'react-redux';
 
 import { t } from '@grafana/i18n';
+import { config } from '@grafana/runtime';
 import { Stack } from '@grafana/ui';
 import { Page } from 'app/core/components/Page/Page';
 import SharedPreferences from 'app/core/components/SharedPreferences/SharedPreferences';
+import { SharedPreferencesV2 } from 'app/core/components/SharedPreferences/SharedPreferencesV2';
 import { appEvents, contextSrv } from 'app/core/core';
 import { getNavModel } from 'app/core/selectors/navModel';
 import { AccessControlAction } from 'app/types/accessControl';
@@ -55,14 +57,22 @@ export class OrgDetailsPage extends PureComponent<Props> {
           {!isLoading && (
             <Stack direction="column" gap={3}>
               {canReadOrg && <OrgProfile onSubmit={this.onUpdateOrganization} orgName={organization.name} />}
-              {canReadPreferences && (
-                <SharedPreferences
-                  resourceUri="org"
-                  disabled={!canWritePreferences}
-                  preferenceType="org"
-                  onConfirm={this.handleConfirm}
-                />
-              )}
+              {canReadPreferences &&
+                (config.featureToggles.sharedPreferencesRTKQ ? (
+                  <SharedPreferencesV2
+                    resourceUri="org"
+                    disabled={!canWritePreferences}
+                    preferenceType="org"
+                    onConfirm={this.handleConfirm}
+                  />
+                ) : (
+                  <SharedPreferences
+                    resourceUri="org"
+                    disabled={!canWritePreferences}
+                    preferenceType="org"
+                    onConfirm={this.handleConfirm}
+                  />
+                ))}
             </Stack>
           )}
         </Page.Contents>
