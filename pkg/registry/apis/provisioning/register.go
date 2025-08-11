@@ -118,8 +118,6 @@ type APIBuilder struct {
 	// Extras provides additional functionality to the API.
 	extras                   []Extra
 	availableRepositoryTypes map[provisioning.RepositoryType]bool
-	accessClient             authlib.AccessClient
-	externalAuthorizer       bool
 }
 
 // NewAPIBuilder creates an API builder.
@@ -224,13 +222,6 @@ func createJobHistoryConfigFromSettings(cfg *setting.Cfg) *JobHistoryConfig {
 	return &JobHistoryConfig{}
 }
 
-func NewAPIService(ac authlib.AccessClient) *APIBuilder {
-	return &APIBuilder{
-		accessClient:       ac,
-		externalAuthorizer: true,
-	}
-}
-
 // RegisterAPIService returns an API builder, from [NewAPIBuilder]. It is called by Wire.
 // This function happily uses services core to Grafana, and does not need to be multi-tenancy-compatible.
 func RegisterAPIService(
@@ -279,14 +270,32 @@ func RegisterAPIService(
 // TODO: Move specific endpoint authorization together with the rest of the logic.
 // so that things are not spread out all over the place.
 func (b *APIBuilder) GetAuthorizer() authorizer.Authorizer {
-	if b.externalAuthorizer {
-		return newMultiTenantAuthorizer(b.accessClient)
-	}
-
 	return authorizer.AuthorizerFunc(
 		func(ctx context.Context, a authorizer.Attributes) (decision authorizer.Decision, reason string, err error) {
 			if identity.IsServiceIdentity(ctx) {
 				// A Grafana sub-system should have full access. We trust them to make wise decisions.
+				return authorizer.DecisionAllow, "", nil
+			}
+
+			info, ok := types.AuthInfoFrom(ctx)
+			if ok && types.IsIdentityType(info.GetIdentityType(), types.TypeAccessPolicy) {
+				res, err := b.access.Check(ctx, info, types.CheckRequest{
+					Verb:        a.GetVerb(),
+					Group:       a.GetAPIGroup(),
+					Resource:    a.GetResource(),
+					Name:        a.GetName(),
+					Namespace:   a.GetNamespace(),
+					Subresource: a.GetSubresource(),
+				})
+
+				if err != nil {
+					return authorizer.DecisionDeny, "failed to perform authorization", err
+				}
+
+				if !res.Allowed {
+					return authorizer.DecisionDeny, "permission denied", nil
+				}
+
 				return authorizer.DecisionAllow, "", nil
 			}
 
@@ -382,41 +391,6 @@ func (b *APIBuilder) GetAuthorizer() authorizer.Authorizer {
 				return authorizer.DecisionDeny, "unmapped kind defaults to no access", nil
 			}
 		})
-}
-
-// newMultiTenantAuthorizer creates an authorizer sutiable to multi-tenant setup.
-// For now it only allow authorization of access tokens.
-func newMultiTenantAuthorizer(ac types.AccessClient) authorizer.Authorizer {
-	return authorizer.AuthorizerFunc(func(ctx context.Context, a authorizer.Attributes) (authorizer.Decision, string, error) {
-		info, ok := types.AuthInfoFrom(ctx)
-		if !ok {
-			return authorizer.DecisionDeny, "missing auth info", nil
-		}
-
-		// For now we only allow access policy to authorize with multi-tenant setup
-		if !types.IsIdentityType(info.GetIdentityType(), types.TypeAccessPolicy) {
-			return authorizer.DecisionDeny, "permission denied", nil
-		}
-
-		res, err := ac.Check(ctx, info, types.CheckRequest{
-			Verb:        a.GetVerb(),
-			Group:       a.GetAPIGroup(),
-			Resource:    a.GetResource(),
-			Name:        a.GetName(),
-			Namespace:   a.GetNamespace(),
-			Subresource: a.GetSubresource(),
-		})
-
-		if err != nil {
-			return authorizer.DecisionDeny, "faild to perform authorization", err
-		}
-
-		if !res.Allowed {
-			return authorizer.DecisionDeny, "permission denied", nil
-		}
-
-		return authorizer.DecisionAllow, "", nil
-	})
 }
 
 func (b *APIBuilder) GetGroupVersion() schema.GroupVersion {
@@ -657,19 +631,9 @@ func (b *APIBuilder) verifyAgaintsExistingRepositories(cfg *provisioning.Reposit
 }
 
 func (b *APIBuilder) GetPostStartHooks() (map[string]genericapiserver.PostStartHookFunc, error) {
-	if b.externalAuthorizer {
-		return nil, nil
-	}
-
 	postStartHooks := map[string]genericapiserver.PostStartHookFunc{
 		"grafana-provisioning": func(postStartHookCtx genericapiserver.PostStartHookContext) error {
 			c, err := clientset.NewForConfig(postStartHookCtx.LoopbackClientConfig)
-			if err != nil {
-				return err
-			}
-
-			// When starting with an empty instance -- swith to "mode 4+"
-			err = b.tryRunningOnlyUnifiedStorage()
 			if err != nil {
 				return err
 			}
@@ -678,9 +642,6 @@ func (b *APIBuilder) GetPostStartHooks() (map[string]genericapiserver.PostStartH
 			sharedInformerFactory := informers.NewSharedInformerFactory(c, 60*time.Second)
 			repoInformer := sharedInformerFactory.Provisioning().V0alpha1().Repositories()
 			jobInformer := sharedInformerFactory.Provisioning().V0alpha1().Jobs()
-			go repoInformer.Informer().Run(postStartHookCtx.Done())
-			go jobInformer.Informer().Run(postStartHookCtx.Done())
-
 			b.client = c.ProvisioningV0alpha1()
 
 			// We do not have a local client until *GetPostStartHooks*, so we can delay init for some
@@ -690,9 +651,23 @@ func (b *APIBuilder) GetPostStartHooks() (map[string]genericapiserver.PostStartH
 
 			b.repositoryLister = repoInformer.Lister()
 
+			// if running solely CRUD, skip the rest of the setup
+			if b.localFileResolver == nil {
+				return nil
+			}
+
+			go repoInformer.Informer().Run(postStartHookCtx.Done())
+			go jobInformer.Informer().Run(postStartHookCtx.Done())
+
 			// Create the repository resources factory
 			usageMetricCollector := usage.MetricCollector(b.tracer, b.repositoryLister, b.unified)
 			b.usageStats.RegisterMetricsFunc(usageMetricCollector)
+
+			// When starting with an empty instance -- swith to "mode 4+"
+			err = b.tryRunningOnlyUnifiedStorage()
+			if err != nil {
+				return err
+			}
 
 			stageIfPossible := repository.WrapWithStageAndPushIfPossible
 			exportWorker := export.NewExportWorker(
@@ -783,23 +758,24 @@ func (b *APIBuilder) GetPostStartHooks() (map[string]genericapiserver.PostStartH
 				}
 			}()
 
-			/*repoController, err := controller.NewRepositoryController(
-				b.GetClient(),
-				repoInformer,
-				b, // repoGetter
-				b.resourceLister,
-				b.parsers,
-				b.clients,
-				&repository.Tester{},
-				b.jobs,
-				b.storageStatus,
-			)
-			if err != nil {
-				return err
+			// If Loki not used, start the controller for history jobs
+			if b.jobHistoryConfig == nil || b.jobHistoryConfig.Loki == nil {
+				// Create HistoryJobController for cleanup of old job history entries
+				// Separate informer factory for HistoryJob cleanup with resync interval
+				historyJobExpiration := 30 * time.Second
+				historyJobInformerFactory := informers.NewSharedInformerFactory(c, historyJobExpiration)
+				historyJobInformer := historyJobInformerFactory.Provisioning().V0alpha1().HistoricJobs()
+				go historyJobInformer.Informer().Run(postStartHookCtx.Done())
+				_, err = controller.NewHistoryJobController(
+					b.GetClient(),
+					historyJobInformer,
+					historyJobExpiration,
+				)
+				if err != nil {
+					return fmt.Errorf("create history job controller: %w", err)
+				}
 			}
 
-			go repoController.Run(postStartHookCtx.Context, repoControllerWorkers)
-			*/
 			return nil
 		},
 	}

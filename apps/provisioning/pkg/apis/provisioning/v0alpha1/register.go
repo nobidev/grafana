@@ -139,7 +139,7 @@ func init() {
 
 // Adds the list of known types to the given scheme.
 func AddKnownTypes(gv schema.GroupVersion, scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(gv,
+	types := []runtime.Object{
 		&Repository{},
 		&RepositoryList{},
 		&WebhookResponse{},
@@ -154,7 +154,11 @@ func AddKnownTypes(gv schema.GroupVersion, scheme *runtime.Scheme) error {
 		&RefList{},
 		&HistoricJob{},
 		&HistoricJobList{},
-	)
+	}
+	scheme.AddKnownTypes(gv, types...)
+
+	// TODO: hack, fix before merging
+	scheme.AddUnversionedTypes(gv, types...)
 	return nil
 }
 
