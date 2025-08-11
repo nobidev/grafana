@@ -11,7 +11,9 @@ import (
 // As of writing, this can be done via the hack dir in the root of the repo: ./hack/update-codegen.sh provisioning
 // If you've opened the generated files in this dir at some point in VSCode, you may also have to re-open them to clear errors.
 // +genclient
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type Repository struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -20,6 +22,8 @@ type Repository struct {
 	Status RepositoryStatus `json:"status,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type LocalRepositoryConfig struct {
 	Path string `json:"path,omitempty"`
 }
@@ -35,6 +39,8 @@ const (
 	BranchWorkflow Workflow = "branch"
 )
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type GitHubRepositoryConfig struct {
 	// The repository URL (e.g. `https://github.com/example/test`).
 	URL string `json:"url,omitempty"`
@@ -59,6 +65,8 @@ type GitHubRepositoryConfig struct {
 	Path string `json:"path,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type GitRepositoryConfig struct {
 	// The repository URL (e.g. `https://github.com/example/test.git`).
 	URL string `json:"url,omitempty"`
@@ -79,6 +87,8 @@ type GitRepositoryConfig struct {
 	Path string `json:"path,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type BitbucketRepositoryConfig struct {
 	// The repository URL (e.g. `https://bitbucket.org/example/test`).
 	URL string `json:"url,omitempty"`
@@ -99,6 +109,8 @@ type BitbucketRepositoryConfig struct {
 	Path string `json:"path,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type GitLabRepositoryConfig struct {
 	// The repository URL (e.g. `https://gitlab.com/example/test`).
 	URL string `json:"url,omitempty"`
@@ -135,6 +147,8 @@ func (r RepositoryType) IsGit() bool {
 	return r == GitRepositoryType || r == GitHubRepositoryType || r == BitbucketRepositoryType || r == GitLabRepositoryType
 }
 
+// +k8s:deepcopy-gen=true
+// +k8s:openapi-gen=true
 type RepositorySpec struct {
 	// The repository display name (shown in the UI)
 	Title string `json:"title"`
@@ -192,6 +206,7 @@ const (
 	SyncTargetTypeFolder SyncTargetType = "folder"
 )
 
+// +k8s:openapi-gen=true
 type SyncOptions struct {
 	// Enabled must be saved as true before any sync job will run
 	Enabled bool `json:"enabled"`
@@ -210,6 +225,8 @@ type SyncOptions struct {
 // The status of a Repository.
 // This is expected never to be created by a kubectl call or similar, and is expected to rarely (if ever) be edited manually.
 // As such, it is also a little less well structured than the spec, such as conditional-but-ever-present fields.
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen:true
 type RepositoryStatus struct {
 	// The generation of the spec last time reconciliation ran
 	ObservedGeneration int64 `json:"observedGeneration"`
@@ -228,6 +245,8 @@ type RepositoryStatus struct {
 	Webhook *WebhookStatus `json:"webhook"`
 }
 
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen:true
 type HealthStatus struct {
 	// When not healthy, requests will not be executed
 	Healthy bool `json:"healthy"`
@@ -241,6 +260,7 @@ type HealthStatus struct {
 	Message []string `json:"message,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type SyncStatus struct {
 	// pending, running, success, error
 	State JobState `json:"state"`
@@ -268,6 +288,7 @@ type SyncStatus struct {
 	Incremental bool `json:"incremental,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type WebhookStatus struct {
 	ID               int64    `json:"id,omitempty"`
 	URL              string   `json:"url,omitempty"`
@@ -277,7 +298,9 @@ type WebhookStatus struct {
 	LastEvent        int64    `json:"lastEvent,omitempty"`
 }
 
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type RepositoryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -299,7 +322,9 @@ const (
 )
 
 // This is a container type for any resource type
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type ResourceWrapper struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -329,6 +354,7 @@ type ResourceWrapper struct {
 	Errors []string `json:"errors,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type ResourceType struct {
 	Group    string `json:"group,omitempty"`
 	Version  string `json:"version,omitempty"`
@@ -339,6 +365,7 @@ type ResourceType struct {
 	Classic ClassicFileType `json:"classic,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type ResourceObjects struct {
 	// The identified type for this object
 	Type ResourceType `json:"type"`
@@ -360,6 +387,8 @@ type ResourceObjects struct {
 	Upsert common.Unstructured `json:"upsert,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type ResourceRepositoryInfo struct {
 	// The repository type
 	Type RepositoryType `json:"type"`
@@ -374,6 +403,7 @@ type ResourceRepositoryInfo struct {
 	Name string `json:"name"`
 }
 
+// +k8s:openapi-gen=true
 type ResourceURLs struct {
 	// A URL pointing to the this file in the repository
 	SourceURL string `json:"sourceURL,omitempty"`
@@ -389,7 +419,9 @@ type ResourceURLs struct {
 }
 
 // Information we can get just from the file listing
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type FileList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -398,6 +430,7 @@ type FileList struct {
 	Items []FileItem `json:"items"`
 }
 
+// +k8s:openapi-gen=true
 type FileItem struct {
 	Path     string `json:"path"`
 	Size     int64  `json:"size,omitempty"`
@@ -407,7 +440,9 @@ type FileItem struct {
 }
 
 // Information we can get just from the file listing
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type ResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -416,6 +451,8 @@ type ResourceList struct {
 	Items []ResourceListItem `json:"items"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type ResourceListItem struct {
 	Path     string `json:"path"`
 	Group    string `json:"group"`
@@ -429,7 +466,9 @@ type ResourceListItem struct {
 }
 
 // Information we can get just from the file listing
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type ResourceStats struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -444,6 +483,8 @@ type ResourceStats struct {
 	Managed []ManagerStats `json:"managed,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type ManagerStats struct {
 	// Manager kind
 	Kind utils.ManagerKind `json:"kind,omitempty"`
@@ -455,6 +496,8 @@ type ManagerStats struct {
 	Stats []ResourceCount `json:"stats"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type ResourceCount struct {
 	Group    string `json:"group"`
 	Resource string `json:"resource"`
@@ -462,7 +505,9 @@ type ResourceCount struct {
 }
 
 // HistoryList is a list of versions of a resource
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type TestResults struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -476,6 +521,8 @@ type TestResults struct {
 	Errors []ErrorDetails `json:"errors,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type ErrorDetails struct {
 	Type   metav1.CauseType `json:"type"`
 	Field  string           `json:"field,omitempty"`
@@ -483,7 +530,9 @@ type ErrorDetails struct {
 }
 
 // HistoryList is a list of versions of a resource
+// +k8s:deepcopy-gen:true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type HistoryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -492,12 +541,16 @@ type HistoryList struct {
 	Items []HistoryItem `json:"items"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type Author struct {
 	Name      string `json:"name"`
 	Username  string `json:"username"`
 	AvatarURL string `json:"avatarURL,omitempty"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type HistoryItem struct {
 	Ref     string `json:"ref"`
 	Message string `json:"message"`
@@ -506,7 +559,9 @@ type HistoryItem struct {
 	CreatedAt int64    `json:"createdAt"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:deepcopy-gen:true
+// +k8s:deepcopy-gen:interfaces=k8s.io/kubernetes/runtime.Object,k8s.io/kubernetes/runtime.List
+// +k8s:openapi-gen=true
 type RefList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -515,6 +570,8 @@ type RefList struct {
 	Items []RefItem `json:"items"`
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type RefItem struct {
 	// The name of the reference (branch or tag)
 	Name string `json:"name"`

@@ -526,31 +526,31 @@ func schema_provisioning_kinds_provisioning_v0alpha1_RepositorySpec(ref common.R
 					},
 					"local": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The repository on the local file system. Mutually exclusive with local | github.",
+							Description: "The repository on the local file system. Mutually exclusive with other configs",
 							Ref:         ref("github.com/grafana/grafana/apps/provisioning/kinds/provisioning/v0alpha1.RepositoryLocalRepositoryConfig"),
 						},
 					},
-					"github": {
+					"gitHub": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The repository on GitHub. Mutually exclusive with local | github | git.",
+							Description: "The repository on GitHub. Mutually exclusive with other configs",
 							Ref:         ref("github.com/grafana/grafana/apps/provisioning/kinds/provisioning/v0alpha1.RepositoryGitHubRepositoryConfig"),
 						},
 					},
 					"git": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The repository on Git. Mutually exclusive with local | github | git.",
+							Description: "The repository on Git. Mutually exclusive with other configs",
 							Ref:         ref("github.com/grafana/grafana/apps/provisioning/kinds/provisioning/v0alpha1.RepositoryGitRepositoryConfig"),
 						},
 					},
-					"bitbucket": {
+					"bitBucket": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The repository on Bitbucket. Mutually exclusive with local | github | git.",
+							Description: "The repository on Bitbucket. Mutually exclusive with other configs",
 							Ref:         ref("github.com/grafana/grafana/apps/provisioning/kinds/provisioning/v0alpha1.RepositoryBitbucketRepositoryConfig"),
 						},
 					},
-					"gitlab": {
+					"gitLab": {
 						SchemaProps: spec.SchemaProps{
-							Description: "The repository on GitLab. Mutually exclusive with local | github | git.",
+							Description: "The repository on GitLab. Mutually exclusive with other configs",
 							Ref:         ref("github.com/grafana/grafana/apps/provisioning/kinds/provisioning/v0alpha1.RepositoryGitLabRepositoryConfig"),
 						},
 					},

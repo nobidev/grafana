@@ -6,6 +6,7 @@ import (
 
 // Summary shows a view of the configuration that is sanitized and is OK for logged in users to see
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type RepositoryViewList struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -21,6 +22,7 @@ type RepositoryViewList struct {
 	Items []RepositoryView `json:"items"`
 }
 
+// +k8s:openapi-gen=true
 type RepositoryView struct {
 	// The k8s name for this repository
 	Name string `json:"name"`

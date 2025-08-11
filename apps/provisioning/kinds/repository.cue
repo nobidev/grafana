@@ -80,7 +80,7 @@ repository: {
 					// Enabled must be saved as true before any sync job will run
 					enabled: bool
 					// Where values should be saved
-					target: "unified" | "legacy"
+					target: "instance" | "folder"
 					// When non-zero, the sync will run periodically
 					intervalSeconds?: int
 				}
@@ -124,6 +124,8 @@ repository: {
 					subscribedEvents?: [...string]
 					lastEvent?:        int
 				}
+				// Supported operations from the UI
+				#Workflow: "write" | "branch"
 				spec: {
 					// The repository display name (shown in the UI)
 					title: string
@@ -132,26 +134,26 @@ repository: {
 					// UI driven Workflow that allow changes to the contends of the repository.
 					// The order is relevant for defining the precedence of the workflows.
 					// When empty, the repository does not support any edits (eg, readonly)
-					workflows?: [...string]
+					workflows?: [...#Workflow]
 					// Sync settings -- how values are pulled from the repository into grafana
 					sync: #SyncOptions
 					// The repository type. When selected oneOf the values below should be non-nil
 					type: "local" | "github" | "git" | "bitbucket" | "gitlab"
 					// The repository on the local file system.
-					// Mutually exclusive with local | github.
+					// Mutually exclusive with other configs
 					local?: #LocalRepositoryConfig
 					// The repository on GitHub.
-					// Mutually exclusive with local | github | git.
-					github?: #GitHubRepositoryConfig
+					// Mutually exclusive with other configs
+					gitHub?: #GitHubRepositoryConfig
 					// The repository on Git.
-					// Mutually exclusive with local | github | git.
+					// Mutually exclusive with other configs
 					git?: #GitRepositoryConfig
 					// The repository on Bitbucket.
-					// Mutually exclusive with local | github | git.
-					bitbucket?: #BitbucketRepositoryConfig
+					// Mutually exclusive with other configs
+					bitBucket?: #BitbucketRepositoryConfig
 					// The repository on GitLab.
-					// Mutually exclusive with local | github | git.
-					gitlab?: #GitLabRepositoryConfig
+					// Mutually exclusive with other configs
+					gitLab?: #GitLabRepositoryConfig
 				}
 				status: {
 					// The generation of the spec last time reconciliation ran

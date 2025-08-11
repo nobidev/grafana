@@ -2,6 +2,15 @@
 
 package v0alpha1
 
+// Supported operations from the UI
+// +k8s:openapi-gen=true
+type RepositoryWorkflow string
+
+const (
+	RepositoryWorkflowWrite  RepositoryWorkflow = "write"
+	RepositoryWorkflowBranch RepositoryWorkflow = "branch"
+)
+
 // +k8s:openapi-gen=true
 type RepositorySyncOptions struct {
 	// Enabled must be saved as true before any sync job will run
@@ -120,26 +129,26 @@ type RepositorySpec struct {
 	// UI driven Workflow that allow changes to the contends of the repository.
 	// The order is relevant for defining the precedence of the workflows.
 	// When empty, the repository does not support any edits (eg, readonly)
-	Workflows []string `json:"workflows,omitempty"`
+	Workflows []RepositoryWorkflow `json:"workflows,omitempty"`
 	// Sync settings -- how values are pulled from the repository into grafana
 	Sync RepositorySyncOptions `json:"sync"`
 	// The repository type. When selected oneOf the values below should be non-nil
 	Type RepositorySpecType `json:"type"`
 	// The repository on the local file system.
-	// Mutually exclusive with local | github.
+	// Mutually exclusive with other configs
 	Local *RepositoryLocalRepositoryConfig `json:"local,omitempty"`
 	// The repository on GitHub.
-	// Mutually exclusive with local | github | git.
-	Github *RepositoryGitHubRepositoryConfig `json:"github,omitempty"`
+	// Mutually exclusive with other configs
+	GitHub *RepositoryGitHubRepositoryConfig `json:"gitHub,omitempty"`
 	// The repository on Git.
-	// Mutually exclusive with local | github | git.
+	// Mutually exclusive with other configs
 	Git *RepositoryGitRepositoryConfig `json:"git,omitempty"`
 	// The repository on Bitbucket.
-	// Mutually exclusive with local | github | git.
-	Bitbucket *RepositoryBitbucketRepositoryConfig `json:"bitbucket,omitempty"`
+	// Mutually exclusive with other configs
+	BitBucket *RepositoryBitbucketRepositoryConfig `json:"bitBucket,omitempty"`
 	// The repository on GitLab.
-	// Mutually exclusive with local | github | git.
-	Gitlab *RepositoryGitLabRepositoryConfig `json:"gitlab,omitempty"`
+	// Mutually exclusive with other configs
+	GitLab *RepositoryGitLabRepositoryConfig `json:"gitLab,omitempty"`
 }
 
 // NewRepositorySpec creates a new RepositorySpec object.
@@ -153,8 +162,8 @@ func NewRepositorySpec() *RepositorySpec {
 type RepositorySyncOptionsTarget string
 
 const (
-	RepositorySyncOptionsTargetUnified RepositorySyncOptionsTarget = "unified"
-	RepositorySyncOptionsTargetLegacy  RepositorySyncOptionsTarget = "legacy"
+	RepositorySyncOptionsTargetInstance RepositorySyncOptionsTarget = "instance"
+	RepositorySyncOptionsTargetFolder   RepositorySyncOptionsTarget = "folder"
 )
 
 // +k8s:openapi-gen=true

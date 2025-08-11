@@ -10,6 +10,8 @@ import (
 // +genclient
 
 // The repository name and type are stored as labels
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Job struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -19,6 +21,8 @@ type Job struct {
 	Status JobStatus `json:"status,omitempty"`
 }
 
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type JobList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -74,6 +78,8 @@ func (j JobState) Finished() bool {
 	return j == JobStateSuccess || j == JobStateError || j == JobStateWarning
 }
 
+// +k8s:deepcopy-gen:true
+// +k8s:openapi-gen=true
 type JobSpec struct {
 	Action JobAction `json:"action,omitempty"`
 
@@ -100,6 +106,7 @@ type JobSpec struct {
 	Move *MoveJobOptions `json:"move,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type PullRequestJobOptions struct {
 	// The branch of commit hash
 	Ref string `json:"ref,omitempty"`
@@ -114,11 +121,13 @@ type PullRequestJobOptions struct {
 	URL string `json:"url,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type SyncJobOptions struct {
 	// Incremental synchronization for versioned repositories
 	Incremental bool `json:"incremental"`
 }
 
+// +k8s:openapi-gen=true
 type ExportJobOptions struct {
 	// Message to use when committing the changes in a single commit
 	Message string `json:"message,omitempty"`
@@ -135,6 +144,7 @@ type ExportJobOptions struct {
 	Path string `json:"path,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type MigrateJobOptions struct {
 	// Preserve history (if possible)
 	History bool `json:"history,omitempty"`
@@ -143,6 +153,7 @@ type MigrateJobOptions struct {
 	Message string `json:"message,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type DeleteJobOptions struct {
 	// Ref to the branch or commit hash to delete from
 	Ref string `json:"ref,omitempty"`
@@ -160,6 +171,7 @@ type DeleteJobOptions struct {
 	Resources []ResourceRef `json:"resources,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type ResourceRef struct {
 	// Name is the name of the resource, such as a dashboard UID.
 	Name string `json:"name,omitempty"`
@@ -171,6 +183,7 @@ type ResourceRef struct {
 	Group string `json:"group,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type MoveJobOptions struct {
 	// Ref to the branch or commit hash that should move
 	Ref string `json:"ref,omitempty"`
@@ -192,6 +205,7 @@ type MoveJobOptions struct {
 }
 
 // The job status
+// +k8s:openapi-gen=true
 type JobStatus struct {
 	State    JobState `json:"state,omitempty"`
 	Started  int64    `json:"started,omitempty"`
@@ -217,6 +231,7 @@ func (in JobStatus) ToSyncStatus(jobId string) SyncStatus {
 	}
 }
 
+// +k8s:openapi-gen=true
 type JobResourceSummary struct {
 	Group    string `json:"group,omitempty"`
 	Resource string `json:"resource,omitempty"`
@@ -245,6 +260,8 @@ type JobResourceSummary struct {
 // The repository name and type are stored as labels.
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +genclient
+// +k8s:openapi-gen=true
+// +k8s:deepcopy-gen=true
 type HistoricJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -253,7 +270,9 @@ type HistoricJob struct {
 	Status JobStatus `json:"status,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:deepcopy-gen=true
 type HistoricJobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
