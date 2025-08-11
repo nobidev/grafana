@@ -2,7 +2,7 @@ import { css } from '@emotion/css';
 import { useCallback, useEffect, useState } from 'react';
 import * as React from 'react';
 
-import { FeatureState, ThemeRegistryItem } from '@grafana/data';
+import { FeatureState, GrafanaTheme2, ThemeRegistryItem } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { PSEUDO_LOCALE, t, Trans } from '@grafana/i18n';
 import { config, reportInteraction } from '@grafana/runtime';
@@ -20,10 +20,12 @@ import {
   WeekStart,
   isWeekStart,
   RadioButtonGroup,
+  Card,
+  useStyles2,
 } from '@grafana/ui';
 import { DashboardPicker } from 'app/core/components/Select/DashboardPicker';
 import { LANGUAGES } from 'app/core/internationalization/constants';
-import { LOCALES } from 'app/core/internationalization/locales';
+import { LOCALES, REGION_FORMAT_CODES } from 'app/core/internationalization/locales';
 import { changeTheme } from 'app/core/services/theme';
 import {
   PreferencesSpec,
@@ -203,7 +205,7 @@ function usePreferencesMutation(type: PreferencesType) {
 }
 
 export function SharedPreferencesV2({ teamId, disabled, preferenceType, onConfirm }: Props) {
-  const styles = getStyles();
+  const styles = useStyles2(getStyles);
 
   const { data: prefs, isLoading } = usePreferencesQuery(preferenceType, teamId);
   const [updatePrefs, { isLoading: isUpdatingPrefs }] = usePreferencesMutation(preferenceType);
@@ -246,8 +248,51 @@ export function SharedPreferencesV2({ teamId, disabled, preferenceType, onConfir
     return options;
   }, []);
 
-  const languageOptions = React.useMemo(getLanguageOptions, []);
-  const regionalFormatOptions = React.useMemo(getRegionalFormatOptions, []);
+  const languageOptions = React.useMemo(() => {
+    // [fixme] should use the actual user preference from user object
+    const displayNames = new Intl.DisplayNames(preferences.language || undefined, { type: 'language' });
+
+    const baseOptions = getLanguageOptions();
+
+    return baseOptions.map((opt) => {
+      return {
+        ...opt,
+        description: opt.value ? displayNames.of(opt.value) : undefined,
+      };
+    });
+  }, [preferences.language]);
+
+  const regionalFormatOptions = React.useMemo(() => {
+    // [fixme] should use the actual user preference from user object
+    console.log('making it with', preferences.language || undefined);
+    const displayNamesPref = new Intl.DisplayNames(preferences.language || undefined, { type: 'language' });
+    const displayNamesPrefStd = new Intl.DisplayNames(preferences.language || undefined, {
+      type: 'language',
+      languageDisplay: 'standard',
+    });
+    // const baseOptions = getRegionalFormatOptions();
+
+    return REGION_FORMAT_CODES.map((code) => {
+      const displayNameNative = new Intl.DisplayNames(code, { type: 'language' });
+
+      const nativeDisplayName = displayNameNative.of(code) || code;
+      const prefDialectDisplayName = displayNamesPref.of(code);
+      const prefStandardDisplayName = displayNamesPrefStd.of(code);
+
+      let description = undefined;
+      if (prefDialectDisplayName && prefDialectDisplayName !== nativeDisplayName) {
+        description = prefDialectDisplayName;
+      } else {
+        description = prefStandardDisplayName;
+      }
+
+      return {
+        value: code,
+        label: nativeDisplayName,
+        description: description,
+      };
+    });
+  }, [preferences.language]);
   const dateFormatOptions = React.useMemo(getDateFormatOptions, []);
 
   const onSubmitForm = useCallback(
@@ -366,6 +411,37 @@ export function SharedPreferencesV2({ teamId, disabled, preferenceType, onConfir
   // Determine submitting state based on preference type
   const submitting = isUpdatingPrefs;
 
+  const { fullDatePreview, rangePreview } = React.useMemo(() => {
+    const locale = preferences.regionalFormat || undefined;
+
+    const baseOptions: Intl.DateTimeFormatOptions = {
+      hour12: preferences.dateFormat === 'international' ? false : undefined,
+      calendar: preferences.dateFormat === 'international' ? 'iso8601' : undefined,
+    };
+
+    const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
+      ...baseOptions,
+      dateStyle: 'short',
+      timeStyle: 'short',
+    });
+
+    const fullDateFormatter = new Intl.DateTimeFormat(locale, {
+      ...baseOptions,
+      dateStyle: 'full',
+    });
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(today.getDate() - 7);
+
+    const fullDatePreview = fullDateFormatter.format(start);
+    const rangePreview = dateTimeFormatter.formatRange(start, today);
+
+    return {
+      fullDatePreview,
+      rangePreview,
+    };
+  }, [preferences.regionalFormat, preferences.dateFormat]);
+
   return (
     <form onSubmit={onSubmitForm} className={styles.form}>
       <FieldSet label={<Trans i18nKey="shared-preferences.title">Preferences</Trans>} disabled={disabled}>
@@ -466,54 +542,66 @@ export function SharedPreferencesV2({ teamId, disabled, preferenceType, onConfir
             id="language-preference-select"
           />
         </Field>
+
         {config.featureToggles.localeFormatPreference && (
-          <Field
-            loading={isLoading}
-            disabled={isLoading}
-            label={
-              <Label htmlFor="locale-preference">
-                <span className={styles.labelText}>
-                  <Trans i18nKey="shared-preferences.fields.locale-preference-label">Region format</Trans>
-                </span>
-                <FeatureBadge featureState={FeatureState.preview} />
-              </Label>
-            }
-            description={t(
-              'shared-preferences.fields.locale-preference-description',
-              'Choose your region to see the corresponding date, time, and number format'
-            )}
-            data-testid="User preferences locale drop down"
-          >
-            <Combobox
-              value={regionalFormatOptions.find((loc) => loc.value === preferences.regionalFormat)?.value || ''}
-              onChange={(locale: ComboboxOption | null) => onLocaleChanged(locale?.value ?? '')}
-              options={regionalFormatOptions}
-              placeholder={t('shared-preferences.fields.locale-preference-placeholder', 'Choose region')}
-              id="locale-preference-select"
-            />
-          </Field>
-        )}
-        {config.featureToggles.localeFormatPreference && (
-          <Field
-            loading={isLoading}
-            disabled={isLoading}
-            label={
-              <Label htmlFor="date-format-preference">
-                <span className={styles.labelText}>
-                  <Trans i18nKey="shared-preferences.fields.date-format-preference-label">Date format style</Trans>
-                </span>
-                <FeatureBadge featureState={FeatureState.preview} />
-              </Label>
-            }
-            data-testid="User preferences date format"
-          >
-            <RadioButtonGroup
-              value={preferences.dateFormat}
-              onChange={(value) => onDateFormatChanged(value)}
-              options={dateFormatOptions}
-              id="date-format-preference"
-            />
-          </Field>
+          <>
+            <Field
+              loading={isLoading}
+              disabled={isLoading}
+              label={
+                <Label htmlFor="locale-preference">
+                  <span className={styles.labelText}>
+                    <Trans i18nKey="shared-preferences.fields.locale-preference-label">Region format</Trans>
+                  </span>
+                  <FeatureBadge featureState={FeatureState.preview} />
+                </Label>
+              }
+              description={t(
+                'shared-preferences.fields.locale-preference-description',
+                'Choose your region to see the corresponding date, time, and number format'
+              )}
+              data-testid="User preferences locale drop down"
+            >
+              <Combobox
+                value={regionalFormatOptions.find((loc) => loc.value === preferences.regionalFormat)?.value || ''}
+                onChange={(locale: ComboboxOption | null) => onLocaleChanged(locale?.value ?? '')}
+                options={regionalFormatOptions}
+                placeholder={t('shared-preferences.fields.locale-preference-placeholder', 'Choose region')}
+                id="locale-preference-select"
+              />
+            </Field>
+            <Field
+              loading={isLoading}
+              disabled={isLoading}
+              label={
+                <Label htmlFor="date-format-preference">
+                  <span className={styles.labelText}>
+                    <Trans i18nKey="shared-preferences.fields.date-format-preference-label">Date format style</Trans>
+                  </span>
+                  <FeatureBadge featureState={FeatureState.preview} />
+                </Label>
+              }
+              data-testid="User preferences date format"
+            >
+              <RadioButtonGroup
+                value={preferences.dateFormat}
+                onChange={(value) => onDateFormatChanged(value)}
+                options={dateFormatOptions}
+                id="date-format-preference"
+              />
+            </Field>
+
+            <Card>
+              <Card.Heading>
+                <Trans i18nKey="shared-preferences.region-format-example">Region format example</Trans>
+              </Card.Heading>
+              <Card.Description>
+                {fullDatePreview}
+                <br />
+                {rangePreview}
+              </Card.Description>
+            </Card>
+          </>
         )}
       </FieldSet>
       <Button
@@ -528,7 +616,7 @@ export function SharedPreferencesV2({ teamId, disabled, preferenceType, onConfir
   );
 }
 
-const getStyles = () => {
+const getStyles = (theme: GrafanaTheme2) => {
   return {
     labelText: css({
       marginRight: '6px',

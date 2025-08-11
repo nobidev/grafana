@@ -9,6 +9,22 @@ export function itemToString<T extends string | number>(item?: ComboboxOption<T>
   return item.label ?? item.value.toString();
 }
 
+export function itemToSearchableString<T extends string | number>(item?: ComboboxOption<T> | null) {
+  if (item == null) {
+    return '';
+  }
+
+  let searchString = item.value.toString();
+  if (item.label) {
+    searchString = searchString.concat('|', item.label);
+  }
+  if (item.description) {
+    searchString = searchString.concat('|', item.description);
+  }
+
+  return searchString;
+}
+
 export function fuzzyFind<T extends string | number>(
   options: Array<ComboboxOption<T>>,
   haystack: string[],
