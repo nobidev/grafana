@@ -13,7 +13,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	sdkhttpclient "github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
-
 	"github.com/grafana/grafana/pkg/api"
 	"github.com/grafana/grafana/pkg/api/avatar"
 	"github.com/grafana/grafana/pkg/api/routing"
@@ -43,9 +42,12 @@ import (
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning/repository/github"
 	secretcontracts "github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
 	secretdecrypt "github.com/grafana/grafana/pkg/registry/apis/secret/decrypt"
-	gsmEncryption "github.com/grafana/grafana/pkg/registry/apis/secret/encryption"
+	cipher "github.com/grafana/grafana/pkg/registry/apis/secret/encryption/cipher/service"
 	encryptionManager "github.com/grafana/grafana/pkg/registry/apis/secret/encryption/manager"
+	secretinline "github.com/grafana/grafana/pkg/registry/apis/secret/inline"
+	secretmutator "github.com/grafana/grafana/pkg/registry/apis/secret/mutator"
 	secretsecurevalueservice "github.com/grafana/grafana/pkg/registry/apis/secret/service"
+	secretvalidator "github.com/grafana/grafana/pkg/registry/apis/secret/validator"
 	appregistry "github.com/grafana/grafana/pkg/registry/apps"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/accesscontrol/acimpl"
@@ -101,6 +103,7 @@ import (
 	"github.com/grafana/grafana/pkg/services/login/authinfoimpl"
 	"github.com/grafana/grafana/pkg/services/loginattempt"
 	"github.com/grafana/grafana/pkg/services/loginattempt/loginattemptimpl"
+	"github.com/grafana/grafana/pkg/services/mtdsclient"
 	"github.com/grafana/grafana/pkg/services/navtree/navtreeimpl"
 	"github.com/grafana/grafana/pkg/services/ngalert"
 	ngimage "github.com/grafana/grafana/pkg/services/ngalert/image"
@@ -323,6 +326,7 @@ var wireBasicSet = wire.NewSet(
 	serviceaccountsmanager.ProvideServiceAccountsService,
 	serviceaccountsproxy.ProvideServiceAccountsProxy,
 	wire.Bind(new(serviceaccounts.Service), new(*serviceaccountsproxy.ServiceAccountsProxy)),
+	mtdsclient.NewNullMTDatasourceClientBuilder,
 	expr.ProvideService,
 	featuremgmt.ProvideManagerService,
 	featuremgmt.ProvideToggles,
@@ -425,15 +429,22 @@ var wireBasicSet = wire.NewSet(
 	secretmetadata.ProvideKeeperMetadataStorage,
 	secretmetadata.ProvideDecryptStorage,
 	secretdecrypt.ProvideDecryptAuthorizer,
-	secretdecrypt.ProvideDecryptAllowList,
+	secretdecrypt.ProvideDecryptService,
+	secretinline.ProvideInlineSecureValueService,
 	secretencryption.ProvideDataKeyStorage,
+	secretencryption.ProvideGlobalDataKeyStorage,
 	secretencryption.ProvideEncryptedValueStorage,
+	secretencryption.ProvideGlobalEncryptedValueStorage,
 	secretsecurevalueservice.ProvideSecureValueService,
+	secretvalidator.ProvideKeeperValidator,
+	secretvalidator.ProvideSecureValueValidator,
+	secretmutator.ProvideKeeperMutator,
+	secretmutator.ProvideSecureValueMutator,
 	secretmigrator.NewWithEngine,
 	secretdatabase.ProvideDatabase,
 	wire.Bind(new(secretcontracts.Database), new(*secretdatabase.Database)),
 	encryptionManager.ProvideEncryptionManager,
-	gsmEncryption.ProvideThirdPartyProviderMap,
+	cipher.ProvideAESGCMCipherService,
 	// Unified storage
 	resource.ProvideStorageMetrics,
 	resource.ProvideIndexMetrics,
@@ -499,7 +510,8 @@ func Initialize(cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions) (*Ser
 func InitializeForTest(t sqlutil.ITestDB, testingT interface {
 	mock.TestingT
 	Cleanup(func())
-}, cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions) (*TestEnv, error) {
+}, cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions,
+) (*TestEnv, error) {
 	wire.Build(wireExtsTestSet)
 	return &TestEnv{Server: &Server{}, TestingT: testingT, SQLStore: &sqlstore.SQLStore{}, Cfg: &setting.Cfg{}}, nil
 }

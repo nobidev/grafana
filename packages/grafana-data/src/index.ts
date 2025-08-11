@@ -492,6 +492,8 @@ export type {
   ExploreLogsPanelState,
   SplitOpenOptions,
   SplitOpen,
+  TraceSearchProps,
+  TraceSearchTag,
 } from './types/explore';
 export type { TraceKeyValuePair, TraceLog, TraceSpanReference, TraceSpanRow } from './types/trace';
 export type { FlotDataPoint } from './types/flot';
@@ -565,6 +567,8 @@ export {
   type PluginExtensionPanelContext,
   type PluginExtensionQueryEditorRowAdaptiveTelemetryV1Context,
   type PluginExtensionDataSourceConfigContext,
+  type PluginExtensionDataSourceConfigActionsContext,
+  type PluginExtensionDataSourceConfigStatusContext,
   type PluginExtensionCommandPaletteContext,
   type PluginExtensionOpenModalOptions,
   type PluginExtensionExposedComponentConfig,
@@ -658,6 +662,7 @@ export {
   type QueryFixAction,
   type QueryHint,
   type MetricFindValue,
+  type FiltersApplicability,
   type DataSourceJsonData,
   type DataSourceSettings,
   type DataSourceInstanceSettings,

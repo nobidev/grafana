@@ -9,24 +9,27 @@ import (
 	"github.com/google/uuid"
 	secretv1beta1 "github.com/grafana/grafana/apps/secret/pkg/apis/secret/v1beta1"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
-	"github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
 	"github.com/grafana/grafana/pkg/registry/apis/secret/xkube"
-	"github.com/grafana/grafana/pkg/storage/secret/migrator"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 type secureValueDB struct {
 	// Kubernetes Metadata
-	GUID        string
-	Name        string
-	Namespace   string
-	Annotations string // map[string]string
-	Labels      string // map[string]string
-	Created     int64
-	CreatedBy   string
-	Updated     int64
-	UpdatedBy   string
+	GUID                     string
+	Name                     string
+	Namespace                string
+	Annotations              string // map[string]string
+	Labels                   string // map[string]string
+	Created                  int64
+	CreatedBy                string
+	Updated                  int64
+	UpdatedBy                string
+	OwnerReferenceAPIGroup   sql.NullString
+	OwnerReferenceAPIVersion sql.NullString
+	OwnerReferenceKind       sql.NullString
+	OwnerReferenceName       sql.NullString
 
 	// Kubernetes Status
 	Active  bool
@@ -38,10 +41,6 @@ type secureValueDB struct {
 	Decrypters  sql.NullString
 	Ref         sql.NullString
 	ExternalID  string
-}
-
-func (*secureValueDB) TableName() string {
-	return migrator.TableNameSecureValue
 }
 
 // toKubernetes maps a DB row into a Kubernetes resource (metadata + spec).
@@ -86,8 +85,6 @@ func (sv *secureValueDB) toKubernetes() (*secretv1beta1.SecureValue, error) {
 		resource.Spec.Ref = &sv.Ref.String
 	}
 
-	resource.Status.ExternalID = sv.ExternalID
-
 	// Set all meta fields here for consistency.
 	meta, err := utils.MetaAccessor(resource)
 	if err != nil {
@@ -106,6 +103,20 @@ func (sv *secureValueDB) toKubernetes() (*secretv1beta1.SecureValue, error) {
 	meta.SetUpdatedBy(sv.UpdatedBy)
 	meta.SetUpdatedTimestamp(&updated)
 	meta.SetResourceVersionInt64(sv.Updated)
+
+	hasOwnerReference := sv.OwnerReferenceAPIGroup.Valid && sv.OwnerReferenceAPIGroup.String != "" &&
+		sv.OwnerReferenceAPIVersion.Valid && sv.OwnerReferenceAPIVersion.String != "" &&
+		sv.OwnerReferenceKind.Valid && sv.OwnerReferenceKind.String != "" &&
+		sv.OwnerReferenceName.Valid && sv.OwnerReferenceName.String != ""
+	if hasOwnerReference {
+		meta.SetOwnerReferences([]metav1.OwnerReference{
+			{
+				APIVersion: schema.GroupVersion{Group: sv.OwnerReferenceAPIGroup.String, Version: sv.OwnerReferenceAPIVersion.String}.String(),
+				Kind:       sv.OwnerReferenceKind.String,
+				Name:       sv.OwnerReferenceName.String,
+			},
+		})
+	}
 
 	return resource, nil
 }
@@ -180,16 +191,48 @@ func toRow(sv *secretv1beta1.SecureValue, externalID string) (*secureValueDB, er
 		return nil, fmt.Errorf("failed to get resource version: %w", err)
 	}
 
+	var (
+		ownerReferenceAPIGroup   sql.NullString
+		ownerReferenceAPIVersion sql.NullString
+		ownerReferenceKind       sql.NullString
+		ownerReferenceName       sql.NullString
+	)
+
+	ownerReferences := meta.GetOwnerReferences()
+	if len(ownerReferences) > 1 {
+		return nil, fmt.Errorf("only one owner reference is supported, found %d", len(ownerReferences))
+	}
+	if len(ownerReferences) == 1 {
+		ownerReference := ownerReferences[0]
+
+		gv, err := schema.ParseGroupVersion(ownerReference.APIVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse owner reference API version %s: %w", ownerReference.APIVersion, err)
+		}
+		if gv.Group == "" {
+			return nil, fmt.Errorf("malformed api version %s requires <group>/<version> format", ownerReference.APIVersion)
+		}
+
+		ownerReferenceAPIGroup = toNullString(&gv.Group)
+		ownerReferenceAPIVersion = toNullString(&gv.Version)
+		ownerReferenceKind = toNullString(&ownerReference.Kind)
+		ownerReferenceName = toNullString(&ownerReference.Name)
+	}
+
 	return &secureValueDB{
-		GUID:        string(sv.UID),
-		Name:        sv.Name,
-		Namespace:   sv.Namespace,
-		Annotations: annotations,
-		Labels:      labels,
-		Created:     meta.GetCreationTimestamp().UnixMilli(),
-		CreatedBy:   meta.GetCreatedBy(),
-		Updated:     updatedTimestamp,
-		UpdatedBy:   meta.GetUpdatedBy(),
+		GUID:                     string(sv.UID),
+		Name:                     sv.Name,
+		Namespace:                sv.Namespace,
+		Annotations:              annotations,
+		Labels:                   labels,
+		Created:                  meta.GetCreationTimestamp().UnixMilli(),
+		CreatedBy:                meta.GetCreatedBy(),
+		Updated:                  updatedTimestamp,
+		UpdatedBy:                meta.GetUpdatedBy(),
+		OwnerReferenceAPIGroup:   ownerReferenceAPIGroup,
+		OwnerReferenceAPIVersion: ownerReferenceAPIVersion,
+		OwnerReferenceKind:       ownerReferenceKind,
+		OwnerReferenceName:       ownerReferenceName,
 
 		Version: sv.Status.Version,
 
@@ -199,39 +242,6 @@ func toRow(sv *secretv1beta1.SecureValue, externalID string) (*secureValueDB, er
 		Ref:         toNullString(sv.Spec.Ref),
 		ExternalID:  externalID,
 	}, nil
-}
-
-// DTO for `secureValueForDecrypt` query result, only what we need.
-type secureValueForDecrypt struct {
-	Keeper     sql.NullString
-	Decrypters sql.NullString
-	Ref        sql.NullString
-	Active     bool
-	ExternalID string
-}
-
-// to Decrypt maps a DB row into a DecryptSecureValue object needed for decryption.
-func (sv *secureValueForDecrypt) toDecrypt() (*contracts.DecryptSecureValue, error) {
-	decrypters := make([]string, 0)
-	if sv.Decrypters.Valid && sv.Decrypters.String != "" {
-		if err := json.Unmarshal([]byte(sv.Decrypters.String), &decrypters); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal decrypters: %w", err)
-		}
-	}
-
-	decryptSecureValue := &contracts.DecryptSecureValue{
-		Decrypters: decrypters,
-		ExternalID: sv.ExternalID,
-	}
-
-	if sv.Keeper.Valid && sv.Keeper.String != "" {
-		decryptSecureValue.Keeper = &sv.Keeper.String
-	}
-	if sv.Ref.Valid && sv.Ref.String != "" {
-		decryptSecureValue.Ref = sv.Ref.String
-	}
-
-	return decryptSecureValue, nil
 }
 
 // toNullString returns a sql.NullString struct given a *string

@@ -1,15 +1,22 @@
 package ofrep
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"path"
+	"strconv"
 
+	"github.com/grafana/grafana/pkg/cmd/grafana-cli/logger"
 	"github.com/grafana/grafana/pkg/util/proxyutil"
+
+	goffmodel "github.com/thomaspoignant/go-feature-flag/cmd/relayproxy/model"
 )
 
 func (b *APIBuilder) proxyAllFlagReq(isAuthedUser bool, w http.ResponseWriter, r *http.Request) {
@@ -19,26 +26,37 @@ func (b *APIBuilder) proxyAllFlagReq(isAuthedUser bool, w http.ResponseWriter, r
 		return
 	}
 
-	//proxy.ModifyResponse = func(resp *http.Response) error {
-	//	if resp.StatusCode == http.StatusOK && !isAuthedUser {
-	//		var result map[string]interface{}
-	//		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-	//			return err
-	//		}
-	//		_ = resp.Body.Close()
-	//
-	//		filtered := make(map[string]any)
-	//		for k, v := range result {
-	//			if isPublicFlag(k) {
-	//				filtered[k] = v
-	//			}
-	//		}
-	//
-	//		writeResponse(http.StatusOK, filtered, b.logger, w)
-	//	}
-	//
-	//	return nil
-	//}
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		if resp.StatusCode == http.StatusOK && !isAuthedUser {
+			var result goffmodel.OFREPBulkEvaluateSuccessResponse
+			if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+				return err
+			}
+			_ = resp.Body.Close()
+
+			var filteredFlags []goffmodel.OFREPFlagBulkEvaluateSuccessResponse
+			for _, f := range result.Flags {
+				if isPublicFlag(f.Key) {
+					filteredFlags = append(filteredFlags, f)
+				}
+			}
+
+			result.Flags = filteredFlags
+			newBodyBytes, err := json.Marshal(result)
+			if err != nil {
+				logger.Error("Failed to encode filtered result", "error", err)
+				return err
+			}
+
+			// Replace the body
+			resp.Body = io.NopCloser(bytes.NewReader(newBodyBytes))
+			resp.ContentLength = int64(len(newBodyBytes))
+			resp.Header.Set("Content-Length", strconv.Itoa(len(newBodyBytes)))
+			resp.Header.Set("Content-Type", "application/json")
+		}
+
+		return nil
+	}
 
 	proxy.ServeHTTP(w, r)
 }
