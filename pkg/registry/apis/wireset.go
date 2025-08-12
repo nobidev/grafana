@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/grafana/pkg/registry/apis/folders"
 	"github.com/grafana/grafana/pkg/registry/apis/iam"
 	"github.com/grafana/grafana/pkg/registry/apis/iam/noopstorage"
+	"github.com/grafana/grafana/pkg/registry/apis/iam/resourcepermission"
 	"github.com/grafana/grafana/pkg/registry/apis/ofrep"
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning"
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning/secrets"
@@ -24,7 +25,6 @@ import (
 var WireSetExts = wire.NewSet(
 	noopstorage.ProvideStorageBackend,
 	wire.Bind(new(iam.CoreRoleStorageBackend), new(*noopstorage.StorageBackendImpl)),
-	wire.Bind(new(iam.ResourcePermissionStorageBackend), new(*noopstorage.StorageBackendImpl)),
 	wire.Bind(new(iam.RoleStorageBackend), new(*noopstorage.StorageBackendImpl)),
 )
 
@@ -35,6 +35,10 @@ var WireSet = wire.NewSet(
 	plugincontext.ProvideService,
 	wire.Bind(new(datasource.PluginContextWrapper), new(*plugincontext.Provider)),
 	datasource.ProvideDefaultPluginConfigs,
+
+	// IAM
+	resourcepermission.ProvideStorageBackend,
+	wire.Bind(new(iam.ResourcePermissionStorageBackend), new(*resourcepermission.ResourcePermissionSqlBackend)),
 
 	// Secrets
 	secret.RegisterDependencies,

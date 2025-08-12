@@ -87,6 +87,7 @@ func (s *ResourcePermissionSqlBackend) getResourcePermission(ctx context.Context
 	}
 
 	// Find the specific permission group by name
+	// TODO return empty if not found?
 	for key, perms := range permissionGroups {
 		if key == name || (len(perms) > 0 && perms[0].SubjectUID == name) {
 			resourcePermission := toV0ResourcePermission(perms)

@@ -13,32 +13,27 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/grafana/grafana/apps/iam/pkg/apis/iam/v0alpha1"
-	"github.com/grafana/grafana/pkg/extensions/licensing"
 	"github.com/grafana/grafana/pkg/registry/apis/iam/common"
-	"github.com/grafana/grafana/pkg/registry/apis/iam/noopstorage"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/storage/legacysql"
 	"github.com/grafana/grafana/pkg/storage/unified/resource"
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 )
 
 type ResourcePermissionSqlBackend struct {
-	sql      legacysql.LegacyDatabaseProvider
-	token    licensing.LicenseToken
-	fallback *noopstorage.StorageBackendImpl
+	sql legacysql.LegacyDatabaseProvider
 
 	subscribers []chan *resource.WrittenEvent
 	mutex       sync.Mutex
 }
 
-func ProvideStorageBackend(sql legacysql.LegacyDatabaseProvider, token licensing.LicenseToken) *ResourcePermissionSqlBackend {
+func ProvideStorageBackend(db db.DB) *ResourcePermissionSqlBackend {
 	return &ResourcePermissionSqlBackend{
-		sql:      sql,
-		token:    token,
-		fallback: noopstorage.ProvideStorageBackend(),
+		sql: legacysql.NewDatabaseProvider(db),
 
 		subscribers: make([]chan *resource.WrittenEvent, 0),
 		mutex:       sync.Mutex{},
@@ -54,10 +49,6 @@ func (s *ResourcePermissionSqlBackend) ListHistory(ctx context.Context, req *res
 }
 
 func (s *ResourcePermissionSqlBackend) ListIterator(ctx context.Context, req *resourcepb.ListRequest, cb func(resource.ListIterator) error) (int64, error) {
-	if !s.token.FeatureEnabled(licensing.FeatureAccessControl) {
-		return s.fallback.ListIterator(ctx, req, cb)
-	}
-
 	if req.ResourceVersion != 0 {
 		return 0, apierrors.NewBadRequest("List with explicit resourceVersion is not supported with this storage backend")
 	}
@@ -127,10 +118,6 @@ func getApiGroupForResource(resourceType string) string {
 }
 
 func (s *ResourcePermissionSqlBackend) ReadResource(ctx context.Context, req *resourcepb.ReadRequest) *resource.BackendReadResponse {
-	if !s.token.FeatureEnabled(licensing.FeatureAccessControl) {
-		return s.fallback.ReadResource(ctx, req)
-	}
-
 	version := int64(0)
 	if req.ResourceVersion > 0 {
 		version = req.ResourceVersion
@@ -193,10 +180,6 @@ func (s *ResourcePermissionSqlBackend) WatchWriteEvents(ctx context.Context) (<-
 }
 
 func (s *ResourcePermissionSqlBackend) WriteEvent(ctx context.Context, event resource.WriteEvent) (int64, error) {
-	if !s.token.FeatureEnabled(licensing.FeatureAccessControl) {
-		return s.fallback.WriteEvent(ctx, event)
-	}
-
 	ns, err := types.ParseNamespace(event.Key.Namespace)
 	if err != nil {
 		return 0, err
