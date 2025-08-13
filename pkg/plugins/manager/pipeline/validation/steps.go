@@ -13,7 +13,7 @@ import (
 	"github.com/grafana/grafana/pkg/plugins/manager/signature"
 )
 
-// DefaultValidateFuncs are the default ValidateFunc used for the Validate step of the Validation stage.
+// DefaultValidateFuncs are the default ValidateFuncs used for the Validate stage.
 func DefaultValidateFuncs(cfg *config.PluginManagementCfg) []ValidateFunc {
 	return []ValidateFunc{
 		SignatureValidationStep(signature.NewValidator(signature.NewUnsignedAuthorizer(cfg))),

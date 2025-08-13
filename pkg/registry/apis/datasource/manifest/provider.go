@@ -9,31 +9,30 @@ import (
 
 // ManifestOpenAPIExtensionProvider provides OpenAPI extensions based on plugin manifests
 type ManifestOpenAPIExtensionProvider struct {
-	loader *PluginManifestLoader
+	converter *ManifestConverter
 }
 
 // NewManifestExtensionProvider creates a new manifest extension provider
 func NewManifestExtensionProvider() *ManifestOpenAPIExtensionProvider {
 	return &ManifestOpenAPIExtensionProvider{
-		loader: NewPluginManifestLoader(),
+		converter: NewManifestConverter(),
 	}
 }
 
-// GetExtensionForPlugin attempts to load and convert a plugin manifest to OpenAPI extension
+// GetExtensionForPlugin attempts to convert a plugin's manifest data to OpenAPI extension
 func (p *ManifestOpenAPIExtensionProvider) GetExtensionForPlugin(plugin *pluginstore.Plugin) (*datasourceV0.DataSourceOpenAPIExtension, error) {
 	if plugin == nil {
 		return nil, fmt.Errorf("plugin is nil")
 	}
 
-	// Try to load manifest from plugin
-	manifestData, err := p.loader.LoadManifestFromPlugin(plugin)
-	if err != nil {
-		// Return nil if manifest doesn't exist - this is expected for plugins without manifests
+	// Check if the plugin has manifest data
+	if plugin.ManifestData == nil {
+		// Return nil if no manifest data - this is expected for plugins without manifests
 		return nil, nil
 	}
 
 	// Convert manifest to OpenAPI extension
-	extension, err := p.loader.ConvertManifestToOpenAPIExtension(manifestData)
+	extension, err := p.converter.ConvertManifestToOpenAPIExtension(plugin.ManifestData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert manifest to OpenAPI extension: %w", err)
 	}

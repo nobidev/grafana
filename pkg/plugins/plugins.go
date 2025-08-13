@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/grafana/grafana-app-sdk/app"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 
 	"github.com/grafana/grafana/pkg/plugins/auth"
@@ -66,6 +67,9 @@ type Plugin struct {
 	mu sync.Mutex
 
 	Translations map[string]string
+
+	// Manifest data loaded from manifest.json if present
+	ManifestData *app.ManifestData
 }
 
 var (

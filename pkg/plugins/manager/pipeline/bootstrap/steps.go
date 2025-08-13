@@ -2,9 +2,11 @@ package bootstrap
 
 import (
 	"context"
+	"encoding/json"
 	"path"
 	"slices"
 
+	"github.com/grafana/grafana-app-sdk/app"
 	"github.com/grafana/grafana/pkg/infra/slugify"
 	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/grafana/grafana/pkg/plugins/config"
@@ -33,6 +35,7 @@ func DefaultDecorateFuncs(cfg *config.PluginManagementCfg) []DecorateFunc {
 		TemplateDecorateFunc,
 		AppChildDecorateFunc(),
 		SkipHostEnvVarsDecorateFunc(cfg),
+		ManifestLoadingDecorateFunc,
 	}
 }
 
@@ -144,4 +147,40 @@ func SkipHostEnvVarsDecorateFunc(cfg *config.PluginManagementCfg) DecorateFunc {
 		p.SkipHostEnvVars = cfg.Features.SkipHostEnvVarsEnabled && !slices.Contains(cfg.ForwardHostEnvVars, p.ID)
 		return p, nil
 	}
+}
+
+// ManifestLoadingDecorateFunc is a DecorateFunc that loads manifest.json files from plugin directories.
+func ManifestLoadingDecorateFunc(_ context.Context, p *plugins.Plugin) (*plugins.Plugin, error) {
+	if p.FS == nil {
+		return p, nil
+	}
+
+	// Try to load manifest.json from the plugin directory
+	manifestData, err := loadManifestFromPlugin(p.FS)
+	if err != nil {
+		// Log but don't fail - plugins without manifests are fine
+		log.New("plugins.bootstrap.manifest").Debug("No manifest.json found", "pluginId", p.ID)
+		return p, nil
+	}
+
+	p.ManifestData = manifestData
+	return p, nil
+}
+
+// loadManifestFromPlugin attempts to load a manifest.json file from a plugin's filesystem
+func loadManifestFromPlugin(fs plugins.FS) (*app.ManifestData, error) {
+	// Look for manifest.json in the plugin directory
+	manifestFile, err := fs.Open("manifest.json")
+	if err != nil {
+		return nil, err
+	}
+	defer manifestFile.Close()
+
+	// Read and parse the manifest file
+	var manifestData app.ManifestData
+	if err := json.NewDecoder(manifestFile).Decode(&manifestData); err != nil {
+		return nil, err
+	}
+
+	return &manifestData, nil
 }

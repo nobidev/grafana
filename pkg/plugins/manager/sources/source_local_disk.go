@@ -105,13 +105,8 @@ func (s *LocalSource) Discover(_ context.Context) ([]*plugins.FoundBundle, error
 			continue
 		}
 
-		pluginJSONAbsPath, err := filepath.Abs(pluginJSONPath)
-		if err != nil {
-			s.log.Warn("Skipping plugin loading as absolute plugin.json path could not be calculated", "pluginId", plugin.ID, "error", err)
-			continue
-		}
-
-		foundPlugins[filepath.Dir(pluginJSONAbsPath)] = plugin
+		// Store the plugin data
+		foundPlugins[plugin.ID] = plugin
 	}
 
 	res := make(map[string]*plugins.FoundBundle)

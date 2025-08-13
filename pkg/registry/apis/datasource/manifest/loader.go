@@ -1,60 +1,25 @@
 package manifest
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/grafana/grafana-app-sdk/app"
 	datasourceV0 "github.com/grafana/grafana/pkg/apis/datasource/v0alpha1"
-	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kube-openapi/pkg/validation/spec"
 )
 
-// PluginManifestLoader handles loading and parsing plugin manifests
-type PluginManifestLoader struct{}
+// ManifestConverter handles converting plugin manifest data to OpenAPI extensions
+type ManifestConverter struct{}
 
-// NewPluginManifestLoader creates a new plugin manifest loader
-func NewPluginManifestLoader() *PluginManifestLoader {
-	return &PluginManifestLoader{}
-}
-
-// LoadManifestFromPlugin attempts to load a manifest.json file from a plugin
-func (l *PluginManifestLoader) LoadManifestFromPlugin(p *pluginstore.Plugin) (*app.ManifestData, error) {
-	if p == nil {
-		return nil, fmt.Errorf("plugin is nil")
-	}
-
-	// Get the plugin directory from the FS
-	pluginDir := p.FS.Base()
-
-	// Look for manifest.json in the plugin directory
-	manifestPath := filepath.Join(pluginDir, "manifest.json")
-
-	// Check if manifest.json exists
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("manifest.json not found in plugin directory: %s", pluginDir)
-	}
-
-	// Read and parse the manifest file
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read manifest.json: %w", err)
-	}
-
-	var manifestData app.ManifestData
-	if err := json.Unmarshal(data, &manifestData); err != nil {
-		return nil, fmt.Errorf("failed to parse manifest.json: %w", err)
-	}
-
-	return &manifestData, nil
+// NewManifestConverter creates a new manifest converter
+func NewManifestConverter() *ManifestConverter {
+	return &ManifestConverter{}
 }
 
 // ConvertManifestToOpenAPIExtension converts app.ManifestData to DataSourceOpenAPIExtension
-func (l *PluginManifestLoader) ConvertManifestToOpenAPIExtension(manifestData *app.ManifestData) (*datasourceV0.DataSourceOpenAPIExtension, error) {
+func (c *ManifestConverter) ConvertManifestToOpenAPIExtension(manifestData *app.ManifestData) (*datasourceV0.DataSourceOpenAPIExtension, error) {
 	if manifestData == nil {
 		return nil, fmt.Errorf("manifest data is nil")
 	}
@@ -71,7 +36,7 @@ func (l *PluginManifestLoader) ConvertManifestToOpenAPIExtension(manifestData *a
 			}
 
 			// Convert the schema to OpenAPI format
-			schema, err := l.convertSchemaToOpenAPI(version.Schema)
+			schema, err := c.convertSchemaToOpenAPI(version.Schema)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert schema for kind %s version %s: %w", kind.Kind, version.Name, err)
 			}
@@ -86,7 +51,7 @@ func (l *PluginManifestLoader) ConvertManifestToOpenAPIExtension(manifestData *a
 }
 
 // convertSchemaToOpenAPI converts app.VersionSchema to spec.Schema
-func (l *PluginManifestLoader) convertSchemaToOpenAPI(versionSchema *app.VersionSchema) (*spec.Schema, error) {
+func (c *ManifestConverter) convertSchemaToOpenAPI(versionSchema *app.VersionSchema) (*spec.Schema, error) {
 	if versionSchema == nil {
 		return nil, fmt.Errorf("version schema is nil")
 	}

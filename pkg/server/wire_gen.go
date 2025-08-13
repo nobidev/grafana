@@ -723,8 +723,8 @@ func Initialize(cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions) (*Ser
 	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, service15, dashboardServiceImpl, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
 	snapshotsAPIBuilder := dashboardsnapshot.RegisterAPIService(serviceImpl, apiserverService, cfg, featureToggles, sqlStore, registerer)
 	featureFlagAPIBuilder := featuretoggle.RegisterAPIService(featureManager, accessControl, apiserverService, cfg, registerer)
-	openAPIExtensionGetter := manifest.ProvideOpenAPIExtensionProvider()
-	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer, openAPIExtensionGetter)
+	openAPIExtensionFactory := manifest.NewOpenAPIExtensionFactory()
+	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer, openAPIExtensionFactory)
 	if err != nil {
 		return nil, err
 	}
@@ -1276,8 +1276,8 @@ func InitializeForTest(t sqlutil.ITestDB, testingT interface {
 	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, service15, dashboardServiceImpl, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
 	snapshotsAPIBuilder := dashboardsnapshot.RegisterAPIService(serviceImpl, apiserverService, cfg, featureToggles, sqlStore, registerer)
 	featureFlagAPIBuilder := featuretoggle.RegisterAPIService(featureManager, accessControl, apiserverService, cfg, registerer)
-	openAPIExtensionGetter := manifest.ProvideOpenAPIExtensionProvider()
-	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer, openAPIExtensionGetter)
+	openAPIExtensionFactory := manifest.NewOpenAPIExtensionFactory()
+	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer, openAPIExtensionFactory)
 	if err != nil {
 		return nil, err
 	}

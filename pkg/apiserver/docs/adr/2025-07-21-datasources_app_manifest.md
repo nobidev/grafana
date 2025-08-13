@@ -1,7 +1,7 @@
 # ADR-001: Manifest-Based Datasource Schema System
 
 **Date:** 2025-07-21
-**Status:** Implemented
+**Status:** Implemented (Refactored)
 **Type:** Architecture Decision Record
 
 ## Context
@@ -14,79 +14,89 @@ We will implement a manifest-based schema system that derives OpenAPI schemas fo
 
 ## Implementation
 
-### 🔧 **Modular Components** (Separate files for easy removal)
+### 🔧 **Refactored Architecture** (Manifest as Plugin Property)
 
-1. **`loader.go`** - Core manifest loading and conversion logic
+The system has been refactored to integrate manifest loading directly into the plugin lifecycle:
+
+1. **`loader.go`** - Core manifest conversion logic (no longer handles file loading)
 2. **`provider.go`** - Clean interface for extension providers
-3. **`factory.go`** - Factory that combines manifest and hardcoded extensions
-4. **`loader_test.go`** - Tests for the loader functionality
-5. **`example_manifest.json`** - Example manifest file
-6. **`README.md`** - Comprehensive documentation
+3. **`factory.go`** - Factory that creates OpenAPI extensions from manifest data
+4. **`loader_test.go`** - Tests for the converter functionality
+5. **`README.md`** - Comprehensive documentation
 
 ### 🔄 **Integration Points**
 
+- **Plugin Structs** - Added `ManifestData *app.ManifestData` field to both `plugins.Plugin` and `pluginstore.Plugin`
+- **Bootstrap Pipeline** - Added `ManifestLoadingDecorateFunc` to automatically load manifests during plugin bootstrap
 - **`register.go`** - Added `extensionFactory` parameter to `RegisterAPIService`
-- **`NewDataSourceAPIBuilder`** - Accepts `ExtensionFactoryInterface` as parameter
-- **`RegisterAPIService`** - Uses factory instead of hardcoded extensions
-- **`wireset.go`** - Added `ProvideExtensionFactory` to dependency injection
+- **`NewDataSourceAPIBuilder`** - Accepts `OpenAPIExtensionGetter` as parameter
+- **`wireset.go`** - Added `NewOpenAPIExtensionFactory` to dependency injection
 
 ### 🎯 **Key Features**
 
-1. **Dynamic Discovery**: Automatically reads `manifest.json` from plugin directories
+1. **Automatic Discovery**: Manifests are automatically loaded during plugin bootstrap
 2. **Schema Conversion**: Converts `app.VersionSchema` to OpenAPI `spec.Schema`
-3. **Fallback Strategy**: Falls back to hardcoded extensions if no manifest exists
-4. **Error Handling**: Graceful handling of missing manifests
+3. **Plugin Integration**: Manifest data is stored as a property of the plugin
+4. **Error Handling**: Graceful handling of missing manifests (non-blocking)
 5. **Type Safety**: Uses strongly typed `app.Manifest` structures
 
 ### 🔄 **How It Works**
 
-1. When a plugin is loaded, the system checks for a `manifest.json` file
-2. If found, it parses the manifest and converts the `Kinds` field to OpenAPI schemas
-3. The schemas are added to `DataSourceOpenAPIExtension.Schemas`
-4. If no manifest exists, it falls back to hardcoded extensions for specific plugins
+1. **Plugin Discovery**: Plugins are discovered as before
+2. **Bootstrap**: During bootstrap, `ManifestLoadingDecorateFunc` automatically checks for and loads `manifest.json` files
+3. **Storage**: Manifest data is stored in the `Plugin.ManifestData` field
+4. **API Usage**: When OpenAPI extensions are needed, the factory accesses the pre-loaded manifest data
+5. **Conversion**: The `ManifestConverter` converts the manifest data to OpenAPI schemas
 
 ### ✅ **Benefits**
 
-- **Modular**: Each component is separate and easily removable
-- **Backward Compatible**: Existing hardcoded extensions still work
-- **Extensible**: Easy to add new extension sources
-- **Type Safe**: Uses the `app.Manifest` structure from grafana-app-sdk
-- **Tested**: Includes unit tests for core functionality
+- **Integrated**: Manifest loading is now part of the standard plugin lifecycle
+- **Performance**: Manifests are loaded once during bootstrap, not on every API call
+- **Clean Architecture**: The manifest package now has a single, clear responsibility
+- **Automatic**: All plugins automatically get manifest support without additional configuration
+- **Consistent**: Manifest data flows naturally through the plugin system
+- **Backward Compatible**: Existing plugins without manifests continue to work normally
 
-## Recent Improvements (2025-01-27)
+## Recent Refactoring (2025-01-27)
 
-### 🔧 **Interface-Based Design**
+### 🔧 **Architecture Simplification**
 
-The `ExtensionFactory` has been refactored to use an interface-based design for better testability and dependency injection:
+The manifest system has been refactored to integrate directly with the plugin loader machinery:
 
 #### **Changes Made**
 
-1. **Created `ExtensionFactoryInterface`**:
-   - Defines the contract for extension factory implementations
-   - Allows for easy mocking and testing
-   - Enables dependency injection through wire
+1. **Added ManifestData to Plugin Structs**:
+   - Added `ManifestData *app.ManifestData` field to both `plugins.Plugin` and `pluginstore.Plugin`
+   - Updated `ToGrafanaDTO` function to properly transfer manifest data between the two types
 
-2. **Updated `ExtensionFactory`**:
-   - Now implements `ExtensionFactoryInterface`
-   - Maintains backward compatibility with existing functionality
-   - Added compile-time interface compliance check
+2. **Integrated Manifest Loading into Bootstrap Pipeline**:
+   - Added `ManifestLoadingDecorateFunc` to the bootstrap pipeline that automatically loads `manifest.json` files
+   - Added to `DefaultDecorateFuncs` so manifest loading happens automatically during plugin bootstrap
+   - Manifest loading is non-blocking - plugins without manifests continue to work normally
 
-3. **Enhanced Dependency Injection**:
-   - Added `ProvideExtensionFactory()` function for wire integration
-   - Updated `NewDataSourceAPIBuilder` to accept interface parameter
-   - Modified `RegisterAPIService` to receive factory through dependency injection
+3. **Simplified Manifest Package**:
+   - Removed file loading logic from the manifest package (now handled by plugin loader)
+   - Renamed `PluginManifestLoader` to `ManifestConverter` to reflect its new single responsibility
+   - Simplified to just handle conversion from `app.ManifestData` to OpenAPI extensions
+   - Updated provider and factory to work with pre-loaded manifest data
 
-4. **Updated Wire Configuration**:
-   - Added `ProvideExtensionFactory` to the wire set
-   - Ensures proper dependency injection throughout the callstack
+4. **Updated Dependency Injection**:
+   - Updated wireset to use the new `OpenAPIExtensionFactory`
+   - Fixed interface bindings to ensure proper dependency injection
+
+5. **Cleaned Up Code**:
+   - Removed manifest.json checking from plugin discovery (now handled by bootstrap)
+   - Removed unused validation step that was checking for manifest files
+   - Updated tests to work with the new structure
+   - Removed example manifest file that's no longer needed
 
 #### **Technical Benefits**
 
-- **Testability**: Interface allows for easy mocking in unit tests
-- **Flexibility**: Different implementations can be injected as needed
-- **Dependency Injection**: Proper wire integration for clean architecture
-- **Type Safety**: Compile-time interface compliance checking
-- **Maintainability**: Clear separation of concerns and contracts
+- **Cleaner Architecture**: Manifest loading is now part of the standard plugin lifecycle
+- **Better Performance**: Manifests are loaded once during bootstrap, not on every API call
+- **Simplified Code**: The manifest package now has a single, clear responsibility
+- **Automatic Integration**: All plugins automatically get manifest support without additional configuration
+- **Consistent Data Flow**: Manifest data flows naturally through the plugin system
 
 ### 🔧 **Schema Conversion Enhancement**
 
@@ -175,7 +185,7 @@ The system is designed to be easily removable if necessary:
 
 1. Remove the `extensionFactory` parameter from `NewDataSourceAPIBuilder`
 2. Remove the `extensionFactory` parameter from `RegisterAPIService`
-3. Remove `ProvideExtensionFactory` from the wire set
+3. Remove `NewOpenAPIExtensionFactory` from the wire set
 4. Restore the hardcoded extension logic in `RegisterAPIService`
 5. Delete the `manifest/` directory
 
@@ -190,6 +200,8 @@ This ensures that the changes can be easily reverted if needed.
 - **Reduced Maintenance**: Less need to maintain hardcoded schemas in Grafana core
 - **Type Safety**: Uses the established `app.Manifest` structure
 - **Proper SDK Integration**: Now uses the intended `AsKubeOpenAPI` method for schema conversion
+- **Integrated Architecture**: Manifest loading is part of the core plugin system
+- **Better Performance**: Manifests are loaded once during bootstrap
 
 ### Negative
 
@@ -201,6 +213,7 @@ This ensures that the changes can be easily reverted if needed.
 
 - **Backward Compatibility**: Existing plugins continue to work with hardcoded fallbacks
 - **Modular Design**: Components can be easily removed if needed
+- **Automatic Integration**: Manifests are automatically loaded without additional configuration
 
 ## Alternatives Considered
 
@@ -219,6 +232,10 @@ This ensures that the changes can be easily reverted if needed.
 4. **Manual JSON Conversion**: Continue using manual JSON marshaling/unmarshaling
    - **Pros**: Simple implementation
    - **Cons**: Doesn't leverage SDK capabilities, less robust
+
+5. **Separate File Loading**: Keep manifest loading separate from plugin loading
+   - **Pros**: Independent systems
+   - **Cons**: Duplicate file I/O, more complex integration, performance overhead
 
 ## References
 

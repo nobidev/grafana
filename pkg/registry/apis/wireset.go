@@ -36,7 +36,8 @@ var WireSet = wire.NewSet(
 	datasource.ProvideDefaultPluginConfigs,
 
 	// Manifest extension factory
-	manifest.ProvideOpenAPIExtensionProvider,
+	manifest.NewOpenAPIExtensionFactory,
+	wire.Bind(new(datasource.OpenAPIExtensionGetter), new(*manifest.OpenAPIExtensionFactory)),
 
 	// Secrets
 	secret.RegisterDependencies,

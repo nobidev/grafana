@@ -6,7 +6,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/utils/strings/slices"
 
-	datasourceV0 "github.com/grafana/grafana/pkg/apis/datasource/v0alpha1"
 	"github.com/grafana/grafana/pkg/plugins"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/apiserver/builder"
@@ -57,14 +56,13 @@ func RegisterAPIService(
 			contextProvider,
 			accessControl,
 			features.IsEnabledGlobally(featuremgmt.FlagDatasourceQueryTypes),
+			extensionGetter,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		builder.specProvider = func() (*datasourceV0.DataSourceOpenAPIExtension, error) {
-			return extensionGetter.GetOpenAPIExtension(ds)
-		}
+		builder.specProvider = builder.GetSpecProvider()
 
 		apiRegistrar.RegisterAPI(builder)
 	}

@@ -3,6 +3,7 @@ package datasource
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
@@ -70,6 +71,7 @@ func NewDataSourceAPIBuilder(
 	contextProvider PluginContextWrapper,
 	accessControl accesscontrol.AccessControl,
 	loadQueryTypes bool,
+	extensionFactory OpenAPIExtensionGetter,
 ) (*DataSourceAPIBuilder, error) {
 	group, err := plugins.GetDatasourceGroupNameFromPluginID(plugin.ID)
 	if err != nil {
@@ -84,6 +86,7 @@ func NewDataSourceAPIBuilder(
 		contextProvider:        contextProvider,
 		accessControl:          accessControl,
 		log:                    log.New("grafana-apiserver.datasource"),
+		extensionFactory:       extensionFactory,
 	}
 	if loadQueryTypes {
 		// In the future, this will somehow come from the plugin
@@ -177,6 +180,31 @@ func (b *DataSourceAPIBuilder) GetOpenAPIDefinitions() openapi.GetOpenAPIDefinit
 
 func (b *DataSourceAPIBuilder) GetGroupVersion() schema.GroupVersion {
 	return b.datasourceResourceInfo.GroupVersion()
+}
+
+// GetOpenAPIExtension gets the OpenAPI extension for this datasource plugin
+func (b *DataSourceAPIBuilder) GetOpenAPIExtension() (*datasourceV0.DataSourceOpenAPIExtension, error) {
+	if b.extensionFactory == nil {
+		return nil, fmt.Errorf("extension factory not available")
+	}
+
+	// Create a dummy plugin struct for the extension factory
+	// This is needed because the extension factory expects a pluginstore.Plugin
+	// but we only have the JSON data here
+	dummyPlugin := pluginstore.Plugin{
+		JSONData: b.pluginJSON,
+		// Note: This is a limitation - we don't have access to the full plugin FS here
+		// The extension factory will need to handle this case gracefully
+	}
+
+	return b.extensionFactory.GetOpenAPIExtension(dummyPlugin)
+}
+
+// GetSpecProvider returns a function that provides the OpenAPI extension
+func (b *DataSourceAPIBuilder) GetSpecProvider() func() (*datasourceV0.DataSourceOpenAPIExtension, error) {
+	return func() (*datasourceV0.DataSourceOpenAPIExtension, error) {
+		return b.GetOpenAPIExtension()
+	}
 }
 
 // TODO -- somehow get the list from the plugin -- not hardcoded
