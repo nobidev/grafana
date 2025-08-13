@@ -235,7 +235,7 @@ func handleQuery(ctx context.Context, raw query.QueryDataRequest, b QueryAPIBuil
 	}
 
 	mReq := dtos.MetricRequest{
-		From:    raw.From,
+		From:    raw.From, // in alerting, this is empty because time ranges are per query, but in the ui it may not be blank
 		To:      raw.To,
 		Queries: jsonQueries,
 	}

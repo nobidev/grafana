@@ -329,6 +329,7 @@ func migrateRequest(req *backend.QueryDataRequest) error {
 // QueryData takes in the frontend queries, parses them into the CloudMonitoring query format
 // executes the queries against the CloudMonitoring API and parses the response into data frames
 func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+	s.logger.Info("!!!!!!request getting sent to datasource", "req.Queries[0].TimeRange", req.Queries[0].TimeRange)
 	logger := s.logger.FromContext(ctx)
 	if len(req.Queries) == 0 {
 		return nil, fmt.Errorf("query contains no queries")

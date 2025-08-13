@@ -43,6 +43,7 @@ func ConvertBackendRequestToDataRequest(req *backend.QueryDataRequest) (*data.Qu
 			To:   req.Queries[0].TimeRange.To.String(),
 		},
 	}
+	backend.Logger.Info("!!!!!!!!!!!!!!!!! k8sReq", "k8sReq.TimeRange", k8sReq.TimeRange)
 
 	for _, q := range req.Queries {
 		dataQuery, err := convertBackendQueryToDataQuery(q)

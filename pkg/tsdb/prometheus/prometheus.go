@@ -26,6 +26,7 @@ func ProvideService(httpClientProvider *sdkhttpclient.Provider) *Service {
 }
 
 func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+	backend.Logger.Info("!!!!!!request getting sent to datasource", "req.Queries[0].TimeRange", req.Queries[0].TimeRange)
 	return s.lib.QueryData(ctx, req)
 }
 

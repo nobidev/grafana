@@ -314,6 +314,7 @@ func (s *ServiceImpl) handleQuerySingleDatasource(ctx context.Context, user iden
 func getTimeRange(query *simplejson.Json, globalFrom string, globalTo string) (string, string, error) {
 	tr, ok := query.CheckGet("timeRange")
 	if !ok { // timeRange json node does not exist, use global from/to
+		backend.Logger.Info("!!!!!!timeRange not found, using global from/to", "globalFrom", globalFrom, "globalTo", globalTo)
 		return globalFrom, globalTo, nil
 	}
 	from, err := tr.Get("from").String()
@@ -324,6 +325,7 @@ func getTimeRange(query *simplejson.Json, globalFrom string, globalTo string) (s
 	if err != nil {
 		return "", "", errors.New("time range: field 'to' is missing or invalid")
 	}
+	backend.Logger.Info("!!!!!!getTimeRange", "from", from, "to", to)
 
 	return from, to, nil
 }
@@ -369,8 +371,10 @@ func (s *ServiceImpl) parseMetricRequest(ctx context.Context, user identity.Requ
 				return nil, err
 			}
 			timeRange = gtime.NewTimeRange(from, to)
+			s.log.Info("!!!!!!from and to, supportLocalTimeRange is enabled", "timeRange", timeRange)
 		} else {
 			timeRange = gtime.NewTimeRange(reqDTO.From, reqDTO.To)
+			s.log.Info("!!!!!!from and to, supportLocalTimeRange is disabled", "timeRange", timeRange)
 		}
 
 		modelJSON, err := query.MarshalJSON()
