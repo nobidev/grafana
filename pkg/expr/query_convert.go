@@ -32,10 +32,16 @@ func convertBackendQueryToDataQuery(q backend.DataQuery) (data.DataQuery, error)
 }
 
 func ConvertBackendRequestToDataRequest(req *backend.QueryDataRequest) (*data.QueryDataRequest, error) {
+	// all requests are required to have a timeRange field, even if it's nested in the queries:
+	// public spec: https://grafana.com/docs/grafana/latest/developers/http_api/data_source/#query-a-data-source
+	// later in the sdk we use these top level time ranges and move them to inside the queries
+	// https://github.com/grafana/grafana-plugin-sdk-go/blob/8b1caaf3866a17dbddbaf9fd20cd0a7b11cc3c24/experimental/apis/data/v0alpha1/conversions.go#L14-L23
+	// if requests are grouped by datasource they must also be grouped by time range, so that it is safe to use the first nested query's time range
 	k8sReq := &data.QueryDataRequest{
-		// `backend.QueryDataRequest` does not have a concept of a top-level global from/to.
-		// timeRanges are always inside the queries,
-		// so we leave them empty here too.
+		TimeRange: data.TimeRange{
+			From: req.Queries[0].TimeRange.From.String(),
+			To:   req.Queries[0].TimeRange.To.String(),
+		},
 	}
 
 	for _, q := range req.Queries {
