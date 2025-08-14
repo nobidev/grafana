@@ -60,32 +60,6 @@ export const plugin = new PanelPlugin<Options, FieldConfig>(TablePanel)
           },
           defaultValue: defaultTableFieldOptions.align,
         })
-        .addCustomEditor<void, TableCellOptions>({
-          id: 'cellOptions',
-          path: 'cellOptions',
-          name: t('table-new.name-cell-type', 'Cell type'),
-          editor: TableCellOptionEditor,
-          override: TableCellOptionEditor,
-          defaultValue: defaultTableFieldOptions.cellOptions,
-          process: identityOverrideProcessor,
-          category: cellCategory,
-          shouldApply: () => true,
-        })
-        .addBooleanSwitch({
-          path: 'inspect',
-          name: t('table-new.name-cell-value-inspect', 'Cell value inspect'),
-          description: t('table-new.description-cell-value-inspect', 'Enable cell value inspection in a modal window'),
-          defaultValue: false,
-          category: cellCategory,
-          showIf: (cfg) => {
-            return (
-              cfg.cellOptions.type === TableCellDisplayMode.Auto ||
-              cfg.cellOptions.type === TableCellDisplayMode.JSONView ||
-              cfg.cellOptions.type === TableCellDisplayMode.ColorText ||
-              cfg.cellOptions.type === TableCellDisplayMode.ColorBackground
-            );
-          },
-        })
         .addBooleanSwitch({
           path: 'filterable',
           name: t('table-new.name-column-filter', 'Column filter'),
@@ -121,6 +95,32 @@ export const plugin = new PanelPlugin<Options, FieldConfig>(TablePanel)
           settings: {
             allowMultiple: true,
           },
+        })
+        .addCustomEditor<void, TableCellOptions>({
+          id: 'cellOptions',
+          path: 'cellOptions',
+          name: t('table-new.name-cell-type', 'Cell type'),
+          editor: TableCellOptionEditor,
+          override: TableCellOptionEditor,
+          defaultValue: defaultTableFieldOptions.cellOptions,
+          process: identityOverrideProcessor,
+          category: cellCategory,
+          shouldApply: () => true,
+        })
+        .addBooleanSwitch({
+          path: 'inspect',
+          name: t('table-new.name-cell-value-inspect', 'Cell value inspect'),
+          description: t('table-new.description-cell-value-inspect', 'Enable cell value inspection in a modal window'),
+          defaultValue: false,
+          category: cellCategory,
+          showIf: (cfg) => {
+            return (
+              cfg.cellOptions.type === TableCellDisplayMode.Auto ||
+              cfg.cellOptions.type === TableCellDisplayMode.JSONView ||
+              cfg.cellOptions.type === TableCellDisplayMode.ColorText ||
+              cfg.cellOptions.type === TableCellDisplayMode.ColorBackground
+            );
+          },
         });
     },
   })
@@ -132,6 +132,15 @@ export const plugin = new PanelPlugin<Options, FieldConfig>(TablePanel)
         name: t('table-new.name-show-table-header', 'Show table header'),
         category,
         defaultValue: defaultOptions.showHeader,
+      })
+      .addNumberInput({
+        path: 'frozenColumns.left',
+        name: t('table-new.name-frozen-columns', 'Frozen columns'),
+        description: t('table-new.description-frozen-columns', 'Columns are frozen from the left side of the table'),
+        settings: {
+          placeholder: 'none',
+        },
+        category,
       })
       .addRadio({
         path: 'cellHeight',

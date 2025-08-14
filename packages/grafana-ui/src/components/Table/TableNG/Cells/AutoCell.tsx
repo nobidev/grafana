@@ -25,16 +25,6 @@ export const getStyles: TableCellStyles = (_theme, { textWrap, shouldOverflow })
     }),
   });
 
-export const getColorCellStyles: TableCellStyles = () =>
-  css({
-    // helps when cells have a bg color
-    backgroundClip: 'padding-box !important',
-    a: {
-      color: 'inherit',
-      textDecoration: 'underline',
-    },
-  });
-
 export const getJsonCellStyles: TableCellStyles = (_theme, { textWrap, shouldOverflow }) =>
   css({
     fontFamily: 'monospace',

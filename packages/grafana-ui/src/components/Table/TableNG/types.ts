@@ -120,6 +120,7 @@ export interface BaseTableProps {
   onSortByChange?: TableSortByActionCallback;
   onCellFilterAdded?: TableFilterActionCallback;
   footerValues?: FooterItem[];
+  frozenColumns?: number;
   enablePagination?: boolean;
   cellHeight?: TableCellHeight;
   structureRev?: number;

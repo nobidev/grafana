@@ -50,7 +50,7 @@ import {
   useScrollbarWidth,
   useSortedRows,
 } from './hooks';
-import { getDefaultCellStyles, getGridStyles, getHeaderCellStyles } from './styles';
+import { getDefaultCellStyles, getGridStyles, getHeaderCellStyles, getLinkStyles } from './styles';
 import { TableNGProps, TableRow, TableSummaryRow, TableColumn, ContextMenuProps, TableCellStyleOptions } from './types';
 import {
   applySort,
@@ -87,6 +87,7 @@ export function TableNG(props: TableNGProps) {
     enableSharedCrosshair = false,
     enableVirtualization,
     fieldConfig,
+    frozenColumns = 0,
     getActions = () => [],
     height,
     initialSortBy,
@@ -168,7 +169,7 @@ export function TableNG(props: TableNGProps) {
     [theme, visibleFields, cellHeight]
   );
   const gridRef = useRef<DataGridHandle>(null);
-  const scrollbarWidth = useScrollbarWidth(gridRef, height, sortedRows);
+  const scrollbarWidth = useScrollbarWidth(gridRef, height);
   const availableWidth = useMemo(
     () => (hasNestedFrames ? width - COLUMN.EXPANDER_WIDTH : width) - scrollbarWidth,
     [width, hasNestedFrames, scrollbarWidth]
@@ -183,6 +184,19 @@ export function TableNG(props: TableNGProps) {
     [theme]
   );
   const widths = useMemo(() => computeColWidths(visibleFields, availableWidth), [visibleFields, availableWidth]);
+  const numColsFullyInView = useMemo(
+    () =>
+      widths.reduce(
+        ([count, remainingWidth], nextWidth) => {
+          if (remainingWidth - nextWidth >= 0) {
+            return [count + 1, remainingWidth - nextWidth];
+          }
+          return [count, 0];
+        },
+        [0, availableWidth]
+      )[0],
+    [widths, availableWidth]
+  );
   const headerHeight = useHeaderHeight({
     columnWidths: widths,
     fields: visibleFields,
@@ -372,13 +386,16 @@ export function TableNG(props: TableNGProps) {
         const textWrap = rowHeight === 'auto' || shouldTextWrap(field);
         const withTooltip = withDataLinksActionsTooltip(field, cellType);
         const canBeColorized =
-          cellType === TableCellDisplayMode.ColorBackground || cellType === TableCellDisplayMode.ColorText;
+          cellType === TableCellDisplayMode.ColorBackground ||
+          cellType === TableCellDisplayMode.ColorText ||
+          Boolean(applyToRowBgFn);
         const cellStyleOptions: TableCellStyleOptions = { textAlign, textWrap, shouldOverflow };
 
         result.colsWithTooltip[displayName] = withTooltip;
 
         const defaultCellStyles = getDefaultCellStyles(theme, cellStyleOptions);
         const cellSpecificStyles = getCellSpecificStyles(cellType, field, theme, cellStyleOptions);
+        const linkStyles = getLinkStyles(theme, canBeColorized);
 
         // TODO: in future extend this to ensure a non-classic color scheme is set with AutoCell
 
@@ -421,7 +438,7 @@ export function TableNG(props: TableNGProps) {
             <Cell
               key={key}
               {...props}
-              className={clsx(props.className, defaultCellStyles, cellSpecificStyles)}
+              className={clsx(props.className, defaultCellStyles, cellSpecificStyles, linkStyles)}
               style={style}
             />
           );
@@ -480,6 +497,7 @@ export function TableNG(props: TableNGProps) {
           name: displayName,
           width,
           headerCellClass,
+          frozen: Math.min(frozenColumns, numColsFullyInView) > i,
           renderCell: renderCellContent,
           renderHeaderCell: ({ column, sortDirection }) => (
             <HeaderCell
@@ -608,7 +626,10 @@ export function TableNG(props: TableNGProps) {
     enableSharedCrosshair,
     expandedRows,
     filter,
+    frozenColumns,
+    getCellActions,
     hasNestedFrames,
+    numColsFullyInView,
     onCellFilterAdded,
     panelContext,
     rowHeight,
@@ -622,7 +643,6 @@ export function TableNG(props: TableNGProps) {
     theme,
     visibleFields,
     widths,
-    getCellActions,
   ]);
 
   // invalidate columns on every structureRev change. this supports width editing in the fieldConfig.

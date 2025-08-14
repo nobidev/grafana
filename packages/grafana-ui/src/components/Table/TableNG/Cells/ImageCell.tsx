@@ -18,8 +18,11 @@ export const ImageCell = ({ cellOptions, field, value, rowIdx }: ImageCellProps)
 
 export const getStyles: TableCellStyles = () =>
   css({
-    img: {
+    'a, img': {
+      width: '100%',
       height: '100%',
-      width: 'auto',
+    },
+    img: {
+      objectFit: 'contain',
     },
   });
