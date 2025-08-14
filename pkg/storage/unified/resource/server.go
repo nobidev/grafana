@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/ring"
 
+	"github.com/grafana/grafana/apps/iam/pkg/apis/iam/v0alpha1"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 	"github.com/grafana/grafana/pkg/util/scheduler"
@@ -513,6 +514,10 @@ func (s *server) newEvent(ctx context.Context, user claims.AuthInfo, key *resour
 		if err := s.checkFolderMovePermissions(ctx, user, key, event.ObjectOld.GetFolder(), obj.GetFolder()); err != nil {
 			return nil, err
 		}
+	} else if s.isResourcePermissionCreation(event, gvk.Kind) {
+		if err := s.checkResourcePermissionCreation(ctx, user, key, event); err != nil {
+			return nil, err
+		}
 	} else {
 		// Regular permission check for create/update
 		check := claims.CheckRequest{
@@ -596,6 +601,43 @@ func (s *server) checkFolderMovePermissions(ctx context.Context, user claims.Aut
 		return &resourcepb.ErrorResult{
 			Code:    http.StatusForbidden,
 			Message: "not allowed to create resource in the destination folder",
+		}
+	}
+
+	return nil
+}
+
+func (s *server) isResourcePermissionCreation(event *WriteEvent, kind string) bool {
+	return event.Type == resourcepb.WatchEvent_ADDED && kind == "ResourcePermission"
+}
+
+// Need to extract the name from the object to check permissions against it
+func (s *server) checkResourcePermissionCreation(ctx context.Context, user claims.AuthInfo, key *resourcepb.ResourceKey, event *WriteEvent) *resourcepb.ErrorResult {
+	perms := &v0alpha1.ResourcePermission{}
+	err := json.Unmarshal(event.Value, perms)
+	if err != nil {
+		return &resourcepb.ErrorResult{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("invalid resource permission spec: %v", err),
+		}
+	}
+
+	permCreateCheck := claims.CheckRequest{
+		Verb:      utils.VerbCreate,
+		Group:     key.Group,
+		Resource:  key.Resource,
+		Namespace: key.Namespace,
+		Name:      perms.Name,
+	}
+
+	a, err := s.access.Check(ctx, user, permCreateCheck)
+	if err != nil {
+		return AsErrorResult(err)
+	}
+	if !a.Allowed {
+		return &resourcepb.ErrorResult{
+			Code:    http.StatusForbidden,
+			Message: "not allowed to create resource permission for resource",
 		}
 	}
 

@@ -32,7 +32,8 @@ func newIAMAuthorizer(accessClient authlib.AccessClient, legacyAccessClient auth
 	// Access specific resources
 	authorizer := gfauthorizer.NewResourceAuthorizer(accessClient)
 	resourceAuthorizer[iamv0.CoreRoleInfo.GetName()] = authorizer
-	resourceAuthorizer[iamv0.ResourcePermissionInfo.GetName()] = authorizer
+	//resourceAuthorizer[iamv0.ResourcePermissionInfo.GetName()] = authorizer
+	resourceAuthorizer[iamv0.ResourcePermissionInfo.GetName()] = newResourcePermissionAuthorizer()
 	resourceAuthorizer[iamv0.RoleInfo.GetName()] = authorizer
 
 	return &iamAuthorizer{resourceAuthorizer: resourceAuthorizer}
@@ -109,4 +110,12 @@ func newLegacyAccessClient(ac accesscontrol.AccessControl, store legacy.LegacyId
 	)
 
 	return client
+}
+
+func newResourcePermissionAuthorizer() authorizer.Authorizer {
+	return authorizer.AuthorizerFunc(func(ctx context.Context, a authorizer.Attributes) (authorizer.Decision, string, error) {
+		// We can't do edge authorization for resource permissions, authorization happens at unistore
+		// We could also do edge auth for resource updates, deletion and listing. Just can't do a proper one for creation
+		return authorizer.DecisionAllow, "", nil
+	})
 }
