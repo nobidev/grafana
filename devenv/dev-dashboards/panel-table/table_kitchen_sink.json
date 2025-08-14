@@ -429,7 +429,7 @@
           }
         ]
       },
-      "pluginVersion": "12.2.0-pre",
+      "pluginVersion": "12.1.0-pre",
       "targets": [
         {
           "datasource": {
@@ -580,7 +580,7 @@
           }
         ]
       },
-      "pluginVersion": "12.2.0-pre",
+      "pluginVersion": "12.1.0-pre",
       "targets": [
         {
           "datasource": {
@@ -796,7 +796,7 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "12.2.0-pre",
+      "pluginVersion": "12.1.0-pre",
       "targets": [
         {
           "csvContent": "auto,link,links,bg,bg-link,bg-links,color,color-link,color-links,bg-row,bg-row-link,bg-row-links,color-row,color-row-link,color-row-links,links-cellType\na,a,a,a,a,a,a,a,a,1,1,1,1,1,1,1\nb,b,b,b,b,b,b,b,b,2,2,2,2,2,2,2\nc,c,c,c,c,c,c,c,c,3,3,3,3,3,3,3\nd,d,d,d,d,d,d,d,d,4,4,4,4,4,4,4",
@@ -1673,5 +1673,5 @@
   "timezone": "",
   "title": "Panel Tests - Table - Kitchen Sink",
   "uid": "dcb9f5e9-8066-4397-889e-864b99555dbb",
-  "version": 8
+  "version": 9
 }
