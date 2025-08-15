@@ -779,7 +779,7 @@ func Initialize(cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions) (*Ser
 	identitySynchronizer := authnimpl.ProvideIdentitySynchronizer(authnimplService)
 	ldapImpl := service12.ProvideService(cfg, featureToggles, ssosettingsimplService)
 	apiService := api4.ProvideService(cfg, routeRegisterImpl, accessControl, userService, authinfoimplService, ossGroups, identitySynchronizer, orgService, ldapImpl, userAuthTokenService, bundleregistryService)
-	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, pluginstoreService, service15, dashboardServiceImpl, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
+	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, pluginstoreService, service15, dashboardServiceImpl, dashboardPermissionsService, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
 	snapshotsAPIBuilder := dashboardsnapshot.RegisterAPIService(serviceImpl, apiserverService, cfg, featureToggles, sqlStore, registerer)
 	featureFlagAPIBuilder := featuretoggle.RegisterAPIService(featureManager, accessControl, apiserverService, cfg, registerer)
 	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer)
@@ -799,7 +799,7 @@ func Initialize(cfg *setting.Cfg, opts Options, apiOpts api.ServerOptions) (*Ser
 	}
 	userStorageAPIBuilder := userstorage.RegisterAPIService(featureToggles, apiserverService, registerer)
 	factory := github.ProvideFactory()
-	legacyMigrator := legacy.ProvideLegacyMigrator(sqlStore, provisioningServiceImpl, libraryPanelService, accessControl, featureToggles)
+	legacyMigrator := legacy.ProvideLegacyMigrator(sqlStore, provisioningServiceImpl, libraryPanelService, dashboardPermissionsService, accessControl, featureToggles)
 	decryptAuthorizer := decrypt.ProvideDecryptAuthorizer(tracer)
 	decryptStorage, err := metadata.ProvideDecryptStorage(tracer, ossKeeperService, keeperMetadataStorage, secureValueMetadataStorage, decryptAuthorizer, registerer)
 	if err != nil {
@@ -1354,7 +1354,7 @@ func InitializeForTest(t sqlutil.ITestDB, testingT interface {
 	identitySynchronizer := authnimpl.ProvideIdentitySynchronizer(authnimplService)
 	ldapImpl := service12.ProvideService(cfg, featureToggles, ssosettingsimplService)
 	apiService := api4.ProvideService(cfg, routeRegisterImpl, accessControl, userService, authinfoimplService, ossGroups, identitySynchronizer, orgService, ldapImpl, userAuthTokenService, bundleregistryService)
-	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, pluginstoreService, service15, dashboardServiceImpl, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
+	dashboardsAPIBuilder := dashboard.RegisterAPIService(cfg, featureToggles, apiserverService, dashboardService, dashboardProvisioningService, pluginstoreService, service15, dashboardServiceImpl, dashboardPermissionsService, accessControl, accessClient, provisioningServiceImpl, dashboardsStore, registerer, sqlStore, tracingService, resourceClient, dualwriteService, sortService, quotaService, dashboardFolderStoreImpl, libraryPanelService, eventualRestConfigProvider, userService)
 	snapshotsAPIBuilder := dashboardsnapshot.RegisterAPIService(serviceImpl, apiserverService, cfg, featureToggles, sqlStore, registerer)
 	featureFlagAPIBuilder := featuretoggle.RegisterAPIService(featureManager, accessControl, apiserverService, cfg, registerer)
 	dataSourceAPIBuilder, err := datasource.RegisterAPIService(featureToggles, apiserverService, middlewareHandler, scopedPluginDatasourceProvider, plugincontextProvider, pluginstoreService, accessControl, registerer)
@@ -1374,7 +1374,7 @@ func InitializeForTest(t sqlutil.ITestDB, testingT interface {
 	}
 	userStorageAPIBuilder := userstorage.RegisterAPIService(featureToggles, apiserverService, registerer)
 	factory := github.ProvideFactory()
-	legacyMigrator := legacy.ProvideLegacyMigrator(sqlStore, provisioningServiceImpl, libraryPanelService, accessControl, featureToggles)
+	legacyMigrator := legacy.ProvideLegacyMigrator(sqlStore, provisioningServiceImpl, libraryPanelService, dashboardPermissionsService, accessControl, featureToggles)
 	decryptAuthorizer := decrypt.ProvideDecryptAuthorizer(tracer)
 	decryptStorage, err := metadata.ProvideDecryptStorage(tracer, ossKeeperService, keeperMetadataStorage, secureValueMetadataStorage, decryptAuthorizer, registerer)
 	if err != nil {
