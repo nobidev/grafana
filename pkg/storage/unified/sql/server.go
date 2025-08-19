@@ -2,7 +2,6 @@ package sql
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -106,29 +105,30 @@ func NewResourceServer(
 	return resource.NewResourceServer(serverOptions)
 }
 
+// ServerOptions contains the options for creating a new ResourceServer
+type SearchServerOptions struct {
+	DB             infraDB.DB
+	Cfg            *setting.Cfg
+	Tracer         trace.Tracer
+	Reg            prometheus.Registerer
+	AccessClient   types.AccessClient
+	SearchOptions  resource.SearchOptions
+	StorageMetrics *resource.StorageMetrics
+	IndexMetrics   *resource.BleveIndexMetrics
+	Features       featuremgmt.FeatureToggles
+	Ring           *ring.Ring
+	RingLifecycler *ring.BasicLifecycler
+}
+
 func NewResourceSearchServer(
-	opts ServerOptions,
-) (resource.ResourceServer, error) {
-	fmt.Println("HELLOOOOOO")
-	apiserverCfg := opts.Cfg.SectionWithEnvOverrides("grafana-apiserver")
-	serverOptions := resource.ResourceServerOptions{
+	opts SearchServerOptions,
+) (resource.ResourceSearchServer, error) {
+	serverOptions := resource.ResourceSearchServerOptions{
 		Tracer: opts.Tracer,
-		Blob: resource.BlobConfig{
-			URL: apiserverCfg.Key("blob_url").MustString(""),
-		},
 		Reg: opts.Reg,
 	}
 	if opts.AccessClient != nil {
 		serverOptions.AccessClient = resource.NewAuthzLimitedClient(opts.AccessClient, resource.AuthzOptions{Tracer: opts.Tracer, Registry: opts.Reg})
-	}
-	// Support local file blob
-	if strings.HasPrefix(serverOptions.Blob.URL, "./data/") {
-		dir := strings.Replace(serverOptions.Blob.URL, "./data", opts.Cfg.DataPath, 1)
-		err := os.MkdirAll(dir, 0700)
-		if err != nil {
-			return nil, err
-		}
-		serverOptions.Blob.URL = "file:///" + dir
 	}
 
 	// This is mostly for testing, being able to influence when we paginate
@@ -162,11 +162,10 @@ func NewResourceSearchServer(
 	serverOptions.Lifecycle = store
 	serverOptions.Search = opts.SearchOptions
 	serverOptions.IndexMetrics = opts.IndexMetrics
-	serverOptions.QOSQueue = opts.QOSQueue
 	serverOptions.Ring = opts.Ring
 	serverOptions.RingLifecycler = opts.RingLifecycler
 
-	return resource.NewResourceServer(serverOptions)
+	return resource.NewResourceSearchServer(serverOptions)
 }
 
 // isHighAvailabilityEnabled determines if high availability mode should

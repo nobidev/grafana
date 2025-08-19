@@ -97,7 +97,7 @@ type ResourceSearchServerOptions struct {
 
 func NewResourceSearchServer(opts ResourceSearchServerOptions) (ResourceSearchServer, error) {
 	if opts.Tracer == nil {
-		opts.Tracer = noop.NewTracerProvider().Tracer("resource-server")
+		opts.Tracer = noop.NewTracerProvider().Tracer("search-server")
 	}
 
 	if opts.Backend == nil {
@@ -123,30 +123,7 @@ func NewResourceSearchServer(opts ResourceSearchServerOptions) (ResourceSearchSe
 		opts.MaxPageSizeBytes = 1024 * 1024 * 2
 	}
 
-	// Initialize the blob storage
-	blobstore := opts.Blob.Backend
-	if blobstore == nil {
-		if opts.Blob.URL != "" {
-			ctx := context.Background()
-			bucket, err := OpenBlobBucket(ctx, opts.Blob.URL)
-			if err != nil {
-				return nil, err
-			}
-
-			blobstore, err = NewCDKBlobSupport(ctx, CDKBlobSupportOptions{
-				Tracer: opts.Tracer,
-				Bucket: NewInstrumentedBucket(bucket, opts.Reg, opts.Tracer),
-			})
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// Check if the backend supports blob storage
-			blobstore, _ = opts.Backend.(BlobSupport)
-		}
-	}
-
-	logger := slog.Default().With("logger", "resource-server")
+	logger := slog.Default().With("logger", "search-server")
 
 	// Make this cancelable
 	ctx, cancel := context.WithCancel(context.Background())
@@ -154,7 +131,6 @@ func NewResourceSearchServer(opts ResourceSearchServerOptions) (ResourceSearchSe
 		tracer:           opts.Tracer,
 		log:              logger,
 		backend:          opts.Backend,
-		blob:             blobstore,
 		diagnostics:      opts.Diagnostics,
 		access:           opts.AccessClient,
 		writeHooks:       opts.WriteHooks,
@@ -170,7 +146,7 @@ func NewResourceSearchServer(opts ResourceSearchServerOptions) (ResourceSearchSe
 
 	if opts.Search.Resources != nil {
 		var err error
-		s.search, err = newSearchSupport(opts.Search, s.backend, s.access, s.blob, opts.Tracer, opts.IndexMetrics, opts.Ring, opts.RingLifecycler)
+		s.search, err = newSearchSupport(opts.Search, s.backend, s.access, nil, opts.Tracer, opts.IndexMetrics, opts.Ring, opts.RingLifecycler)
 		if err != nil {
 			return nil, err
 		}
@@ -191,7 +167,6 @@ type searchServer struct {
 	tracer         trace.Tracer
 	log            *slog.Logger
 	backend        StorageBackend
-	blob           BlobSupport
 	search         *searchSupport
 	diagnostics    resourcepb.DiagnosticsServer
 	access         claims.AccessClient

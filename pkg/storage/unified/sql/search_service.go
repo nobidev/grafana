@@ -80,7 +80,7 @@ func ProvideUnifiedSearchGrpcService(
 	memberlistKVConfig kv.Config,
 ) (UnifiedStorageGrpcService, error) {
 	var err error
-	tracer := otel.Tracer("unified-storage")
+	tracer := otel.Tracer("unified-search")
 
 	// FIXME: This is a temporary solution while we are migrating to the new authn interceptor
 	// grpcutils.NewGrpcAuthenticator should be used instead.
@@ -177,7 +177,7 @@ func (s *searchService) starting(ctx context.Context) error {
 		return err
 	}
 
-	serverOptions := ServerOptions{
+	serverOptions := SearchServerOptions{
 		DB:             s.db,
 		Cfg:            s.cfg,
 		Tracer:         s.tracing,
@@ -190,7 +190,6 @@ func (s *searchService) starting(ctx context.Context) error {
 		Ring:           s.searchRing,
 		RingLifecycler: s.ringLifecycler,
 	}
-	fmt.Println("CALLING NEW SEARCH SERVR")
 	server, err := NewResourceSearchServer(serverOptions)
 	if err != nil {
 		return err
