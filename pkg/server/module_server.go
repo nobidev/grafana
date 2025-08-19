@@ -166,6 +166,7 @@ func (s *ModuleServer) Run() error {
 	m.RegisterModule(modules.MemberlistKV, s.initMemberlistKV)
 	m.RegisterModule(modules.SearchServerRing, s.initSearchServerRing)
 	m.RegisterModule(modules.SearchServerDistributor, s.initSearchServerDistributor)
+	m.RegisterModule(modules.SearchServer, s.initSearchServer)
 
 	m.RegisterModule(modules.Core, func() (services.Service, error) {
 		return NewService(s.cfg, s.opts, s.apiOpts)

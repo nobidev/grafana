@@ -158,33 +158,6 @@ type BlobConfig struct {
 	Backend BlobSupport
 }
 
-// Passed as input to the constructor
-type SearchOptions struct {
-	// The raw index backend (eg, bleve, frames, parquet, etc)
-	Backend SearchBackend
-
-	// The supported resource types
-	Resources DocumentBuilderSupplier
-
-	// How many threads should build indexes
-	WorkerThreads int
-
-	// Skip building index on startup for small indexes
-	InitMinCount int
-
-	// Build empty index on startup for large indexes so that
-	// we don't re-attempt to build the index later.
-	InitMaxCount int
-
-	// Channel to watch for index events (for testing)
-	IndexEventsChan chan *IndexEvent
-
-	// Interval for periodic index rebuilds (0 disables periodic rebuilds)
-	RebuildInterval time.Duration
-
-	Ring *ring.Ring
-}
-
 type ResourceServerOptions struct {
 	// OTel tracer
 	Tracer trace.Tracer

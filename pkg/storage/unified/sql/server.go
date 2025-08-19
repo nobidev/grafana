@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -46,6 +47,69 @@ type ServerOptions struct {
 func NewResourceServer(
 	opts ServerOptions,
 ) (resource.ResourceServer, error) {
+	apiserverCfg := opts.Cfg.SectionWithEnvOverrides("grafana-apiserver")
+	serverOptions := resource.ResourceServerOptions{
+		Tracer: opts.Tracer,
+		Blob: resource.BlobConfig{
+			URL: apiserverCfg.Key("blob_url").MustString(""),
+		},
+		Reg: opts.Reg,
+	}
+	if opts.AccessClient != nil {
+		serverOptions.AccessClient = resource.NewAuthzLimitedClient(opts.AccessClient, resource.AuthzOptions{Tracer: opts.Tracer, Registry: opts.Reg})
+	}
+	// Support local file blob
+	if strings.HasPrefix(serverOptions.Blob.URL, "./data/") {
+		dir := strings.Replace(serverOptions.Blob.URL, "./data", opts.Cfg.DataPath, 1)
+		err := os.MkdirAll(dir, 0700)
+		if err != nil {
+			return nil, err
+		}
+		serverOptions.Blob.URL = "file:///" + dir
+	}
+
+	// This is mostly for testing, being able to influence when we paginate
+	// based on the page size during tests.
+	unifiedStorageCfg := opts.Cfg.SectionWithEnvOverrides("unified_storage")
+	maxPageSizeBytes := unifiedStorageCfg.Key("max_page_size_bytes")
+	serverOptions.MaxPageSizeBytes = maxPageSizeBytes.MustInt(0)
+
+	eDB, err := dbimpl.ProvideResourceDB(opts.DB, opts.Cfg, opts.Tracer)
+	if err != nil {
+		return nil, err
+	}
+
+	isHA := isHighAvailabilityEnabled(opts.Cfg.SectionWithEnvOverrides("database"),
+		opts.Cfg.SectionWithEnvOverrides("resource_api"))
+	withPruner := opts.Features.IsEnabledGlobally(featuremgmt.FlagUnifiedStorageHistoryPruner)
+
+	store, err := NewBackend(BackendOptions{
+		DBProvider:     eDB,
+		Tracer:         opts.Tracer,
+		Reg:            opts.Reg,
+		IsHA:           isHA,
+		withPruner:     withPruner,
+		storageMetrics: opts.StorageMetrics,
+	})
+	if err != nil {
+		return nil, err
+	}
+	serverOptions.Backend = store
+	serverOptions.Diagnostics = store
+	serverOptions.Lifecycle = store
+	serverOptions.Search = opts.SearchOptions
+	serverOptions.IndexMetrics = opts.IndexMetrics
+	serverOptions.QOSQueue = opts.QOSQueue
+	serverOptions.Ring = opts.Ring
+	serverOptions.RingLifecycler = opts.RingLifecycler
+
+	return resource.NewResourceServer(serverOptions)
+}
+
+func NewResourceSearchServer(
+	opts ServerOptions,
+) (resource.ResourceServer, error) {
+	fmt.Println("HELLOOOOOO")
 	apiserverCfg := opts.Cfg.SectionWithEnvOverrides("grafana-apiserver")
 	serverOptions := resource.ResourceServerOptions{
 		Tracer: opts.Tracer,
