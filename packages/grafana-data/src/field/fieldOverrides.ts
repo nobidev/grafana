@@ -1,5 +1,5 @@
 import { isNumber, set, unset, get, cloneDeep } from 'lodash';
-import { useMemo, useRef } from 'react';
+import { createContext, useMemo, useRef } from 'react';
 import { usePrevious } from 'react-use';
 
 import { ThresholdsMode, VariableFormatID } from '@grafana/schema';
@@ -436,7 +436,8 @@ export function validateFieldConfig(config: FieldConfig) {
   }
 }
 
-const defaultInternalLinkPostProcessor: DataLinkPostProcessor = (options) => {
+// Export default post-processor to allow adding custom behavior on top of it
+export const defaultInternalLinkPostProcessor: DataLinkPostProcessor = (options) => {
   // For internal links at the moment only destination is Explore.
   const { link, linkModel, dataLinkScopedVars, field, replaceVariables } = options;
 
@@ -650,3 +651,7 @@ export function getFieldDataContextClone(frame: DataFrame, field: Field, fieldSc
 
   return { value: { frame, field, data: [frame] } };
 }
+
+export const DataLinksContext = createContext<{
+  dataLinksPostProcessor?: DataLinkPostProcessor;
+}>({});

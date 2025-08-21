@@ -196,6 +196,9 @@ const createLinkModel = (
     className,
     type,
     linkModel: {
+      // Won't be needed after refactoring, it's just because currently TraceView does double conversion
+      // LinkModel -> SpanLinkDef -> LinkModel and some information (like meta) would be lost otherwise
+      ...link.linkModel,
       ...link,
       title: title,
       target: '_blank',

@@ -1,11 +1,12 @@
 import { css } from '@emotion/css';
-import { RefObject, useMemo, useState } from 'react';
+import { RefObject, useContext, useMemo, useState } from 'react';
 import { useToggle } from 'react-use';
 
 import {
   CoreApp,
   DataFrame,
   DataLink,
+  DataLinksContext,
   DataSourceApi,
   DataSourceJsonData,
   Field,
@@ -142,6 +143,10 @@ export function TraceView(props: Props) {
   const traceToProfilesOptions = traceToProfilesData?.tracesToProfiles;
   const spanBarOptions: SpanBarOptionsData | undefined = instanceSettings?.jsonData;
 
+  // Get the current data links post-processor
+  // After refactor this will happen in applyFieldOv
+  const dataLinksContext = useContext(DataLinksContext);
+
   const createSpanLink = useMemo(
     () =>
       createSpanLinkFromProps ??
@@ -153,6 +158,7 @@ export function TraceView(props: Props) {
         dataFrame: props.dataFrames[0],
         createFocusSpanLink,
         trace: traceProp,
+        dataLinksPostProcessor: dataLinksContext.dataLinksPostProcessor,
       }),
     [
       props.splitOpenFn,
@@ -163,6 +169,7 @@ export function TraceView(props: Props) {
       createFocusSpanLink,
       traceProp,
       createSpanLinkFromProps,
+      dataLinksContext.dataLinksPostProcessor,
     ]
   );
   const timeZone = useSelector((state) => getTimeZone(state.user));
