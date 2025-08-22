@@ -1,4 +1,4 @@
-import { omitBy, isNil, isNumber, defaultTo, groupBy } from 'lodash';
+import { omitBy, isNil, isNumber, defaultTo, groupBy, omit } from 'lodash';
 
 import {
   PanelModel,
@@ -25,6 +25,8 @@ export const tableMigrationHandler = (panel: PanelModel<Options>): Partial<Optio
     console.log('Was angular table', panel);
   }
 
+  migrateTextWrapToFieldLevel(panel);
+  migrateHiddenFields(panel);
   migrateFooterV2(panel);
 
   // Nothing changed
@@ -298,6 +300,52 @@ export const migrateFromParentRowIndexToNestedFrames = (frames: DataFrame[] | nu
 
 export const hasDeprecatedParentRowIndex = (frames: DataFrame[] | null) => {
   return frames?.some((df) => df.meta?.custom?.parentRowIndex !== undefined);
+};
+
+export const migrateTextWrapToFieldLevel = (panel: PanelModel<Partial<Options>>) => {
+  if (panel.fieldConfig?.defaults.custom?.wrapText !== undefined) {
+    // already migrated
+    return;
+  }
+
+  const legacyDefaultWrapText: boolean | undefined = panel.fieldConfig?.defaults.custom?.cellOptions?.wrapText;
+
+  panel.fieldConfig.overrides = panel.fieldConfig.overrides.map((override) => {
+    if (override.properties) {
+      override.properties = override.properties.flatMap((property) => {
+        if (property.id === 'custom.cellOptions' && property.value && property.value.wrapText !== undefined) {
+          return [
+            { ...property, value: { ...omit(property.value, 'wrapText') } },
+            { id: 'custom.wrapText', value: property.value.wrapText },
+          ];
+        }
+        return [property];
+      });
+    }
+    return override;
+  });
+
+  panel.fieldConfig.defaults.custom = panel.fieldConfig.defaults.custom ?? {};
+  panel.fieldConfig.defaults.custom.wrapText = legacyDefaultWrapText;
+  delete panel.fieldConfig.defaults.custom.cellOptions?.wrapText;
+
+  return panel;
+};
+
+export const migrateHiddenFields = (panel: PanelModel<Partial<Options>>) => {
+  panel.fieldConfig.overrides = panel.fieldConfig.overrides.map((override) => {
+    if (override.properties) {
+      override.properties = override.properties.map((property) => {
+        if (property.id === 'custom.hidden') {
+          return { ...property, id: 'custom.hideFrom.viz' };
+        }
+        return property;
+      });
+    }
+    return override;
+  });
+
+  return panel;
 };
 
 export const migrateFooterV2 = (panel: PanelModel<Options>) => {

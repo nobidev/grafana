@@ -1,9 +1,9 @@
 import { PanelPlugin, standardEditorsRegistry, identityOverrideProcessor, FieldConfigProperty } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import {
+  defaultTableFieldOptions,
   TableCellOptions,
   TableCellDisplayMode,
-  defaultTableFieldOptions,
   TableCellHeight,
   TableCellTooltipPlacement,
 } from '@grafana/schema';
@@ -74,14 +74,18 @@ export const plugin = new PanelPlugin<Options, FieldConfig>(TablePanel)
           defaultValue: defaultTableFieldOptions.filterable,
         })
         .addBooleanSwitch({
-          path: 'wrapHeaderText',
-          name: t('table.name-wrap-header-text', 'Wrap header text'),
-          description: t('table.description-wrap-header-text', 'Enables text wrapping for column headers'),
+          path: 'wrapText',
+          name: t('table.name-wrap-text', 'Wrap text'),
           category,
-          defaultValue: undefined,
         })
         .addBooleanSwitch({
-          path: 'hidden',
+          path: 'wrapHeaderText',
+          name: t('table.name-wrap-header-text', 'Wrap header text'),
+          category,
+          defaultValue: defaultTableFieldOptions.wrapHeaderText,
+        })
+        .addBooleanSwitch({
+          path: 'hideFrom.viz',
           name: t('table.name-hide-in-table', 'Hide in table'),
           category,
           defaultValue: undefined,

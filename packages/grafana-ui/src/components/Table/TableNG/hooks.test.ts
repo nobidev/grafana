@@ -508,9 +508,9 @@ describe('TableNG hooks', () => {
                 ...field.config,
                 custom: {
                   ...field.config?.custom,
+                  wrapText: true,
                   cellOptions: {
                     cellType: TableCellDisplayMode.Auto,
-                    wrapText: true,
                   },
                 },
               },

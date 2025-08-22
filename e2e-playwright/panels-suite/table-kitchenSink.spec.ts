@@ -43,15 +43,13 @@ const getColumnIdx = async (loc: Page | Locator, columnName: string) => {
 
 const disableAllTextWrap = async (loc: Page | Locator, selectors: E2ESelectorGroups) => {
   // disable text wrapping for all of the columns, since long text with links in them can push the links off the screen.
-  const wrapTextToggle = loc.locator(
-    `[aria-label="${selectors.components.PanelEditor.OptionsPane.fieldLabel('Wrap text')}"]`
-  );
+  const wrapTextToggle = loc.getByLabel('Wrap text');
   const count = await wrapTextToggle.count();
 
   for (let i = 0; i < count; i++) {
     const toggle = wrapTextToggle.nth(i);
-    if ((await toggle.locator('//preceding-sibling::input').getAttribute('checked')) !== null) {
-      await toggle.click();
+    if ((await toggle.getAttribute('checked')) !== null) {
+      await toggle.click({ force: true });
     }
   }
 };
@@ -77,10 +75,7 @@ test.describe('Panels test: Table - Kitchen Sink', { tag: ['@panels', '@table'] 
 
     // FIXME very bad selector to get the correct "wrap text" toggle here.
     // toggle the lorem ipsum column's wrap text toggle and confirm that the height shrinks.
-    await page
-      .locator('[id="Override 13"]')
-      .locator(`[aria-label="${selectors.components.PanelEditor.OptionsPane.fieldLabel('Wrap text')}"]`)
-      .click();
+    await page.locator('[id="Override 13"]').getByText('Wrap text').click();
     await expect(getCellHeight(page, 1, longTextColIdx)).resolves.toBeLessThan(100);
 
     // test that hover overflow works.
