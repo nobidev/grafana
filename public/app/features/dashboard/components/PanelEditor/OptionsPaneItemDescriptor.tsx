@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import { uniqueId } from 'lodash';
-import { ReactNode } from 'react';
+import { ReactNode, useId } from 'react';
 import * as React from 'react';
 import Highlighter from 'react-highlight-words';
 
@@ -17,7 +17,7 @@ export interface OptionsPaneItemInfo {
   value?: any;
   description?: string;
   popularRank?: number;
-  render: (descriptor: OptionsPaneItemDescriptor) => React.ReactElement;
+  render: (descriptor: OptionsPaneItemDescriptor, htmlId: string) => React.ReactElement;
   skipField?: boolean;
   showIf?: () => boolean;
   /** Hook for controlling visibility */
@@ -36,7 +36,7 @@ export class OptionsPaneItemDescriptor {
   props: OptionsPaneItemInfo;
 
   constructor(props: OptionsPaneItemInfo) {
-    this.props = { ...props, id: props.id || uniqueId() };
+    this.props = { ...props, id: props.id || uniqueId() }; // [FIXME] remove this non-stable Id
   }
 
   render(searchQuery?: string) {
@@ -62,27 +62,28 @@ interface OptionsPaneItemProps {
 }
 
 function OptionsPaneItem({ itemDescriptor, searchQuery }: OptionsPaneItemProps) {
-  const { title, description, id, render, skipField } = itemDescriptor.props;
-  const key = `${itemDescriptor.parent.props.id} ${title}`;
+  const { title, description, render, skipField } = itemDescriptor.props;
   const showIf = itemDescriptor.useShowIf();
+  const htmlId = useId();
 
   if (!showIf) {
     return null;
   }
 
   if (skipField) {
-    return render(itemDescriptor);
+    return render(itemDescriptor, htmlId);
   }
 
   return (
     <Field
       label={renderOptionLabel(itemDescriptor, searchQuery)}
       description={description}
-      key={key}
-      aria-label={selectors.components.PanelEditor.OptionsPane.fieldLabel(key)}
-      htmlFor={id}
+      data-testid={selectors.components.PanelEditor.OptionsPane.fieldLabel(
+        `${itemDescriptor.parent.props.id} ${title}`
+      )}
+      htmlFor={htmlId}
     >
-      {render(itemDescriptor)}
+      {render(itemDescriptor, htmlId)}
     </Field>
   );
 }
