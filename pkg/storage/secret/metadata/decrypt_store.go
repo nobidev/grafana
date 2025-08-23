@@ -6,7 +6,6 @@ import (
 	"time"
 
 	claims "github.com/grafana/authlib/types"
-	"github.com/grafana/grafana-app-sdk/logging"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -14,6 +13,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	secretv1beta1 "github.com/grafana/grafana/apps/secret/pkg/apis/secret/v1beta1"
+	"github.com/grafana/grafana/pkg/apiserver/auditing"
 	"github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
 	"github.com/grafana/grafana/pkg/registry/apis/secret/xkube"
 	"github.com/grafana/grafana/pkg/storage/secret/metadata/metrics"
@@ -65,11 +65,7 @@ func (s *decryptStorage) Decrypt(ctx context.Context, namespace xkube.Namespace,
 	defer func() {
 		span.SetAttributes(attribute.String("decrypter.identity", decrypterIdentity))
 
-		args := []any{
-			"namespace", namespace.String(),
-			"secret_name", name,
-			"decrypter_identity", decrypterIdentity,
-		}
+		auditExtra := make(map[string]string)
 
 		// The service identity used for decryption is always what is from the signed token, but if the request is
 		// coming from grafana, the service identity will be grafana, but the request metadata will contain
@@ -77,20 +73,32 @@ func (s *decryptStorage) Decrypt(ctx context.Context, namespace xkube.Namespace,
 		// we do this for auditing purposes.
 		if md, ok := metadata.FromIncomingContext(ctx); ok {
 			if svcIdentities := md.Get(contracts.HeaderGrafanaServiceIdentityName); len(svcIdentities) > 0 {
-				args = append(args, "grafana_decrypter_identity", svcIdentities[0])
+				auditExtra["grafana_decrypter_identity"] = svcIdentities[0]
 				span.SetAttributes(attribute.String("grafana_decrypter.identity", svcIdentities[0]))
 			}
 		}
 
-		if decryptErr == nil {
-			args = append(args, "operation", "decrypt_secret_success")
-		} else {
+		eventOutcome := auditing.EventOutcomeSuccess
+		if decryptErr != nil {
+			eventOutcome = auditing.EventOutcomeFailureGeneric
+			auditExtra["decrypt_error"] = decryptErr.Error()
+			auditExtra["decrypt_result"] = metrics.DecryptResultLabel(decryptErr)
 			span.SetStatus(codes.Error, "Decrypt failed")
 			span.RecordError(decryptErr)
-			args = append(args, "operation", "decrypt_secret_error", "error", decryptErr.Error(), "result", metrics.DecryptResultLabel(decryptErr))
 		}
 
-		logging.FromContext(ctx).Info("Secrets Audit Log", args...)
+		auditing.FromContext(ctx).Log(auditing.Event{
+			Namespace:  namespace.String(),
+			ObservedAt: time.Now(),
+			Subject:    decrypterIdentity,
+			Verb:       "decrypt",
+			Object:     name,
+			APIGroup:   secretv1beta1.APIGroup,
+			APIVersion: secretv1beta1.APIVersion,
+			Kind:       secretv1beta1.SecureValueKind().Kind(),
+			Outcome:    eventOutcome,
+			Extra:      auditExtra,
+		})
 
 		s.metrics.DecryptDuration.WithLabelValues(metrics.DecryptResultLabel(decryptErr)).Observe(time.Since(start).Seconds())
 	}()

@@ -111,6 +111,10 @@ func (o *Options) ApplyTo(serverConfig *genericapiserver.RecommendedConfig) erro
 		return err
 	}
 
+	if err := o.RecommendedOptions.Audit.ApplyTo(&serverConfig.Config); err != nil {
+		return err
+	}
+
 	if !o.ExtraOptions.DevMode {
 		if err := serverConfig.SecureServing.Listener.Close(); err != nil {
 			return err

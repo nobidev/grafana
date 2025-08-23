@@ -23,11 +23,13 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/apiserver/pkg/util/openapi"
+	pluginbuffered "k8s.io/apiserver/plugin/pkg/audit/buffered"
 	k8sscheme "k8s.io/client-go/kubernetes/scheme"
 	k8stracing "k8s.io/component-base/tracing"
 	"k8s.io/klog/v2"
 	"k8s.io/kube-openapi/pkg/common"
 
+	"github.com/grafana/grafana/pkg/apiserver/auditing"
 	"github.com/grafana/grafana/pkg/apiserver/endpoints/filters"
 	grafanarest "github.com/grafana/grafana/pkg/apiserver/rest"
 	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
@@ -233,6 +235,14 @@ func SetupConfig(
 
 	serverConfig.SkipOpenAPIInstallation = false
 	serverConfig.BuildHandlerChainFunc = buildHandlerChainFuncFromBuilders(builders)
+
+	// TODO: make it configurable!
+	serverConfig.AuditBackend = pluginbuffered.NewBackend(auditing.NewGrafanaBackend(auditing.DefaultLogger), pluginbuffered.BatchConfig{
+		BufferSize:     10000,
+		MaxBatchSize:   1,
+		ThrottleEnable: false,
+	})
+	serverConfig.AuditPolicyRuleEvaluator = auditing.PolicyRuleEvaluator{}
 
 	serverConfig.EffectiveVersion = getEffectiveVersion(buildTimestamp, buildVersion, buildCommit, buildBranch)
 	// set priority for aggregated discovery
