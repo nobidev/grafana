@@ -20,6 +20,7 @@ describe('getReceiverDescription', () => {
       name: 'email',
       provenance: undefined,
       type: 'email',
+      version: 'v1',
       disableResolveMessage: false,
       settings: { addresses: 'test1@test.com,test2@test.com,test3@test.com,test4@test.com' },
       [RECEIVER_META_KEY]: {
@@ -37,6 +38,7 @@ describe('getReceiverDescription', () => {
       name: 'slack',
       provenance: undefined,
       type: 'slack',
+      version: 'v1',
       disableResolveMessage: false,
       settings: { recipient: '#channel' },
       [RECEIVER_META_KEY]: {
@@ -49,6 +51,7 @@ describe('getReceiverDescription', () => {
       name: 'slack',
       provenance: undefined,
       type: 'slack',
+      version: 'v1',
       disableResolveMessage: false,
       settings: { recipient: 'channel' },
       [RECEIVER_META_KEY]: {
@@ -67,6 +70,7 @@ describe('getReceiverDescription', () => {
       name: 'my oncall',
       provenance: undefined,
       type: ReceiverTypes.OnCall,
+      version: 'v1',
       disableResolveMessage: false,
       settings: {},
       [RECEIVER_PLUGIN_META_KEY]: {
@@ -88,6 +92,7 @@ describe('getReceiverDescription', () => {
       name: 'some receiver',
       provenance: undefined,
       type: 'some',
+      version: 'v1',
       disableResolveMessage: false,
       settings: {},
       [RECEIVER_META_KEY]: {
@@ -104,6 +109,7 @@ describe('getReceiverDescription', () => {
       name: 'some receiver',
       provenance: undefined,
       type: 'some',
+      version: 'v1',
       disableResolveMessage: false,
       settings: {},
       [RECEIVER_META_KEY]: {

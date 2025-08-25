@@ -109,6 +109,7 @@ class GrafanaReceiverConfigBuilder {
   private grafanaReceiverConfig: GrafanaManagedReceiverConfig = {
     name: '',
     type: '',
+    version: 'v1',
     settings: {},
     disableResolveMessage: false,
   };

@@ -172,6 +172,7 @@ describe('formValuesToGrafanaReceiver', () => {
   const emailChannelValues: GrafanaChannelValues = {
     __id: '__1',
     type: 'email',
+    version: 'v1',
     settings: {
       to: 'test@example.com',
     },
@@ -182,6 +183,7 @@ describe('formValuesToGrafanaReceiver', () => {
   const slackChannelValues: GrafanaChannelValues = {
     __id: '__2',
     type: 'slack',
+    version: 'v1',
     settings: {
       url: 'https://slack.example.com',
       channel: '#alerts',
@@ -208,6 +210,7 @@ describe('formValuesToGrafanaReceiver', () => {
         {
           name: 'my-receiver',
           type: 'slack',
+          version: 'v1',
           settings: {
             url: 'https://slack.example.com',
             channel: '#alerts',
@@ -226,8 +229,22 @@ describe('formValuesToGrafanaReceiver', () => {
     };
 
     const channelMap: GrafanaChannelMap = {
-      __1: { ...emailChannelValues, secureFields: {}, uid: 'email-1' },
-      __2: { ...slackChannelValues, secureFields: {}, uid: 'slack-1' },
+      __1: {
+        type: emailChannelValues.type,
+        version: emailChannelValues.version!,
+        settings: emailChannelValues.settings,
+        secureFields: {},
+        disableResolveMessage: emailChannelValues.disableResolveMessage,
+        uid: 'email-1',
+      },
+      __2: {
+        type: slackChannelValues.type,
+        version: slackChannelValues.version!,
+        settings: slackChannelValues.settings,
+        secureFields: {},
+        disableResolveMessage: slackChannelValues.disableResolveMessage,
+        uid: 'slack-1',
+      },
     };
 
     const result = formValuesToGrafanaReceiver(formValues, channelMap, defaultChannelValues);
@@ -239,6 +256,7 @@ describe('formValuesToGrafanaReceiver', () => {
           uid: 'email-1',
           name: 'my-receiver',
           type: 'email',
+          version: 'v1',
           settings: { to: 'test@example.com' },
           secureFields: {},
           disableResolveMessage: false,
@@ -247,6 +265,7 @@ describe('formValuesToGrafanaReceiver', () => {
           uid: 'slack-1',
           name: 'my-receiver',
           type: 'slack',
+          version: 'v1',
           settings: { url: 'https://slack.example.com', channel: '#alerts' },
           secureFields: {},
           disableResolveMessage: false,
@@ -279,6 +298,7 @@ describe('formValuesToGrafanaReceiver', () => {
       __1: {
         uid: 'email-1',
         type: 'email',
+        version: 'v1',
         settings: {
           to: 'test@example.com',
           from: 'old@example.com', // existing value that should be removed
@@ -297,6 +317,7 @@ describe('formValuesToGrafanaReceiver', () => {
           uid: 'email-1',
           name: 'my-receiver',
           type: 'email',
+          version: 'v1',
           settings: {
             to: 'test@example.com',
             cc: 'cc@example.com',
@@ -343,6 +364,7 @@ describe('formValuesToGrafanaReceiver', () => {
       __1: {
         uid: 'sns-1',
         type: 'sns',
+        version: 'v1',
         settings: { api_url: 'https://sns.example.com' },
         secureFields: {
           // All fields exist in the channel map
@@ -371,6 +393,7 @@ describe('formValuesToGrafanaReceiver', () => {
           uid: 'sns-1',
           name: 'my-receiver',
           type: 'sns',
+          version: 'v1',
           settings: {
             api_url: 'https://sns.example.com',
           },
@@ -441,6 +464,7 @@ describe('grafanaReceiverToFormValues', () => {
       grafana_managed_receiver_configs: [
         {
           type: slack.type,
+          version: 'v1',
           settings: {
             recipient: '#alerting-ops',
           },
@@ -463,6 +487,7 @@ describe('grafanaReceiverToFormValues', () => {
       grafana_managed_receiver_configs: [
         {
           type: sns.type,
+          version: 'v1',
           settings: {
             api_url: 'https://sns.example.com/',
             phone_number: '+1234567890',

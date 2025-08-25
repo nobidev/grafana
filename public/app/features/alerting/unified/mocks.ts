@@ -415,6 +415,7 @@ export const mockGrafanaReceiver = (
 ): GrafanaManagedReceiverConfig => ({
   type: type,
   name: type,
+  version: 'v1',
   disableResolveMessage: false,
   settings: {},
   ...overrides,

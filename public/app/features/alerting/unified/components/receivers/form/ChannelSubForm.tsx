@@ -9,6 +9,7 @@ import { Trans, t } from '@grafana/i18n';
 import { Alert, Button, Field, Select, Stack, Text, useStyles2 } from '@grafana/ui';
 import { NotificationChannelOption } from 'app/types/alerting';
 
+import { alertmanagerApi } from '../../../api/alertmanagerApi';
 import { useUnifiedAlertingSelector } from '../../../hooks/useUnifiedAlertingSelector';
 import {
   ChannelValues,
@@ -67,12 +68,17 @@ export function ChannelSubForm<R extends ChannelValues>({
   const parse_mode = watch(`${settingsFieldPath}.parse_mode`);
   const { loading: testingReceiver } = useUnifiedAlertingSelector((state) => state.testReceivers);
 
+  // Get versioned notifiers data
+  const { data: versionedNotifiers = [], isLoading: isLoadingVersionedNotifiers } =
+    alertmanagerApi.useGrafanaNotifiersV2Query();
+
   // TODO I don't like integration specific code here but other ways require a bigger refactoring
   const onCallIntegrationType = watch(`${settingsFieldPath}.integration_type`);
   const isTestAvailable = onCallIntegrationType !== OnCallIntegrationType.NewIntegration;
 
   useEffect(() => {
     register(`${channelFieldPath}.__id`);
+    register(`${channelFieldPath}.version`);
     /* Need to manually register secureFields or else they'll
      be lost when testing a contact point */
     register(`${channelFieldPath}.secureFields`);
@@ -162,6 +168,26 @@ export function ChannelSubForm<R extends ChannelValues>({
   };
 
   const notifier = notifiers.find(({ dto: { type } }) => type === selectedType);
+
+  // Find versioned notifier for the selected type
+  const versionedNotifier = versionedNotifiers.find((n) => n.type === selectedType);
+
+  // Create version options for the selected type
+  const versionOptions = useMemo((): SelectableValue[] => {
+    if (!versionedNotifier) {
+      return [];
+    }
+
+    return versionedNotifier.versions
+      .filter((v) => v.canCreate)
+      .map((version) => ({
+        value: version.version,
+        label: `${version.version}${version.version === versionedNotifier.currentVersion ? ' (Current)' : ''}`,
+        description: version.info,
+      }));
+  }, [versionedNotifier]);
+
+  const showVersionPicker = versionOptions.length > 1;
   const isTelegram = selectedType === 'telegram';
   // Grafana AM takes "None" value and maps to an empty string,
   // Cloud AM takes no value at all
@@ -198,6 +224,30 @@ export function ChannelSubForm<R extends ChannelValues>({
               )}
             />
           </Field>
+          {showVersionPicker && !isLoadingVersionedNotifiers && (
+            <Field
+              label={t('alerting.channel-sub-form.label-version', 'Version')}
+              htmlFor={`contact-point-version-${pathPrefix}`}
+              data-testid={`${pathPrefix}version`}
+              noMargin
+            >
+              <Controller
+                name={`${channelFieldPath}.version`}
+                control={control}
+                defaultValue={versionedNotifier?.currentVersion || 'v1'}
+                render={({ field: { ref, onChange, ...field } }) => (
+                  <Select
+                    disabled={!isEditable}
+                    inputId={`contact-point-version-${pathPrefix}`}
+                    {...field}
+                    width={37}
+                    options={versionOptions}
+                    onChange={(value) => onChange(value?.value)}
+                  />
+                )}
+              />
+            </Field>
+          )}
         </div>
         <div className={styles.buttons}>
           {isTestable && onTest && isTestAvailable && (

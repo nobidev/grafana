@@ -296,6 +296,7 @@ class GrafanaReceiverConfigFactory extends Factory<GrafanaManagedReceiverConfig>
 const grafanaReceiverConfigFactory = GrafanaReceiverConfigFactory.define(({ sequence }) => ({
   name: `receiver-config-${sequence}`,
   type: 'email',
+  version: 'v1',
   settings: {},
   secureFields: {},
   disableResolveMessage: false,

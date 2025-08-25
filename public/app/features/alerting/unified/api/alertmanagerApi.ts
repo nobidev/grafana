@@ -2,7 +2,7 @@ import { isEmpty } from 'lodash';
 
 import { encodeMatcher } from 'app/features/alerting/unified/utils/matchers';
 import { dispatch } from 'app/store/store';
-import { NotificationChannelOption, NotifierDTO, ReceiversStateDTO } from 'app/types/alerting';
+import { NotificationChannelOption, NotifierDTO, ReceiversStateDTO, VersionedNotifierPlugin } from 'app/types/alerting';
 
 import {
   AlertManagerCortexConfig,
@@ -122,6 +122,30 @@ export const alertmanagerApi = alertingApi.injectEndpoints({
           options: notifier.options.map((option) => {
             return populateSecureFieldKey(option, '');
           }),
+        }));
+      },
+    }),
+
+    grafanaNotifiersV2: build.query<VersionedNotifierPlugin[], void>({
+      query: () => ({ url: '/api/alert-notifiers?version=2' }),
+      transformResponse: (response: VersionedNotifierPlugin[]) => {
+        const populateSecureFieldKey = (
+          option: NotificationChannelOption,
+          prefix: string
+        ): NotificationChannelOption => ({
+          ...option,
+          secureFieldKey: option.secure && !option.secureFieldKey ? `${prefix}${option.propertyName}` : undefined,
+          subformOptions: option.subformOptions?.map((suboption) =>
+            populateSecureFieldKey(suboption, `${prefix}${option.propertyName}.`)
+          ),
+        });
+
+        return response.map((notifier) => ({
+          ...notifier,
+          versions: notifier.versions.map((version) => ({
+            ...version,
+            options: version.options.map((option) => populateSecureFieldKey(option, '')),
+          })),
         }));
       },
     }),

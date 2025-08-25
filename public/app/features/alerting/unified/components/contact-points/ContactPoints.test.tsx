@@ -291,6 +291,7 @@ describe('contact points', () => {
         name: 'email',
         provenance: undefined,
         type: 'email',
+        version: 'v1',
         disableResolveMessage: false,
         settings: { addresses: 'test1@test.com,test2@test.com,test3@test.com,test4@test.com' },
         [RECEIVER_META_KEY]: {

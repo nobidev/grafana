@@ -90,6 +90,23 @@ export interface NotifierDTO<T = NotifierType> {
   secure?: boolean;
 }
 
+export interface NotifierPluginVersion {
+  version: string;
+  canCreate: boolean;
+  options: NotificationChannelOption[];
+  info: string;
+}
+
+export interface VersionedNotifierPlugin {
+  type: string;
+  currentVersion: string;
+  name: string;
+  heading: string;
+  description: string;
+  info: string;
+  versions: NotifierPluginVersion[];
+}
+
 export interface NotificationChannelType {
   value: string;
   label: string;
