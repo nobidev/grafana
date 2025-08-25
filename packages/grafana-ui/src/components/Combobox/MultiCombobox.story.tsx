@@ -4,6 +4,7 @@ import type { Meta, StoryFn, StoryObj } from '@storybook/react';
 import { ComponentProps } from 'react';
 
 import { Field } from '../Forms/Field';
+import { Icon } from '../Icon/Icon';
 
 import { MultiCombobox } from './MultiCombobox';
 import mdx from './MultiCombobox.mdx';
@@ -50,6 +51,58 @@ type Story = StoryObj<typeof MultiCombobox>;
 
 export const Basic: Story = {
   args: commonArgs,
+  render: (args) => {
+    const [{ value }, setArgs] = useArgs();
+
+    return (
+      <MultiCombobox
+        {...args}
+        value={value}
+        onChange={(val) => {
+          onChangeAction(val);
+          setArgs({ value: val });
+        }}
+      />
+    );
+  },
+};
+
+export const WithAccessories: Story = {
+  args: {
+    options: [
+      { label: 'Dashboard', value: 'dashboard', accessory: <Icon name="apps" /> },
+      { label: 'Users', value: 'users', accessory: <Icon name="user" /> },
+      { label: 'Settings', value: 'settings', accessory: <Icon name="cog" /> },
+      { label: 'Home', value: 'home', accessory: <Icon name="home-alt" /> },
+      { label: 'Chart', value: 'chart', accessory: <Icon name="chart-line" /> },
+      { label: 'Mixed Content', value: 'mixed', description: 'This has description but no accessory' },
+      {
+        label: 'Database Connection',
+        value: 'database',
+        accessory: <Icon name="database" />,
+        description: 'Connect to your database',
+      },
+      {
+        label: 'Custom Badge with a long option name that should not be clipped',
+        value: 'badge',
+        accessory: (
+          <span
+            style={{
+              padding: '2px 6px',
+              backgroundColor: '#52c41a',
+              color: 'white',
+              borderRadius: '4px',
+              fontSize: '10px',
+            }}
+          >
+            HOT
+          </span>
+        ),
+      },
+    ],
+    value: ['dashboard', 'users'],
+    placeholder: 'Choose options...',
+  },
   render: (args) => {
     const [{ value }, setArgs] = useArgs();
 

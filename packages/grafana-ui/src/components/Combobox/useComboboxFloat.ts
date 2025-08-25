@@ -20,6 +20,10 @@ const POPOVER_PADDING = 16;
 
 const SCROLL_CONTAINER_PADDING = 8;
 
+// Accessory size constants - assuming typical icon/small component size
+const ACCESSORY_WIDTH = 16;
+const ACCESSORY_GAP = 8; // theme.spacing(1) from the option gap
+
 export const useComboboxFloat = (items: Array<ComboboxOption<string | number>>, isOpen: boolean) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const floatingRef = useRef<HTMLDivElement>(null);
@@ -63,16 +67,24 @@ export const useComboboxFloat = (items: Array<ComboboxOption<string | number>>, 
 
   const longestItemWidth = useMemo(() => {
     let longestItem = '';
+    let hasAccessoryInAnyItem = false;
     const itemsToLookAt = Math.min(items.length, WIDTH_CALCULATION_LIMIT_ITEMS);
 
     for (let i = 0; i < itemsToLookAt; i++) {
       const itemLabel = items[i].label ?? items[i].value.toString();
       longestItem = itemLabel.length > longestItem.length ? itemLabel : longestItem;
+      
+      if (items[i].accessory) {
+        hasAccessoryInAnyItem = true;
+      }
     }
 
-    const size = measureText(longestItem, MENU_ITEM_FONT_SIZE, MENU_ITEM_FONT_WEIGHT).width;
+    const textWidth = measureText(longestItem, MENU_ITEM_FONT_SIZE, MENU_ITEM_FONT_WEIGHT).width;
+    
+    // Add accessory width and gap if any item has an accessory
+    const accessoryWidth = hasAccessoryInAnyItem ? ACCESSORY_WIDTH + ACCESSORY_GAP : 0;
 
-    return size + SCROLL_CONTAINER_PADDING + MENU_ITEM_PADDING * 2 + scrollbarWidth;
+    return textWidth + accessoryWidth + SCROLL_CONTAINER_PADDING + MENU_ITEM_PADDING * 2 + scrollbarWidth;
   }, [items, scrollbarWidth]);
 
   const floatStyles = {

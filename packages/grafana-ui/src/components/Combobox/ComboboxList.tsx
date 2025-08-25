@@ -132,7 +132,7 @@ export const ComboboxList = <T extends string | number>({
                 })}
               >
                 {isMultiSelect && (
-                  <div className={styles.optionAccessory}>
+                  <div className={styles.optionCheckbox}>
                     {!item.infoOption && (
                       <Checkbox
                         key={itemId}
@@ -147,6 +147,8 @@ export const ComboboxList = <T extends string | number>({
                     )}
                   </div>
                 )}
+
+                {item.accessory && <div className={styles.optionAccessory}>{item.accessory}</div>}
 
                 <div className={styles.optionBody}>
                   <div className={styles.optionLabel}>{item.label ?? item.value}</div>

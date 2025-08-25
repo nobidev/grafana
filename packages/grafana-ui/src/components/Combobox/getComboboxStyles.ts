@@ -85,9 +85,18 @@ export const getComboboxStyles = (theme: GrafanaTheme2) => {
       },
     }),
 
-    optionAccessory: css({
-      label: 'combobox-option-accessory',
+    optionCheckbox: css({
+      label: 'combobox-option-checkbox',
       height: MENU_ITEM_FONT_SIZE * MENU_ITEM_LINE_HEIGHT, // Ensure the accessory doesn't make the option too tall
+    }),
+
+    optionAccessory: css({
+      label: 'combobox-option-accessory-item',
+      display: 'flex',
+      alignItems: 'center',
+      height: MENU_ITEM_FONT_SIZE * MENU_ITEM_LINE_HEIGHT,
+      color: theme.colors.text.secondary,
+      flexShrink: 0,
     }),
 
     optionBody: css({
