@@ -31,9 +31,16 @@ Options are supplied through the `options` prop as either:
 - An array of options for synchronous usage
 - An async function that returns a promise resolving to options for user input.
 
-Options can be an array of objects with seperate label and values, or an array of strings which will be used as both the label and value.
+Options can be an array of objects with separate label and values, or an array of strings which will be used as both the label and value.
 
 While Combobox can handle large sets of options, you should consider both the user experience of searching through many options, and the performance of loading many options from an API.
+
+Each option object supports the following properties:
+ - `value`: The value to return in the `onChange` handler
+ - `label`: A human-friendly label to display in the dropdown
+ - `description`: A short description of the option
+ - `renderAccessory`: A function that returns a `ReactNode` to display to the right of the label. This function is called lazily only when the option is rendered for better performance. Note that only 16px will be reserved for this content. Larger accessories may cause text to clip.
+ - `group`: The group to which the option belongs (see Grouping below)
 
 ### Grouping
 

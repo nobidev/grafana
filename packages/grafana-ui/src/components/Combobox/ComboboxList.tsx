@@ -148,7 +148,7 @@ export const ComboboxList = <T extends string | number>({
                   </div>
                 )}
 
-                {item.accessory && <div className={styles.optionAccessory}>{item.accessory}</div>}
+                {item.renderAccessory && <div className={styles.optionAccessory}>{item.renderAccessory(item)}</div>}
 
                 <div className={styles.optionBody}>
                   <div className={styles.optionLabel}>{item.label ?? item.value}</div>

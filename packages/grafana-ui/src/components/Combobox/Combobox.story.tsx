@@ -111,22 +111,22 @@ export const CustomValue: Story = {
 export const WithAccessories: Story = {
   args: {
     options: [
-      { label: 'Dashboard', value: 'dashboard', accessory: <Icon name="apps" /> },
-      { label: 'Users', value: 'users', accessory: <Icon name="user" /> },
-      { label: 'Settings', value: 'settings', accessory: <Icon name="cog" /> },
-      { label: 'Home', value: 'home', accessory: <Icon name="home-alt" /> },
-      { label: 'Chart', value: 'chart', accessory: <Icon name="chart-line" /> },
+      { label: 'Dashboard', value: 'dashboard', renderAccessory: () => <Icon name="apps" /> },
+      { label: 'Users', value: 'users', renderAccessory: () => <Icon name="user" /> },
+      { label: 'Settings', value: 'settings', renderAccessory: () => <Icon name="cog" /> },
+      { label: 'Home', value: 'home', renderAccessory: () => <Icon name="home-alt" /> },
+      { label: 'Chart', value: 'chart', renderAccessory: () => <Icon name="chart-line" /> },
       { label: 'Mixed Content', value: 'mixed', description: 'This has description but no accessory' },
       {
         label: 'Database Connection with long option name',
         value: 'database',
-        accessory: <Icon name="database" />,
+        renderAccessory: () => <Icon name="database" />,
         description: 'Connect to your database',
       },
       {
         label: 'Custom Badge',
         value: 'badge',
-        accessory: (
+        renderAccessory: () => (
           <span
             style={{
               padding: '2px 6px',

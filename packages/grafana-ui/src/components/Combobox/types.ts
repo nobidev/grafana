@@ -8,5 +8,5 @@ export type ComboboxOption<T extends string | number = string> = {
   description?: string;
   group?: string;
   infoOption?: boolean;
-  accessory?: ReactNode;
+  renderAccessory?: (option: ComboboxOption<string | number>) => ReactNode;
 };

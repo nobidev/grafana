@@ -74,7 +74,7 @@ export const useComboboxFloat = (items: Array<ComboboxOption<string | number>>, 
       const itemLabel = items[i].label ?? items[i].value.toString();
       longestItem = itemLabel.length > longestItem.length ? itemLabel : longestItem;
       
-      if (items[i].accessory) {
+      if (items[i].renderAccessory) {
         hasAccessoryInAnyItem = true;
       }
     }
