@@ -5,7 +5,7 @@ import {
   setAlertmanagerConfig,
 } from 'app/features/alerting/unified/mocks/server/entities/alertmanagers';
 import { ALERTING_API_SERVER_BASE_URL, getK8sResponse } from 'app/features/alerting/unified/mocks/server/utils';
-import { ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver } from 'app/features/alerting/unified/openapi/receiversApi.gen';
+import { ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver } from 'app/features/alerting/unified/openapi/receiversApi.gen';
 import { GRAFANA_RULES_SOURCE_NAME } from 'app/features/alerting/unified/utils/datasource';
 import { K8sAnnotations, PROVENANCE_NONE } from 'app/features/alerting/unified/utils/k8s/constants';
 
@@ -41,10 +41,11 @@ const getReceiversList = () => {
           title: contactPoint.name,
           integrations: contactPoint.grafana_managed_receiver_configs || [],
         },
+        status: {},
       };
     }) || [];
 
-  return getK8sResponse<ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver>(
+  return getK8sResponse<ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver>(
     'ReceiverList',
     mappedReceivers
   );

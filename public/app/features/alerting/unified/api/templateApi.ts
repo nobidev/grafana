@@ -32,7 +32,7 @@ export interface AlertField {
 
 generatedTemplatesApi.enhanceEndpoints({
   endpoints: {
-    readNamespacedTemplateGroup: (endpoint) => {
+    getTemplateGroup: (endpoint) => {
       // When renaming a template, we end up refetching,
       // and we would otherwise see a "NotFound" message. We suppress this to avoid confusion in the UI
       const extraOptions: AlertingApiExtraOptions = { hideErrorMessage: true };

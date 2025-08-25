@@ -9,8 +9,8 @@ import { arrayUtils } from '@grafana/data';
 import { ROUTES_META_SYMBOL, Route, RouteWithID } from 'app/plugins/datasource/alertmanager/types';
 
 import {
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Route,
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRoute,
 } from '../openapi/routesApi.gen';
 import { FormAmRoute } from '../types/amroutes';
 
@@ -152,7 +152,10 @@ export function findRouteInTree(
 }
 
 export function cleanRouteIDs<
-  T extends RouteWithID | Route | ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Route,
+  T extends
+    | RouteWithID
+    | Route
+    | ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRoute,
 >(route: T): Omit<T, 'id'> {
   return omit(
     {
@@ -165,8 +168,8 @@ export function cleanRouteIDs<
 
 // remove IDs from the Kubernetes routes
 export function cleanKubernetesRouteIDs(
-  routingTree: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree
-): ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree {
+  routingTree: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree
+): ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree {
   return produce(routingTree, (draft) => {
     draft.spec.routes = draft.spec.routes.map(cleanRouteIDs);
   });

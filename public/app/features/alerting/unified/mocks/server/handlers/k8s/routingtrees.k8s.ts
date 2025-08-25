@@ -3,15 +3,15 @@ import { HttpResponse, http } from 'msw';
 import { getRoutingTree, setRoutingTree } from 'app/features/alerting/unified/mocks/server/entities/k8s/routingtrees';
 import { ALERTING_API_SERVER_BASE_URL } from 'app/features/alerting/unified/mocks/server/utils';
 import {
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree,
-  ListNamespacedRoutingTreeApiResponse,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree,
+  ListRoutingTreeApiResponse,
 } from 'app/features/alerting/unified/openapi/routesApi.gen';
 import { ROOT_ROUTE_NAME } from 'app/features/alerting/unified/utils/k8s/constants';
 import { ApiMachineryError } from 'app/features/alerting/unified/utils/k8s/errors';
 
 const wrapRoutingTreeResponse: (
-  route: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree
-) => ListNamespacedRoutingTreeApiResponse = (route) => ({
+  route: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree
+) => ListRoutingTreeApiResponse = (route) => ({
   kind: 'RoutingTree',
   metadata: {},
   items: [route],
@@ -37,7 +37,10 @@ const HTTP_RESPONSE_CONFLICT: ApiMachineryError = {
 };
 
 const updateNamespacedRoutingTreeHandler = () =>
-  http.put<{ namespace: string; name: string }, ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree>(
+  http.put<
+    { namespace: string; name: string },
+    ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree
+  >(
     `${ALERTING_API_SERVER_BASE_URL}/namespaces/:namespace/routingtrees/:name`,
     async ({ params: { name }, request }) => {
       const updatedRoutingTree = await request.json();

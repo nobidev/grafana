@@ -7,7 +7,7 @@ import { useMemo } from 'react';
 
 import { receiversApi } from 'app/features/alerting/unified/api/receiversK8sApi';
 import { useOnCallIntegration } from 'app/features/alerting/unified/components/receivers/grafanaAppReceivers/onCall/useOnCallIntegration';
-import { ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver } from 'app/features/alerting/unified/openapi/receiversApi.gen';
+import { ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver } from 'app/features/alerting/unified/openapi/receiversApi.gen';
 import { BaseAlertmanagerArgs, Skippable } from 'app/features/alerting/unified/types/hooks';
 import { cloudNotifierTypes } from 'app/features/alerting/unified/utils/cloud-alertmanager-notifier-types';
 import { GRAFANA_RULES_SOURCE_NAME } from 'app/features/alerting/unified/utils/datasource';
@@ -43,11 +43,11 @@ const {
 } = alertmanagerApi;
 const { useGrafanaOnCallIntegrationsQuery } = onCallApi;
 const {
-  useListNamespacedReceiverQuery,
-  useReadNamespacedReceiverQuery,
-  useDeleteNamespacedReceiverMutation,
-  useCreateNamespacedReceiverMutation,
-  useReplaceNamespacedReceiverMutation,
+  useListReceiverQuery,
+  useGetReceiverQuery,
+  useDeleteReceiverMutation,
+  useCreateReceiverMutation,
+  useReplaceReceiverMutation,
 } = receiversApi;
 
 const defaultOptions = {
@@ -75,7 +75,7 @@ const useOnCallIntegrations = ({ skip }: Skippable = {}) => {
   }, [installed, loading, oncallIntegrationsResponse]);
 };
 
-type K8sReceiver = ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver;
+type K8sReceiver = ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver;
 
 const parseK8sReceiver = (item: K8sReceiver): GrafanaManagedContactPoint => {
   return {
@@ -87,8 +87,8 @@ const parseK8sReceiver = (item: K8sReceiver): GrafanaManagedContactPoint => {
   };
 };
 
-const useK8sContactPoints = (...[hookParams, queryOptions]: Parameters<typeof useListNamespacedReceiverQuery>) => {
-  return useListNamespacedReceiverQuery(hookParams, {
+const useK8sContactPoints = (...[hookParams, queryOptions]: Parameters<typeof useListReceiverQuery>) => {
+  return useListReceiverQuery(hookParams, {
     ...queryOptions,
     selectFromResult: (result) => {
       const data = result.data?.items.map((item) => parseK8sReceiver(item));
@@ -202,11 +202,11 @@ const useGetAlertmanagerContactPoint = (
  */
 const useGetGrafanaContactPoint = (
   { name }: { name: string },
-  queryOptions?: Parameters<typeof useReadNamespacedReceiverQuery>[1]
+  queryOptions?: Parameters<typeof useGetReceiverQuery>[1]
 ) => {
   const namespace = getAPINamespace();
 
-  return useReadNamespacedReceiverQuery(
+  return useGetReceiverQuery(
     { namespace, name },
     {
       ...queryOptions,
@@ -268,14 +268,13 @@ export function useDeleteContactPoint({ alertmanager }: BaseAlertmanagerArgs) {
   const useK8sApi = shouldUseK8sApi(alertmanager);
 
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
-  const [deleteReceiver] = useDeleteNamespacedReceiverMutation();
+  const [deleteReceiver] = useDeleteReceiverMutation();
 
   const deleteFromK8sAPI = useAsync(async ({ name, resourceVersion }: DeleteContactPointArgs) => {
     const namespace = getAPINamespace();
     await deleteReceiver({
       name,
       namespace,
-      ioK8SApimachineryPkgApisMetaV1DeleteOptions: { preconditions: { resourceVersion } },
     }).unwrap();
   });
 
@@ -301,6 +300,7 @@ const grafanaContactPointToK8sReceiver = (
       title: contactPoint.name,
       integrations: contactPoint.grafana_managed_receiver_configs || [],
     },
+    status: {},
   };
 };
 
@@ -314,7 +314,7 @@ export const useCreateContactPoint = ({ alertmanager }: BaseAlertmanagerArgs) =>
   const isGrafanaAlertmanager = alertmanager === GRAFANA_RULES_SOURCE_NAME;
 
   const { createOnCallIntegrations } = useOnCallIntegration();
-  const [createGrafanaContactPoint] = useCreateNamespacedReceiverMutation();
+  const [createGrafanaContactPoint] = useCreateReceiverMutation();
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
 
   const updateK8sAPI = useAsync(async ({ contactPoint }: CreateContactPointArgs) => {
@@ -325,7 +325,7 @@ export const useCreateContactPoint = ({ alertmanager }: BaseAlertmanagerArgs) =>
 
     return createGrafanaContactPoint({
       namespace,
-      comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver: contactPointToUse,
+      comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver: contactPointToUse,
     }).unwrap();
   });
 
@@ -353,7 +353,7 @@ export const useUpdateContactPoint = ({ alertmanager }: BaseAlertmanagerArgs) =>
   const useK8sApi = shouldUseK8sApi(alertmanager);
 
   const { createOnCallIntegrations } = useOnCallIntegration();
-  const [replaceGrafanaContactPoint] = useReplaceNamespacedReceiverMutation();
+  const [replaceGrafanaContactPoint] = useReplaceReceiverMutation();
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
 
   const updateContactPoint = useAsync(async (args: UpdateContactpointArgs) => {
@@ -370,7 +370,7 @@ export const useUpdateContactPoint = ({ alertmanager }: BaseAlertmanagerArgs) =>
       return replaceGrafanaContactPoint({
         name: id,
         namespace,
-        comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Receiver: contactPointToUse,
+        comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1Receiver: contactPointToUse,
       }).unwrap();
     } else if ('originalName' in args) {
       const { contactPoint, originalName } = args;

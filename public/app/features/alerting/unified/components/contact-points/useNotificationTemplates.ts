@@ -8,8 +8,8 @@ import { templatesApi } from '../../api/templateApi';
 import { useAsync } from '../../hooks/useAsync';
 import { useProduceNewAlertmanagerConfiguration } from '../../hooks/useProduceNewAlertmanagerConfig';
 import {
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroup,
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroupList,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroup,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroupList,
 } from '../../openapi/templatesApi.gen';
 import {
   addNotificationTemplateAction,
@@ -36,17 +36,17 @@ export interface NotificationTemplate {
 const { useGetAlertmanagerConfigurationQuery, useLazyGetAlertmanagerConfigurationQuery } = alertmanagerApi;
 
 const {
-  useListNamespacedTemplateGroupQuery,
-  useLazyReadNamespacedTemplateGroupQuery,
-  useCreateNamespacedTemplateGroupMutation,
-  useReplaceNamespacedTemplateGroupMutation,
-  useDeleteNamespacedTemplateGroupMutation,
+  useListTemplateGroupQuery,
+  useLazyGetTemplateGroupQuery,
+  useCreateTemplateGroupMutation,
+  useReplaceTemplateGroupMutation,
+  useDeleteTemplateGroupMutation,
 } = templatesApi;
 
 export function useNotificationTemplates({ alertmanager }: BaseAlertmanagerArgs) {
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
 
-  const k8sApiTemplatesRequestState = useListNamespacedTemplateGroupQuery(
+  const k8sApiTemplatesRequestState = useListTemplateGroupQuery(
     { namespace: getAPINamespace() },
     {
       skip: !k8sApiSupported,
@@ -71,13 +71,13 @@ export function useNotificationTemplates({ alertmanager }: BaseAlertmanagerArgs)
 }
 
 function templateGroupsToTemplates(
-  templateGroups: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroupList
+  templateGroups: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroupList
 ): NotificationTemplate[] {
   return templateGroups.items.map((templateGroup) => templateGroupToTemplate(templateGroup));
 }
 
 function templateGroupToTemplate(
-  templateGroup: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroup
+  templateGroup: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroup
 ): NotificationTemplate {
   const provenance = getAnnotation(templateGroup, K8sAnnotations.Provenance) ?? PROVENANCE_NONE;
   return {
@@ -115,7 +115,7 @@ export function useGetNotificationTemplate({ alertmanager, uid }: GetTemplatePar
       // TODO set error and isError in case template is not found
     }),
   });
-  const [fetchTemplate, templateStatus] = useLazyReadNamespacedTemplateGroupQuery({
+  const [fetchTemplate, templateStatus] = useLazyGetTemplateGroupQuery({
     selectFromResult: (state) => {
       return {
         ...state,
@@ -151,7 +151,7 @@ interface CreateTemplateParams {
 }
 
 export function useCreateNotificationTemplate({ alertmanager }: BaseAlertmanagerArgs) {
-  const [createNamespacedTemplateGroup] = useCreateNamespacedTemplateGroupMutation();
+  const [createTemplateGroup] = useCreateTemplateGroupMutation();
   const [updateAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
 
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
@@ -164,11 +164,12 @@ export function useCreateNotificationTemplate({ alertmanager }: BaseAlertmanager
   const createUsingK8sApi = useAsync(({ templateValues }: CreateTemplateParams) => {
     const content = ensureDefine(templateValues.title, templateValues.content);
 
-    return createNamespacedTemplateGroup({
+    return createTemplateGroup({
       namespace: getAPINamespace(),
-      comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroup: {
+      comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroup: {
         spec: { title: templateValues.title, content },
         metadata: {},
+        status: {},
       },
     }).unwrap();
   });
@@ -182,7 +183,7 @@ interface UpdateTemplateParams {
 }
 
 export function useUpdateNotificationTemplate({ alertmanager }: BaseAlertmanagerArgs) {
-  const [replaceNamespacedTemplateGroup] = useReplaceNamespacedTemplateGroupMutation();
+  const [replaceTemplateGroup] = useReplaceTemplateGroupMutation();
   const [updateAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
 
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
@@ -195,12 +196,13 @@ export function useUpdateNotificationTemplate({ alertmanager }: BaseAlertmanager
   const updateUsingK8sApi = useAsync(({ template, patch }: UpdateTemplateParams) => {
     const content = ensureDefine(patch.title, patch.content);
 
-    return replaceNamespacedTemplateGroup({
+    return replaceTemplateGroup({
       namespace: getAPINamespace(),
       name: template.uid,
-      comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1TemplateGroup: {
+      comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1TemplateGroup: {
         spec: { title: patch.title, content },
         metadata: { name: template.uid },
+        status: {},
       },
     }).unwrap();
   });
@@ -209,7 +211,7 @@ export function useUpdateNotificationTemplate({ alertmanager }: BaseAlertmanager
 }
 
 export function useDeleteNotificationTemplate({ alertmanager }: BaseAlertmanagerArgs) {
-  const [deleteNamespacedTemplateGroup] = useDeleteNamespacedTemplateGroupMutation();
+  const [deleteTemplateGroup] = useDeleteTemplateGroupMutation();
   const [updateAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
 
   const deleteUsingConfigAPI = useAsync(async ({ uid }: { uid: string }) => {
@@ -218,10 +220,9 @@ export function useDeleteNotificationTemplate({ alertmanager }: BaseAlertmanager
   });
 
   const deleteUsingK8sApi = useAsync(({ uid }: { uid: string }) => {
-    return deleteNamespacedTemplateGroup({
+    return deleteTemplateGroup({
       namespace: getAPINamespace(),
       name: uid,
-      ioK8SApimachineryPkgApisMetaV1DeleteOptions: {},
     }).unwrap();
   });
 

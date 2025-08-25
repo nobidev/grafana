@@ -9,9 +9,9 @@ import { alertmanagerApi } from '../../api/alertmanagerApi';
 import { useAsync } from '../../hooks/useAsync';
 import { useProduceNewAlertmanagerConfiguration } from '../../hooks/useProduceNewAlertmanagerConfig';
 import {
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Route,
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RouteDefaults,
-  ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRoute,
+  ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRouteDefaults,
   generatedRoutesApi as routingTreeApi,
 } from '../../openapi/routesApi.gen';
 import {
@@ -34,18 +34,14 @@ import {
 
 const k8sRoutesToRoutesMemoized = memoize(k8sRoutesToRoutes, { maxSize: 1 });
 
-const {
-  useListNamespacedRoutingTreeQuery,
-  useReplaceNamespacedRoutingTreeMutation,
-  useLazyListNamespacedRoutingTreeQuery,
-} = routingTreeApi;
+const { useListRoutingTreeQuery, useReplaceRoutingTreeMutation, useLazyListRoutingTreeQuery } = routingTreeApi;
 
 const { useGetAlertmanagerConfigurationQuery } = alertmanagerApi;
 
 export const useNotificationPolicyRoute = ({ alertmanager }: BaseAlertmanagerArgs, { skip }: Skippable = {}) => {
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
 
-  const k8sRouteQuery = useListNamespacedRoutingTreeQuery(
+  const k8sRouteQuery = useListRoutingTreeQuery(
     { namespace: getAPINamespace() },
     {
       skip: skip || !k8sApiSupported,
@@ -88,13 +84,13 @@ const parseAmConfigRoute = memoize((route: Route): Route => {
 
 export function useUpdateExistingNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs) {
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
-  const [updatedNamespacedRoute] = useReplaceNamespacedRoutingTreeMutation();
+  const [updatedRoutingTree] = useReplaceRoutingTreeMutation();
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
-  const [listNamespacedRoutingTree] = useLazyListNamespacedRoutingTreeQuery();
+  const [listRoutingTree] = useLazyListRoutingTreeQuery();
 
   const updateUsingK8sApi = useAsync(async (update: Partial<FormAmRoute>) => {
     const namespace = getAPINamespace();
-    const result = await listNamespacedRoutingTree({ namespace });
+    const result = await listRoutingTree({ namespace });
 
     const [rootTree] = result.data ? k8sRoutesToRoutesMemoized(result.data.items) : [];
     if (!rootTree) {
@@ -107,10 +103,11 @@ export function useUpdateExistingNotificationPolicy({ alertmanager }: BaseAlertm
     // Create the K8s route object
     const routeObject = createKubernetesRoutingTreeSpec(newRouteTree);
 
-    return updatedNamespacedRoute({
+    return updatedRoutingTree({
       name: ROOT_ROUTE_NAME,
       namespace,
-      comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree: cleanKubernetesRouteIDs(routeObject),
+      comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree:
+        cleanKubernetesRouteIDs(routeObject),
     }).unwrap();
   });
 
@@ -125,12 +122,12 @@ export function useUpdateExistingNotificationPolicy({ alertmanager }: BaseAlertm
 export function useDeleteNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs) {
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
-  const [listNamespacedRoutingTree] = useLazyListNamespacedRoutingTreeQuery();
-  const [updatedNamespacedRoute] = useReplaceNamespacedRoutingTreeMutation();
+  const [listRoutingTree] = useLazyListRoutingTreeQuery();
+  const [updatedRoutingTree] = useReplaceRoutingTreeMutation();
 
   const deleteFromK8sApi = useAsync(async (id: string) => {
     const namespace = getAPINamespace();
-    const result = await listNamespacedRoutingTree({ namespace });
+    const result = await listRoutingTree({ namespace });
 
     const [rootTree] = result.data ? k8sRoutesToRoutesMemoized(result.data.items) : [];
     if (!rootTree) {
@@ -143,10 +140,10 @@ export function useDeleteNotificationPolicy({ alertmanager }: BaseAlertmanagerAr
     // Create the K8s route object
     const routeObject = createKubernetesRoutingTreeSpec(newRouteTree);
 
-    return updatedNamespacedRoute({
+    return updatedRoutingTree({
       name: ROOT_ROUTE_NAME,
       namespace,
-      comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree: routeObject,
+      comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree: routeObject,
     }).unwrap();
   });
 
@@ -161,8 +158,8 @@ export function useDeleteNotificationPolicy({ alertmanager }: BaseAlertmanagerAr
 export function useAddNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs) {
   const k8sApiSupported = shouldUseK8sApi(alertmanager);
   const [produceNewAlertmanagerConfiguration] = useProduceNewAlertmanagerConfiguration();
-  const [listNamespacedRoutingTree] = useLazyListNamespacedRoutingTreeQuery();
-  const [updatedNamespacedRoute] = useReplaceNamespacedRoutingTreeMutation();
+  const [listRoutingTree] = useLazyListRoutingTreeQuery();
+  const [updatedRoutingTree] = useReplaceRoutingTreeMutation();
 
   const addToK8sApi = useAsync(
     async ({
@@ -175,7 +172,7 @@ export function useAddNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs)
       insertPosition: InsertPosition;
     }) => {
       const namespace = getAPINamespace();
-      const result = await listNamespacedRoutingTree({ namespace });
+      const result = await listRoutingTree({ namespace });
 
       const [rootTree] = result.data ? k8sRoutesToRoutesMemoized(result.data.items) : [];
       if (!rootTree) {
@@ -194,10 +191,11 @@ export function useAddNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs)
       // Create the K8s route object
       const routeObject = createKubernetesRoutingTreeSpec(newRouteTree);
 
-      return updatedNamespacedRoute({
+      return updatedRoutingTree({
         name: ROOT_ROUTE_NAME,
         namespace,
-        comGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree: cleanKubernetesRouteIDs(routeObject),
+        comGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree:
+          cleanKubernetesRouteIDs(routeObject),
       }).unwrap();
     }
   );
@@ -225,7 +223,9 @@ export function useAddNotificationPolicy({ alertmanager }: BaseAlertmanagerArgs)
   return k8sApiSupported ? addToK8sApi : addToAlertmanagerConfiguration;
 }
 
-function k8sRoutesToRoutes(routes: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree[]): Route[] {
+function k8sRoutesToRoutes(
+  routes: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree[]
+): Route[] {
   return routes?.map((route) => {
     return {
       ...route.spec.defaults,
@@ -244,7 +244,9 @@ function isValidMatcherOperator(type: string): type is MatcherOperator {
   return Object.values<string>(MatcherOperator).includes(type);
 }
 
-export function k8sSubRouteToRoute(route: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Route): Route {
+export function k8sSubRouteToRoute(
+  route: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRoute
+): Route {
   return {
     ...route,
     routes: route.routes?.map(k8sSubRouteToRoute),
@@ -258,10 +260,13 @@ export function k8sSubRouteToRoute(route: ComGithubGrafanaGrafanaPkgApisAlerting
   };
 }
 
-export function routeToK8sSubRoute(route: Route): ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1Route {
+export function routeToK8sSubRoute(
+  route: Route
+): ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRoute {
   const { object_matchers, ...rest } = route;
   return {
     ...rest,
+    continue: Boolean(route.continue),
     receiver: route.receiver ?? undefined,
     matchers: object_matchers?.map(([label, type, value]) => ({
       label,
@@ -278,10 +283,10 @@ export function routeToK8sSubRoute(route: Route): ComGithubGrafanaGrafanaPkgApis
  */
 export function createKubernetesRoutingTreeSpec(
   rootRoute: Route
-): ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RoutingTree {
+): ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTree {
   const inheritableDefaultProperties: InheritableProperties = pick(rootRoute, INHERITABLE_KEYS);
 
-  const defaults: ComGithubGrafanaGrafanaPkgApisAlertingNotificationsV0Alpha1RouteDefaults = {
+  const defaults: ComGithubGrafanaGrafanaAppsAlertingNotificationsPkgApisAlertingV0Alpha1RoutingTreeRouteDefaults = {
     ...inheritableDefaultProperties,
     // TODO: Fix types in k8s API? Fix our types to not allow empty receiver? TBC
     receiver: rootRoute.receiver ?? '',
@@ -300,5 +305,6 @@ export function createKubernetesRoutingTreeSpec(
       name: ROOT_ROUTE_NAME,
       resourceVersion: rootRoute[ROUTES_META_SYMBOL]?.resourceVersion,
     },
+    status: {},
   };
 }
