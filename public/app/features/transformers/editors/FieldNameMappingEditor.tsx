@@ -12,6 +12,8 @@ import { Combobox, InlineField, InlineFieldRow } from '@grafana/ui';
 import { FieldNamePicker } from '@grafana/ui/internal';
 
 import { getTransformationContent } from '../docs/getTransformationContent';
+import darkImage from '../images/dark/filterFieldsByName.svg';
+import lightImage from '../images/light/filterFieldsByName.svg';
 
 interface Props extends TransformerUIProps<FieldNameMappingTransformerOptions> {}
 
@@ -110,7 +112,7 @@ export function FieldNameMappingTransformerEditor({ input, onChange, options }: 
   );
 }
 
-export const fieldNameMappingRegistryItem: TransformerRegistryItem<FieldNameMappingTransformerOptions> = {
+export const fieldNameMappingRegistryItem: () => TransformerRegistryItem<FieldNameMappingTransformerOptions> = () => ({
   id: DataTransformerID.fieldNameMapping,
   editor: FieldNameMappingTransformerEditor,
   transformation: standardTransformers.fieldNameMappingTransformer,
@@ -118,4 +120,6 @@ export const fieldNameMappingRegistryItem: TransformerRegistryItem<FieldNameMapp
   description: 'Renames field of query based on the result of another query.',
   categories: new Set([TransformerCategory.ReorderAndRename]),
   help: getTransformationContent(DataTransformerID.fieldNameMapping).helperDocs,
-};
+  imageDark: darkImage,
+  imageLight: lightImage,
+});
