@@ -57,7 +57,6 @@ export const LogListControls = ({ eventBus, visualisationType = 'logs' }: Props)
     setShowTime,
     setShowUniqueLabels,
     setSortOrder,
-    setSyntaxHighlighting,
     setWrapLogMessage,
     showTime,
     showUniqueLabels,
@@ -139,13 +138,6 @@ export const LogListControls = ({ eventBus, visualisationType = 'logs' }: Props)
     });
     setPrettifyJSON(!prettifyJSON);
   }, [prettifyJSON, setPrettifyJSON]);
-
-  const onSyntaxHightlightingClick = useCallback(() => {
-    reportInteraction('logs_log_list_controls_syntax_clicked', {
-      state: !syntaxHighlighting,
-    });
-    setSyntaxHighlighting(!syntaxHighlighting);
-  }, [setSyntaxHighlighting, syntaxHighlighting]);
 
   const onWrapLogMessageClick = useCallback(
     (e: MouseEvent) => {
@@ -324,7 +316,7 @@ export const LogListControls = ({ eventBus, visualisationType = 'logs' }: Props)
                 }
                 size="lg"
               />
-              {prettifyJSON !== undefined && (
+              {prettifyJSON !== undefined && !config.featureToggles.newLogsPanel && (
                 <IconButton
                   name="brackets-curly"
                   aria-pressed={prettifyJSON}
@@ -338,20 +330,7 @@ export const LogListControls = ({ eventBus, visualisationType = 'logs' }: Props)
                   size="lg"
                 />
               )}
-              {syntaxHighlighting !== undefined && (
-                <IconButton
-                  name="brackets-curly"
-                  className={syntaxHighlighting ? styles.controlButtonActive : styles.controlButton}
-                  aria-pressed={syntaxHighlighting}
-                  onClick={onSyntaxHightlightingClick}
-                  tooltip={
-                    syntaxHighlighting
-                      ? t('logs.logs-controls.disable-highlighting', 'Disable highlighting')
-                      : t('logs.logs-controls.enable-highlighting', 'Enable highlighting')
-                  }
-                  size="lg"
-                />
-              )}
+              {syntaxHighlighting !== undefined && <SyntaxHighlightingButton />}
               {config.featureToggles.newLogsPanel && (
                 <IconButton
                   name="text-fields"
@@ -480,17 +459,54 @@ const TimestampResolutionButton = () => {
       <button
         aria-label={getTimestampTooltip(showTime, timestampResolution)}
         aria-pressed={showTime}
-        className={`${styles.timestampResolutionButton} ${showTime ? styles.controlButtonActive : styles.controlButton}`}
+        className={`${styles.customControlButton} ${showTime ? styles.controlButtonActive : styles.controlButton}`}
         type="button"
         onClick={onShowTimestampsClick}
       >
-        <Icon name="clock-nine" size="lg" className={styles.timestampResolutionIcon} />
+        <Icon name="clock-nine" size="lg" className={styles.customControlIcon} />
         {showTime && (
-          <span className={styles.resolutionText}>
+          <span className={styles.customControlExtra}>
             {timestampResolution === 'ms'
               ? t('logs.logs-controls.resolution-ms', 'ms')
               : t('logs.logs-controls.resolution-ns', 'ns')}
           </span>
+        )}
+      </button>
+    </Tooltip>
+  );
+};
+
+const SyntaxHighlightingButton = () => {
+  const styles = useStyles2(getStyles);
+  const { syntaxHighlighting, setSyntaxHighlighting, prettifyJSON, setPrettifyJSON } = useLogListContext();
+
+  const onSyntaxHightlightingClick = useCallback(() => {
+    if (!syntaxHighlighting) {
+      setSyntaxHighlighting(true);
+      setPrettifyJSON(false);
+    } else if (!prettifyJSON) {
+      setPrettifyJSON(true);
+    } else {
+      setSyntaxHighlighting(false);
+      setPrettifyJSON(false);
+    }
+    reportInteraction('logs_log_list_controls_syntax_clicked', {
+      state: !syntaxHighlighting,
+    });
+  }, [prettifyJSON, setPrettifyJSON, setSyntaxHighlighting, syntaxHighlighting]);
+
+  return (
+    <Tooltip content={getSyntaxHighlightingToolip(syntaxHighlighting, prettifyJSON)}>
+      <button
+        aria-label={getSyntaxHighlightingToolip(syntaxHighlighting, prettifyJSON)}
+        aria-pressed={syntaxHighlighting}
+        className={`${styles.customControlButton} ${syntaxHighlighting ? styles.controlButtonActive : styles.controlButton}`}
+        type="button"
+        onClick={onSyntaxHightlightingClick}
+      >
+        <Icon name="brackets-curly" size="lg" className={styles.customControlIcon} />
+        {prettifyJSON && (
+          <span className={styles.customControlExtra}>{t('logs.logs-controls.syntax-highlighting-plus', '+')}</span>
         )}
       </button>
     </Tooltip>
@@ -556,7 +572,7 @@ const getStyles = (theme: GrafanaTheme2) => {
         backgroundColor: theme.colors.warning.main,
       },
     }),
-    timestampResolutionButton: css({
+    customControlButton: css({
       position: 'relative',
       zIndex: 0,
       margin: 0,
@@ -569,17 +585,17 @@ const getStyles = (theme: GrafanaTheme2) => {
       padding: 0,
       overflow: 'visible',
     }),
-    timestampResolutionIcon: css({
+    customControlIcon: css({
       verticalAlign: 'baseline',
     }),
-    resolutionText: css({
+    customControlExtra: css({
       color: theme.colors.text.primary,
       fontSize: 10,
       position: 'absolute',
       bottom: -4,
-      right: 0,
+      right: 1,
       lineHeight: '10px',
-      backgroundColor: theme.colors.background.elevated,
+      backgroundColor: theme.colors.background.primary,
       paddingLeft: 2,
     }),
   };
@@ -593,4 +609,13 @@ function getTimestampTooltip(showTime: boolean, timestampResolution: LogLineTime
     return t('logs.logs-controls.show-ns-timestamps', 'Show nanosecond timestamps');
   }
   return t('logs.logs-controls.hide-timestamps', 'Hide timestamps');
+}
+
+function getSyntaxHighlightingToolip(syntaxHighlighting: boolean | undefined, prettifyJSON: boolean | undefined) {
+  if (!syntaxHighlighting) {
+    return t('logs.logs-controls.enable-highlighting', 'Enable highlighting');
+  }
+  return prettifyJSON
+    ? t('logs.logs-controls.disable-highlighting', 'Disable highlighting')
+    : t('logs.logs-controls.enable-highlighting-json', 'Enable highlighting with JSON formatting');
 }

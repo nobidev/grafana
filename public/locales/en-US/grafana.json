@@ -9622,6 +9622,7 @@
         "txt": "txt"
       },
       "enable-highlighting": "Enable highlighting",
+      "enable-highlighting-json": "Enable highlighting with JSON formatting",
       "escape-newlines": "Fix incorrectly escaped newline and tab sequences in log lines",
       "font-size-default": "Use small font size",
       "font-size-small": "Use default font size",
@@ -9641,6 +9642,7 @@
       "show-search": "Search in logs result",
       "show-timestamps": "Show timestamps",
       "show-unique-labels": "Show unique labels",
+      "syntax-highlighting-plus": "+",
       "unwrap-lines": "Unwrap lines",
       "wrap-lines": "Wrap lines"
     },

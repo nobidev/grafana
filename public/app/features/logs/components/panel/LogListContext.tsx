@@ -139,11 +139,9 @@ export type LogListState = Pick<
   | 'forceEscape'
   | 'filterLevels'
   | 'pinnedLogs'
-  | 'prettifyJSON'
   | 'showUniqueLabels'
   | 'showTime'
   | 'sortOrder'
-  | 'syntaxHighlighting'
   | 'timestampResolution'
   | 'wrapLogMessage'
 >;
@@ -226,13 +224,15 @@ export const LogListContextProvider = ({
   permalinkedLogId,
   pinLineButtonTooltipTitle,
   pinnedLogs,
-  prettifyJSON,
+  prettifyJSON: prettifyJSONProp = logOptionsStorageKey
+    ? store.getBool(`${logOptionsStorageKey}.prettifyLogMessage`, true)
+    : true,
   setDisplayedFields,
   showControls,
   showTime,
   showUniqueLabels,
   sortOrder,
-  syntaxHighlighting,
+  syntaxHighlighting: syntaxHighlightingProp,
   timestampResolution = logOptionsStorageKey
     ? (store.get(`${logOptionsStorageKey}.timestampResolution`) ?? 'ms')
     : 'ms',
@@ -245,11 +245,9 @@ export const LogListContextProvider = ({
     fontSize,
     forceEscape: logOptionsStorageKey ? store.getBool(`${logOptionsStorageKey}.forceEscape`, false) : false,
     pinnedLogs,
-    prettifyJSON,
     showTime,
     showUniqueLabels,
     sortOrder,
-    syntaxHighlighting,
     timestampResolution,
     wrapLogMessage,
   });
@@ -259,6 +257,8 @@ export const LogListContextProvider = ({
   );
   const [detailsMode, setDetailsMode] = useState<LogLineDetailsMode>(detailsModeProp ?? 'sidebar');
   const [isAssistantAvailable, openAssistant] = useAssistant();
+  const [prettifyJSON, setPrettifyJSONState] = useState(prettifyJSONProp);
+  const [syntaxHighlighting, setSyntaxHighlightingState] = useState(syntaxHighlightingProp);
 
   useEffect(() => {
     if (noInteractions) {
@@ -297,28 +297,17 @@ export const LogListContextProvider = ({
     if (showControls && app !== CoreApp.PanelEditor) {
       return;
     }
-    const newState = {
+    const newState: LogListState = {
       ...logListState,
       dedupStrategy,
       showTime,
       sortOrder,
-      syntaxHighlighting,
       wrapLogMessage,
     };
     if (!shallowCompare(logListState, newState)) {
       setLogListState(newState);
     }
-  }, [
-    app,
-    dedupStrategy,
-    logListState,
-    pinnedLogs,
-    showControls,
-    showTime,
-    sortOrder,
-    syntaxHighlighting,
-    wrapLogMessage,
-  ]);
+  }, [app, dedupStrategy, logListState, showControls, showTime, sortOrder, wrapLogMessage]);
 
   // Sync filter levels
   useEffect(() => {
@@ -462,24 +451,22 @@ export const LogListContextProvider = ({
 
   const setPrettifyJSON = useCallback(
     (prettifyJSON: boolean) => {
-      setLogListState({ ...logListState, prettifyJSON });
-      onLogOptionsChange?.('prettifyJSON', prettifyJSON);
+      setPrettifyJSONState(prettifyJSON);
       if (logOptionsStorageKey) {
         store.set(`${logOptionsStorageKey}.prettifyLogMessage`, prettifyJSON);
       }
     },
-    [logListState, logOptionsStorageKey, onLogOptionsChange]
+    [logOptionsStorageKey]
   );
 
   const setSyntaxHighlighting = useCallback(
     (syntaxHighlighting: boolean) => {
-      setLogListState({ ...logListState, syntaxHighlighting });
-      onLogOptionsChange?.('syntaxHighlighting', syntaxHighlighting);
+      setSyntaxHighlightingState(syntaxHighlighting);
       if (logOptionsStorageKey) {
         store.set(`${logOptionsStorageKey}.syntaxHighlighting`, syntaxHighlighting);
       }
     },
-    [logListState, logOptionsStorageKey, onLogOptionsChange]
+    [logOptionsStorageKey]
   );
 
   const setSortOrder = useCallback(
@@ -619,7 +606,7 @@ export const LogListContextProvider = ({
         permalinkedLogId,
         pinLineButtonTooltipTitle,
         pinnedLogs: logListState.pinnedLogs,
-        prettifyJSON: logListState.prettifyJSON,
+        prettifyJSON: prettifyJSON,
         setDedupStrategy,
         setDetailsMode,
         setDetailsWidth,
@@ -640,7 +627,7 @@ export const LogListContextProvider = ({
         showTime: logListState.showTime,
         showUniqueLabels: logListState.showUniqueLabels,
         sortOrder: logListState.sortOrder,
-        syntaxHighlighting: logListState.syntaxHighlighting,
+        syntaxHighlighting: syntaxHighlighting,
         timestampResolution: logListState.timestampResolution,
         toggleDetails,
         wrapLogMessage: logListState.wrapLogMessage,
