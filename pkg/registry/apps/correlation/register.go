@@ -1,30 +1,44 @@
 package correlation
 
 import (
+	restclient "k8s.io/client-go/rest"
+
 	"github.com/grafana/grafana-app-sdk/app"
+	appsdkapiserver "github.com/grafana/grafana-app-sdk/k8s/apiserver"
 	"github.com/grafana/grafana-app-sdk/simple"
 	"github.com/grafana/grafana/apps/correlation/pkg/apis"
-	correlationv0alpha1 "github.com/grafana/grafana/apps/correlation/pkg/apis/correlation/v0alpha1"
 	correlationapp "github.com/grafana/grafana/apps/correlation/pkg/app"
-	"github.com/grafana/grafana/pkg/services/apiserver/builder/runner"
+	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
-type CorrelationAppProvider struct {
-	app.Provider
-	cfg     *setting.Cfg
+var (
+    _ appsdkapiserver.AppInstaller = (*CorrelationAppInstaller)(nil)
+)
+
+type CorrelationAppInstaller struct {
+    appsdkapiserver.AppInstaller
+    cfg *setting.Cfg
 }
 
-func RegisterApp(
-	cfg *setting.Cfg,
-) *CorrelationAppProvider {
-	provider := &CorrelationAppProvider{
-		cfg:     cfg,
-	}
-	appCfg := &runner.AppBuilderConfig{
-		OpenAPIDefGetter: correlationv0alpha1.GetOpenAPIDefinitions,
-		ManagedKinds: correlationapp.GetKinds(),
-	}
-	provider.Provider = simple.NewAppProvider(apis.LocalManifest(), appCfg, correlationapp.New)
-	return provider
+func RegisterAppInstaller(
+    cfg *setting.Cfg,
+    features featuremgmt.FeatureToggles,
+) (*CorrelationAppInstaller, error) {
+    installer := &CorrelationAppInstaller{
+        cfg: cfg,
+    }
+    provider := simple.NewAppProvider(apis.LocalManifest(), nil, correlationapp.New)
+
+    appConfig := app.Config{
+        KubeConfig:   restclient.Config{}, // this will be overridden by the installer's InitializeApp method
+        ManifestData: *apis.LocalManifest().ManifestData,
+    }
+    i, err := appsdkapiserver.NewDefaultAppInstaller(provider, appConfig, apis.ManifestGoTypeAssociator, apis.ManifestCustomRouteResponsesAssociator)
+    if err != nil {
+        return nil, err
+    }
+    installer.AppInstaller = i
+
+    return installer, nil
 }
