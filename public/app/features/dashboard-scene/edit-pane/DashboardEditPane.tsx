@@ -6,14 +6,15 @@ import {
 } from '@grafana/ui';
 
 import { isDashboardLayoutItem } from '../scene/types/DashboardLayoutItem';
-import { containsCloneKey, getLastKeyFromClone, isInCloneChain } from '../utils/clone';
-import { findEditPanel, getDashboardSceneFor } from '../utils/utils';
+import { isRepeatCloneOrChildOf } from '../utils/clone';
+import { getDashboardSceneFor } from '../utils/utils';
 
 import { ElementSelection } from './ElementSelection';
 import {
   ConditionalRenderingChangedEvent,
   DashboardEditActionEvent,
   DashboardEditActionEventPayload,
+  DashboardStateChangedEvent,
   NewObjectAddedToCanvasEvent,
   ObjectRemovedFromCanvasEvent,
   ObjectsReorderedOnCanvasEvent,
@@ -114,6 +115,7 @@ export class DashboardEditPane extends SceneObjectBase<DashboardEditPaneState> {
     }
 
     action.undo();
+    action.source.publishEvent(new DashboardStateChangedEvent({ source: action.source }), true);
 
     /**
      * Some edit actions also require clearing selection or selecting new objects
@@ -138,6 +140,7 @@ export class DashboardEditPane extends SceneObjectBase<DashboardEditPaneState> {
    */
   private performAction(action: DashboardEditActionEventPayload) {
     action.perform();
+    action.source.publishEvent(new DashboardStateChangedEvent({ source: action.source }), true);
 
     if (action.addedObject) {
       this.newObjectAddedToCanvas(action.addedObject);
@@ -180,24 +183,13 @@ export class DashboardEditPane extends SceneObjectBase<DashboardEditPaneState> {
   }
 
   private selectElement(element: ElementSelectionContextItem, options: ElementSelectionOnSelectOptions) {
-    // We should not select clones
-    if (isInCloneChain(element.id)) {
-      if (options.multi) {
+    let obj = sceneGraph.findByKey(this, element.id);
+    if (obj) {
+      // Do not select repeat clones or their children
+      if (isRepeatCloneOrChildOf(obj)) {
         return;
       }
 
-      this.clearSelection();
-      return;
-    }
-
-    let obj = sceneGraph.findByKey(this, element.id);
-    if (obj) {
-      if (obj instanceof VizPanel && containsCloneKey(getLastKeyFromClone(element.id))) {
-        const sourceVizPanel = findEditPanel(this, element.id);
-        if (sourceVizPanel) {
-          obj = sourceVizPanel;
-        }
-      }
       this.selectObject(obj, element.id, options);
     }
   }
