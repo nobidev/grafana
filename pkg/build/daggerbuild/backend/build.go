@@ -3,6 +3,7 @@ package backend
 import (
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"strings"
 
@@ -71,6 +72,11 @@ func Build(
 		"grafana-server",
 		"grafana-cli",
 		"grafana-example-apiserver",
+	}
+
+	if token, ok := os.LookupEnv("DEPOT_TOKEN"); ok && token != "" {
+		secret := d.SetSecret("DEPOT_TOKEN", token)
+		builder = builder.WithSecretVariable("DEPOT_TOKEN", secret)
 	}
 
 	os, _ := OSAndArch(distro)
