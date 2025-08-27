@@ -47,13 +47,12 @@ func (s *singleTenantInstanceProvider) GetInstance(_ context.Context, _ map[stri
 
 func (s *singleTenantInstance) GetSettings() clientapi.InstanceConfigurationSettings {
 	return clientapi.InstanceConfigurationSettings{
-		FeatureToggles:                s.features,
-		SQLExpressionCellLimit:        s.cfg.SQLExpressionCellLimit,
-		SQLExpressionOutputCellLimit:  s.cfg.SQLExpressionOutputCellLimit,
-		SQLExpressionQueryLengthLimit: s.cfg.SQLExpressionQueryLengthLimit,
-		SQLExpressionTimeout:          s.cfg.SQLExpressionTimeout,
-		ExpressionsEnabled:            s.cfg.ExpressionsEnabled,
+		FeatureToggles: s.features,
 	}
+}
+
+func (s *singleTenantInstance) GetFullConfig() map[string]map[string]string {
+	return nil
 }
 
 func (s *singleTenantInstance) GetLogger(parent log.Logger) log.Logger {

@@ -35,6 +35,7 @@ type Instance interface {
 	GetSettings() InstanceConfigurationSettings
 	GetLogger(parent log.Logger) log.Logger
 	ReportMetrics() // some metrics are only reported at the end
+	GetFullConfig() map[string]map[string]string
 }
 
 type InstanceProvider interface {

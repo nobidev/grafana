@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -275,6 +276,12 @@ func handleQuery(ctx context.Context, raw query.QueryDataRequest, b QueryAPIBuil
 	}
 
 	instanceConfig := instance.GetSettings()
+	fullCfg := instance.GetFullConfig()
+	fullCfgBytes, err := json.Marshal(fullCfg)
+
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	dsQuerierLoggerWithSlug := instance.GetLogger(connectLogger)
 
@@ -284,14 +291,14 @@ func handleQuery(ctx context.Context, raw query.QueryDataRequest, b QueryAPIBuil
 		dsQuerierLoggerWithSlug,
 	)
 
+	settingCfg, err := setting.NewCfgFromBytes(fullCfgBytes)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	exprService := expr.ProvideService(
-		&setting.Cfg{
-			ExpressionsEnabled:            instanceConfig.ExpressionsEnabled,
-			SQLExpressionCellLimit:        instanceConfig.SQLExpressionCellLimit,
-			SQLExpressionOutputCellLimit:  instanceConfig.SQLExpressionOutputCellLimit,
-			SQLExpressionTimeout:          instanceConfig.SQLExpressionTimeout,
-			SQLExpressionQueryLengthLimit: instanceConfig.SQLExpressionQueryLengthLimit,
-		},
+		settingCfg,
 		nil,
 		nil,
 		instanceConfig.FeatureToggles,
