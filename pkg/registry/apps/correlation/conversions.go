@@ -1,0 +1,119 @@
+package correlation
+
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	correlation "github.com/grafana/grafana/apps/correlation/pkg/apis/correlation/v0alpha1"
+	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
+	correlationsvc "github.com/grafana/grafana/pkg/services/correlations"
+)
+
+/*func LegacyUpdateCommandToUnstructured(cmd correlationsvc.UpdateCorrelationCommand) unstructured.Unstructured {
+	items := []map[string]string{}
+	for _, item := range cmd.Items {
+		items = append(items, map[string]string{
+			"type":  item.Type,
+			"value": item.Value,
+		})
+	}
+	obj := unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"spec": map[string]interface{}{
+				"title":    cmd.Name,
+				"interval": cmd.Interval,
+				"items":    items,
+			},
+		},
+	}
+	if cmd.UID == "" {
+		cmd.UID = util.GenerateShortUID()
+	}
+	obj.SetName(cmd.UID)
+	return obj
+}
+
+func UnstructuredToLegacyPlaylist(item unstructured.Unstructured) *playlistsvc.Playlist {
+	spec := item.Object["spec"].(map[string]any)
+	return &playlistsvc.Playlist{
+		UID:      item.GetName(),
+		Name:     spec["title"].(string),
+		Interval: spec["interval"].(string),
+		Id:       getLegacyID(&item),
+	}
+}
+
+func UnstructuredToLegacyPlaylistDTO(item unstructured.Unstructured) *playlistsvc.PlaylistDTO {
+	spec := item.Object["spec"].(map[string]any)
+	dto := &playlistsvc.PlaylistDTO{
+		Uid:      item.GetName(),
+		Name:     spec["title"].(string),
+		Interval: spec["interval"].(string),
+		Id:       getLegacyID(&item),
+	}
+	items := spec["items"]
+	if items != nil {
+		b, err := json.Marshal(items)
+		if err == nil {
+			_ = json.Unmarshal(b, &dto.Items)
+		}
+	}
+	return dto
+}*/
+
+func convertToK8sResource(v *correlationsvc.Correlation, namespacer request.NamespaceMapper) *correlation.Correlation {
+	spec := correlation.CorrelationSpec{
+		SourceUid: v.SourceUID,
+		TargetUid: *v.TargetUID,
+		Label: v.Label,
+		Description: v.Description,
+		Config: correlation.CorrelationConfigSpec{
+			Field: v.Config.Field,
+			Type: correlation.CorrelationCorrelationType(v.Config.Type),
+			Target: v.Config.Target,
+			Transformations: make([]correlation.CorrelationTransformationSpec, 0, len(v.Config.Transformations)),
+		},
+		Provisioned: v.Provisioned,
+		Type: correlation.CorrelationCorrelationType(v.Type),
+	}
+
+	c := &correlation.Correlation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              v.UID,
+			UID:               types.UID(v.UID),
+			Namespace:         namespacer(v.OrgID),
+		},
+		Spec: spec,
+	}
+	
+	return c
+}
+/*
+func convertToLegacyUpdateCommand(p *playlist.Playlist, orgId int64) (*playlistsvc.UpdatePlaylistCommand, error) {
+	spec := p.Spec
+	cmd := &playlistsvc.UpdatePlaylistCommand{
+		UID:      p.Name,
+		Name:     spec.Title,
+		Interval: spec.Interval,
+		OrgId:    orgId,
+	}
+	for _, item := range spec.Items {
+		if item.Type == playlist.PlaylistItemTypeDashboardById {
+			return nil, fmt.Errorf("unsupported item type: %s", item.Type)
+		}
+		cmd.Items = append(cmd.Items, playlistsvc.PlaylistItem{
+			Type:  string(item.Type),
+			Value: item.Value,
+		})
+	}
+	return cmd, nil
+}
+
+// Read legacy ID from metadata annotations
+func getLegacyID(item *unstructured.Unstructured) int64 {
+	meta, err := utils.MetaAccessor(item)
+	if err != nil {
+		return 0
+	}
+	return meta.GetDeprecatedInternalID() // nolint:staticcheck
+}*/

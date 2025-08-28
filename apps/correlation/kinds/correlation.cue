@@ -8,9 +8,27 @@ correlationv0alpha1: {
 			target_uid:  string
 			label:       string
 			description: string
-			config:      string
-			provisioned: int
-			type:        string
+			config:      ConfigSpec
+			provisioned: bool
+			type:        CorrelationType
 		}
 	}
 }
+
+ConfigSpec: {
+	field: string
+	type: string
+	target: TargetSpec
+	transformations: [...TransformationSpec] | *[]
+}
+
+TargetSpec: map[string]any 
+
+TransformationSpec: {
+	type: string
+	expression: string
+	field: string
+	mapValue: string
+}
+
+CorrelationType: "query" | "external"

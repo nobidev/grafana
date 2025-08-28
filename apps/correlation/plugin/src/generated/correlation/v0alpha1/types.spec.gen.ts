@@ -1,13 +1,48 @@
 // Code generated - EDITING IS FUTILE. DO NOT EDIT.
 
+export interface ConfigSpec {
+	field: string;
+	type: string;
+	target: string;
+	transformations: TransformationSpec[];
+}
+
+export const defaultConfigSpec = (): ConfigSpec => ({
+	field: "",
+	type: "",
+	target: "",
+	transformations: [],
+});
+
+export interface TransformationSpec {
+	type: string;
+	expression: string;
+	field: string;
+	mapValue: string;
+}
+
+export const defaultTransformationSpec = (): TransformationSpec => ({
+	type: "",
+	expression: "",
+	field: "",
+	mapValue: "",
+});
+
+export enum CorrelationType {
+	Query = "query",
+	External = "external",
+}
+
+export const defaultCorrelationType = (): CorrelationType => (CorrelationType.Query);
+
 export interface Spec {
 	source_uid: string;
 	target_uid: string;
 	label: string;
 	description: string;
-	config: string;
-	provisioned: number;
-	type: string;
+	config: ConfigSpec;
+	provisioned: boolean;
+	type: CorrelationType;
 }
 
 export const defaultSpec = (): Spec => ({
@@ -15,8 +50,8 @@ export const defaultSpec = (): Spec => ({
 	target_uid: "",
 	label: "",
 	description: "",
-	config: "",
-	provisioned: 0,
-	type: "",
+	config: defaultConfigSpec(),
+	provisioned: false,
+	type: CorrelationType.Query,
 });
 
