@@ -3,16 +3,20 @@
 export interface ConfigSpec {
 	field: string;
 	type: string;
-	target: string;
+	target: TargetSpec;
 	transformations: TransformationSpec[];
 }
 
 export const defaultConfigSpec = (): ConfigSpec => ({
 	field: "",
 	type: "",
-	target: "",
+	target: defaultTargetSpec(),
 	transformations: [],
 });
+
+export type TargetSpec = Record<string, any>;
+
+export const defaultTargetSpec = (): TargetSpec => ({});
 
 export interface TransformationSpec {
 	type: string;

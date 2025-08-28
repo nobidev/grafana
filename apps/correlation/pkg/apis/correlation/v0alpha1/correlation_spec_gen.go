@@ -6,7 +6,7 @@ package v0alpha1
 type CorrelationConfigSpec struct {
 	Field           string                          `json:"field"`
 	Type            string                          `json:"type"`
-	Target          string                          `json:"target"`
+	Target          CorrelationTargetSpec           `json:"target"`
 	Transformations []CorrelationTransformationSpec `json:"transformations"`
 }
 
@@ -16,6 +16,9 @@ func NewCorrelationConfigSpec() *CorrelationConfigSpec {
 		Transformations: []CorrelationTransformationSpec{},
 	}
 }
+
+// +k8s:openapi-gen=true
+type CorrelationTargetSpec map[string]interface{}
 
 // +k8s:openapi-gen=true
 type CorrelationTransformationSpec struct {

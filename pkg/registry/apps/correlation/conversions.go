@@ -10,7 +10,7 @@ import (
 )
 
 /*func LegacyUpdateCommandToUnstructured(cmd correlationsvc.UpdateCorrelationCommand) unstructured.Unstructured {
-	items := []map[string]string{}
+	items := []map[strng]string{}
 	for _, item := range cmd.Items {
 		items = append(items, map[string]string{
 			"type":  item.Type,
@@ -69,12 +69,20 @@ func convertToK8sResource(v *correlationsvc.Correlation, namespacer request.Name
 		Description: v.Description,
 		Config: correlation.CorrelationConfigSpec{
 			Field: v.Config.Field,
-			Type: correlation.CorrelationCorrelationType(v.Config.Type),
 			Target: v.Config.Target,
 			Transformations: make([]correlation.CorrelationTransformationSpec, 0, len(v.Config.Transformations)),
 		},
 		Provisioned: v.Provisioned,
 		Type: correlation.CorrelationCorrelationType(v.Type),
+	}
+
+		for _, transformation := range v.Config.Transformations {
+		spec.Config.Transformations = append(spec.Config.Transformations, correlation.CorrelationTransformationSpec{
+			Type: transformation.Type,
+			Expression: transformation.Expression,
+			Field: transformation.Field,
+			MapValue: transformation.MapValue,
+		})
 	}
 
 	c := &correlation.Correlation{

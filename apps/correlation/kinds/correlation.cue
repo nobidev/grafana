@@ -22,7 +22,7 @@ ConfigSpec: {
 	transformations: [...TransformationSpec] | *[]
 }
 
-TargetSpec: map[string]any 
+TargetSpec:  [string]: _
 
 TransformationSpec: {
 	type: string
