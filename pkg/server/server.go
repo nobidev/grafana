@@ -8,9 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strconv"
 	"sync"
 
+	"github.com/grafana/dskit/ballast"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -28,12 +30,13 @@ import (
 
 // Options contains parameters for the New function.
 type Options struct {
-	HomePath    string
-	PidFile     string
-	Version     string
-	Commit      string
-	BuildBranch string
-	Listener    net.Listener
+	HomePath     string
+	PidFile      string
+	Version      string
+	Commit       string
+	BuildBranch  string
+	Listener     net.Listener
+	BallastBytes int
 }
 
 // New returns a new instance of Server.
@@ -77,6 +80,7 @@ func newServer(opts Options, cfg *setting.Cfg, httpServer *api.HTTPServer, roleR
 		version:             opts.Version,
 		commit:              opts.Commit,
 		buildBranch:         opts.BuildBranch,
+		ballastBytes:        opts.BallastBytes,
 		backgroundServices:  backgroundServiceProvider.GetServices(),
 	}
 
@@ -102,6 +106,7 @@ type Server struct {
 	commit             string
 	buildBranch        string
 	backgroundServices []registry.BackgroundService
+	ballastBytes       int
 
 	HTTPServer          *api.HTTPServer
 	roleRegistry        accesscontrol.RoleRegistry
@@ -138,6 +143,11 @@ func (s *Server) Init() error {
 // exited. To initiate shutdown, call the Shutdown method in another goroutine.
 func (s *Server) Run() error {
 	defer close(s.shutdownFinished)
+
+	if s.ballastBytes > 0 {
+		b := ballast.Allocate(s.ballastBytes)
+		defer runtime.KeepAlive(b)
+	}
 
 	if err := s.Init(); err != nil {
 		return err

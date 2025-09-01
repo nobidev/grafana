@@ -23,6 +23,7 @@ var (
 	ProfileContention    bool
 	Tracing              bool
 	TracingFile          string
+	BallastBytes         int
 )
 
 var commonFlags = []cli.Flag{
@@ -105,5 +106,11 @@ var commonFlags = []cli.Flag{
 		Value:       "trace.out",
 		Usage:       "Define tracing output file",
 		Destination: &TracingFile,
+	},
+	&cli.IntFlag{
+		Name:        "ballast-bytes",
+		Value:       0,
+		Usage:       "Size of memory ballast in bytes, used to slow down rate of GC (and thus save CPU) at the cost of using more memory.",
+		Destination: &BallastBytes,
 	},
 }
