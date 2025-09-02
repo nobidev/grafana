@@ -2,9 +2,11 @@ package correlation
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 
 	correlation "github.com/grafana/grafana/apps/correlation/pkg/apis/correlation/v0alpha1"
+	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	correlationsvc "github.com/grafana/grafana/pkg/services/correlations"
 )
@@ -61,7 +63,7 @@ func UnstructuredToLegacyPlaylistDTO(item unstructured.Unstructured) *playlistsv
 	return dto
 }*/
 
-func convertToK8sResource(v *correlationsvc.Correlation, namespacer request.NamespaceMapper) *correlation.Correlation {
+func convertToK8sResource(v correlationsvc.Correlation, namespacer request.NamespaceMapper) *correlation.Correlation {
 	spec := correlation.CorrelationSpec{
 		SourceUid: v.SourceUID,
 		TargetUid: *v.TargetUID,
@@ -96,22 +98,28 @@ func convertToK8sResource(v *correlationsvc.Correlation, namespacer request.Name
 	
 	return c
 }
-/*
-func convertToLegacyUpdateCommand(p *playlist.Playlist, orgId int64) (*playlistsvc.UpdatePlaylistCommand, error) {
-	spec := p.Spec
-	cmd := &playlistsvc.UpdatePlaylistCommand{
-		UID:      p.Name,
-		Name:     spec.Title,
-		Interval: spec.Interval,
-		OrgId:    orgId,
+
+func convertToLegacyUpdateCommand(c *correlation.Correlation, orgId int64) (*correlationsvc.UpdateCorrelationCommand, error) {
+	spec := c.Spec
+	cmd := &correlationsvc.UpdateCorrelationCommand{
+		UID: c.Name,
+		SourceUID: spec.SourceUid,
+		OrgId: orgId,
+		Label: spec.Label,
+		Description: spec.Description,
+		Config: &correlationsvc.CorrelationConfigUpdateDTO{
+			Field: &spec.Config.Field,
+			Target: (*map[string]any)(&spec.Config.Target),
+			Transformations: make([]correlationsvc.Transformation, 0, len(spec.Config.Transformations)),
+		},
+		Type: (*correlationsvc.CorrelationType)(&spec.Type),
 	}
-	for _, item := range spec.Items {
-		if item.Type == playlist.PlaylistItemTypeDashboardById {
-			return nil, fmt.Errorf("unsupported item type: %s", item.Type)
-		}
-		cmd.Items = append(cmd.Items, playlistsvc.PlaylistItem{
-			Type:  string(item.Type),
-			Value: item.Value,
+	for _, transformation := range spec.Config.Transformations {
+		cmd.Config.Transformations = append(cmd.Config.Transformations, correlationsvc.Transformation{
+			Type: transformation.Type,
+			Expression: transformation.Expression,
+			Field: transformation.Field,
+			MapValue: transformation.MapValue,
 		})
 	}
 	return cmd, nil
@@ -124,4 +132,4 @@ func getLegacyID(item *unstructured.Unstructured) int64 {
 		return 0
 	}
 	return meta.GetDeprecatedInternalID() // nolint:staticcheck
-}*/
+}

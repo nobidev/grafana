@@ -74,7 +74,7 @@ func (s *legacyStorage) List(ctx context.Context, options *internalversion.ListO
 
 	list := &correlation.CorrelationList{}
 	for _, cor := range res.Correlations {
-		list.Items = append(list.Items, correlationsvc.ConvertToK8sResource(cor, s.namespacer))
+		list.Items = append(list.Items, convertToK8sResource(cor, s.namespacer))
 	}
 	return list, nil
 }
@@ -99,8 +99,8 @@ func (s *legacyStorage) Get(ctx context.Context, name string, options *metav1.Ge
 		return nil, err
 	}
 
-	obj := correlationsvc.ConvertToK8sResource(c, s.namespacer)
-	return &obj, nil
+	obj := convertToK8sResource(c, s.namespacer)
+	return obj, nil
 }
 
 func (s *legacyStorage) Create(ctx context.Context,
@@ -148,18 +148,18 @@ func (s *legacyStorage) Update(ctx context.Context,
 	if err != nil {
 		return old, created, err
 	}
-	p, ok := obj.(*correlation.Correlation)
+	c, ok := obj.(*correlation.Correlation)
 	if !ok {
 		return nil, created, fmt.Errorf("expected correlation after update")
 	}
 
-	r, err := s.service.UpdateCorrelation(ctx, correlationsvc.ConvertToLegacyUpdateCommand(p, info.OrgID))
+	r, err := s.service.UpdateCorrelation(ctx, convertToLegacyUpdateCommand(c, info.OrgID))
 	if err != nil {
 		return nil, false, err
 	}
 
-	converted := correlationsvc.ConvertToK8sResource(r, s.namespacer)
-	return &converted, created, err
+	converted := convertToK8sResource(r, s.namespacer)
+	return converted, created, err
 }
 
 // GracefulDeleter
@@ -185,5 +185,5 @@ func (s *legacyStorage) Delete(ctx context.Context, name string, deleteValidatio
 
 // CollectionDeleter
 func (s *legacyStorage) DeleteCollection(ctx context.Context, deleteValidation rest.ValidateObjectFunc, options *metav1.DeleteOptions, listOptions *internalversion.ListOptions) (runtime.Object, error) {
-	return nil, fmt.Errorf("DeleteCollection for correlationS not implemented")
+	return nil, fmt.Errorf("DeleteCollection for correlations not implemented")
 }

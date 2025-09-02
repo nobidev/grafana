@@ -227,10 +227,10 @@ type UpdateCorrelationCommand struct {
 
 	// Optional label identifying the correlation
 	// example: My label
-	Label *string `json:"label"`
+	Label string `json:"label"`
 	// Optional description of the correlation
 	// example: Logs to Traces
-	Description *string `json:"description"`
+	Description string `json:"description"`
 	// Correlation Configuration
 	Config *CorrelationConfigUpdateDTO `json:"config"`
 	// correlation type
@@ -238,7 +238,7 @@ type UpdateCorrelationCommand struct {
 }
 
 func (c UpdateCorrelationCommand) Validate() error {
-	if c.Label == nil && c.Description == nil && c.Type == nil && (c.Config == nil || (c.Config.Field == nil && c.Config.Target == nil)) {
+	if c.Label == "" && c.Description == "" && c.Type == nil && (c.Config == nil || (c.Config.Field == nil && c.Config.Target == nil)) {
 		return ErrUpdateCorrelationEmptyParams
 	}
 
