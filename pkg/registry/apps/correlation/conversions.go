@@ -108,11 +108,11 @@ func convertToLegacyUpdateCommand(c *correlation.Correlation, orgId int64) (*cor
 		Label: spec.Label,
 		Description: spec.Description,
 		Config: &correlationsvc.CorrelationConfigUpdateDTO{
-			Field: &spec.Config.Field,
-			Target: (*map[string]any)(&spec.Config.Target),
+			Field: spec.Config.Field,
+			Target: (map[string]any)(spec.Config.Target),
 			Transformations: make([]correlationsvc.Transformation, 0, len(spec.Config.Transformations)),
 		},
-		Type: (*correlationsvc.CorrelationType)(&spec.Type),
+		Type: (correlationsvc.CorrelationType)(spec.Type),
 	}
 	for _, transformation := range spec.Config.Transformations {
 		cmd.Config.Transformations = append(cmd.Config.Transformations, correlationsvc.Transformation{

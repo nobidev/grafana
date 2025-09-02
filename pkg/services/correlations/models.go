@@ -208,10 +208,10 @@ type UpdateCorrelationResponseBody struct {
 type CorrelationConfigUpdateDTO struct {
 	// Field used to attach the correlation link
 	// example: message
-	Field *string `json:"field"`
+	Field string `json:"field"`
 	// Target data query
 	// example: {"prop1":"value1","prop2":"value"}
-	Target *map[string]any `json:"target"`
+	Target map[string]any `json:"target"`
 	// Source data transformations
 	// example: [{"type": "logfmt"},{"type":"regex","expression":"(Superman|Batman)", "variable":"name"}]
 	Transformations []Transformation `json:"transformations"`
@@ -232,13 +232,13 @@ type UpdateCorrelationCommand struct {
 	// example: Logs to Traces
 	Description string `json:"description"`
 	// Correlation Configuration
-	Config *CorrelationConfigUpdateDTO `json:"config"`
+	Config CorrelationConfigUpdateDTO `json:"config"`
 	// correlation type
-	Type *CorrelationType `json:"type"`
+	Type CorrelationType `json:"type"`
 }
 
 func (c UpdateCorrelationCommand) Validate() error {
-	if c.Label == "" && c.Description == "" && c.Type == nil && (c.Config == nil || (c.Config.Field == nil && c.Config.Target == nil)) {
+	if c.Label == "" && c.Description == "" && c.Type == "" && (c.Config == "" || (c.Config.Field == "" && c.Config.Target == nil)) {
 		return ErrUpdateCorrelationEmptyParams
 	}
 
