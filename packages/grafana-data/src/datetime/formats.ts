@@ -99,9 +99,16 @@ export function localTimeFormat(
   if (missingIntlDateTimeFormatSupport()) {
     return fallback ?? DEFAULT_SYSTEM_DATE_FORMAT;
   }
-
   if (!locale && navigator) {
-    locale = [...navigator.languages];
+    try {
+      locale = [...navigator.languages];
+    } catch (error) {
+      // In Linux LANG=c is pretty common and it leads to RangeError
+      if (error instanceof RangeError) {
+        console.log('Error getting browser languages:', error);
+        locale = null;
+      }
+    }
   }
 
   // https://momentjs.com/docs/#/displaying/format/
