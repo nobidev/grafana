@@ -12,6 +12,11 @@ export enum OrderByMode {
   Auto = 'auto',
 }
 
+export enum RenameMode {
+  Manual = 'manual',
+  Mapping = 'mapping',
+}
+
 export enum Order {
   Off = 'off',
   Asc = 'asc',
@@ -29,10 +34,18 @@ export interface OrderByItem {
   desc?: boolean;
 }
 
+export interface RenameOptions {
+  mappingQueryRefId?: string;
+  sourceField?: string;
+  targetField?: string;
+}
+
 export interface OrderFieldsTransformerOptions {
   indexByName?: Record<string, number>;
   orderByMode?: OrderByMode;
   orderBy?: OrderByItem[];
+  renameMode?: RenameMode;
+  renameOptions?: RenameOptions;
 }
 
 export const orderFieldsTransformer: DataTransformerInfo<OrderFieldsTransformerOptions> = {

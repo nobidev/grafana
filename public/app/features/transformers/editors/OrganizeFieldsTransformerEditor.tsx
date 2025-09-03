@@ -1,6 +1,6 @@
 import { css, cx } from '@emotion/css';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
-import { useCallback, useId, useMemo } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 
 import {
   DataTransformerID,
@@ -9,6 +9,8 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
   TransformerCategory,
+  StandardEditorsRegistryItem,
+  FieldNamePickerConfigSettings,
 } from '@grafana/data';
 import {
   createOrderFieldsComparer,
@@ -32,13 +34,18 @@ import {
   InlineField,
   InlineFieldRow,
   RadioButtonGroup,
+  Combobox,
 } from '@grafana/ui';
 
-import { createFieldsOrdererAuto } from '../../../../../packages/grafana-data/src/transformations/transformers/order';
+import {
+  createFieldsOrdererAuto,
+  RenameMode,
+} from '../../../../../packages/grafana-data/src/transformations/transformers/order';
 import { getTransformationContent } from '../docs/getTransformationContent';
 import darkImage from '../images/dark/organize.svg';
 import lightImage from '../images/light/organize.svg';
 import { getAllFieldNamesFromDataFrames, getDistinctLabels, useAllFieldNamesFromDataFrames } from '../utils';
+import { FieldNamePicker } from '@grafana/ui/internal';
 
 interface OrganizeFieldsTransformerEditorProps extends TransformerUIProps<OrganizeFieldsTransformerOptions> {}
 
@@ -52,8 +59,20 @@ function move(arr: unknown[], from: number, to: number) {
   arr.splice(to, 0, arr.splice(from, 1)[0]);
 }
 
+const fieldNamePickerSettings = {
+  settings: { width: 24, isClearable: false },
+} as StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings>;
+
 const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeFieldsTransformerEditorProps) => {
-  const { indexByName, excludeByName, renameByName, includeByName, orderBy, orderByMode } = options;
+  const { indexByName, excludeByName, renameByName, includeByName, orderBy, orderByMode, renameMode, renameOptions } =
+    options;
+
+  const selectedFrameForRenameMapping = input.find((x) => x.refId === renameOptions?.mappingQueryRefId);
+
+  const refIds = input
+    .map((x) => x.refId)
+    .filter((x) => x != null)
+    .map((x) => ({ label: x, value: x }));
 
   const fieldNames = useAllFieldNamesFromDataFrames(input);
   const orderedFieldNames = useMemo(() => {
@@ -182,7 +201,7 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
       onChange({
         ...options,
         renameByName: {
-          ...options.renameByName,
+          ...renameByName,
           [from]: to,
         },
       });
@@ -272,13 +291,14 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
                 value: OrderByMode.Auto,
               },
             ]}
-            value={options.orderByMode ?? OrderByMode.Manual}
+            value={orderByMode ?? OrderByMode.Manual}
             onChange={(v) => onChange({ ...options, orderByMode: v })}
           />
         </InlineField>
       </InlineFieldRow>
+
       <DragDropContext onDragEnd={onDragEndLabels}>
-        {options.orderByMode === OrderByMode.Auto && (
+        {orderByMode === OrderByMode.Auto && (
           <Droppable droppableId="sortable-labels-transformer" direction="vertical">
             {(provided) => {
               return (
@@ -300,6 +320,77 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
           </Droppable>
         )}
       </DragDropContext>
+      <InlineFieldRow className={styles.fieldOrderRadio}>
+        <InlineField label={t('transformers.organize-fields-transformer-editor.field-rename', 'Field rename')}>
+          <RadioButtonGroup
+            options={[
+              {
+                label: t('transformers.organize-fields-transformer-editor.field-rename-manual', 'Manual'),
+                value: RenameMode.Manual,
+              },
+              {
+                label: t('transformers.organize-fields-transformer-editor.field-rename-mapped', 'Mapped'),
+                value: RenameMode.Mapping,
+              },
+            ]}
+            value={renameMode ?? RenameMode.Manual}
+            onChange={(v) => onChange({ ...options, renameMode: v })}
+          />
+        </InlineField>
+      </InlineFieldRow>
+      {renameMode === RenameMode.Mapping && (
+        <InlineFieldRow>
+          <InlineField
+            label={t('transformers.field-name-mapping-transformer-editor.label-mapping-query', 'Mapping query')}
+            labelWidth={20}
+          >
+            <Combobox
+              onChange={(option) => {
+                if (option.value !== undefined) {
+                  onChange({
+                    ...options,
+                    renameOptions: { ...renameOptions, mappingQueryRefId: option.value },
+                  });
+                }
+              }}
+              options={refIds}
+              value={renameOptions?.mappingQueryRefId}
+              width={30}
+            />
+          </InlineField>
+        </InlineFieldRow>
+      )}
+      {renameMode === RenameMode.Mapping && selectedFrameForRenameMapping && (
+        <>
+          <InlineFieldRow>
+            <InlineField
+              label={t('transformers.field-name-mapping-transformer-editor.label-field-to-replace', 'Field to replace')}
+              labelWidth={20}
+            >
+              <FieldNamePicker
+                context={{ data: [selectedFrameForRenameMapping] }}
+                value={options?.renameOptions?.targetField ?? ''}
+                onChange={(v) => onChange({ ...options, renameOptions: { ...renameOptions, targetField: v } })}
+                item={fieldNamePickerSettings}
+              />
+            </InlineField>
+          </InlineFieldRow>
+
+          <InlineFieldRow>
+            <InlineField
+              label={t('transformers.field-name-mapping-transformer-editor.label-replace-with', 'Replace with')}
+              labelWidth={20}
+            >
+              <FieldNamePicker
+                context={{ data: [selectedFrameForRenameMapping] }}
+                value={options?.renameOptions?.sourceField ?? ''}
+                onChange={(v) => onChange({ ...options, renameOptions: { ...renameOptions, sourceField: v } })}
+                item={fieldNamePickerSettings}
+              />
+            </InlineField>
+          </InlineFieldRow>
+        </>
+      )}
 
       <DragDropContext onDragEnd={onDragEndFields}>
         <Droppable droppableId="sortable-fields-transformer" direction="vertical">
@@ -320,6 +411,7 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
                     visible={isVisible}
                     key={fieldName}
                     isDragDisabled={options.orderByMode === OrderByMode.Auto}
+                    isRenameDisabled={options.renameMode === RenameMode.Mapping}
                   />
                 );
               })}
@@ -351,6 +443,7 @@ interface DraggableFieldProps {
   onToggleVisibility: (fieldName: string, isVisible: boolean) => void;
   onRenameField: (from: string, to: string) => void;
   isDragDisabled: boolean;
+  isRenameDisabled: boolean;
 }
 
 const DraggableFieldName = ({
@@ -361,6 +454,7 @@ const DraggableFieldName = ({
   onToggleVisibility,
   onRenameField,
   isDragDisabled,
+  isRenameDisabled,
 }: DraggableFieldProps) => {
   const styles = useStyles2(getFieldNameStyles);
 
@@ -399,14 +493,16 @@ const DraggableFieldName = ({
               </Text>
             </Stack>
           </InlineLabel>
-          <Input
-            defaultValue={renamedFieldName || ''}
-            placeholder={t('transformers.draggable-field-name.rename-placeholder', 'Rename {{fieldName}}', {
-              fieldName,
-              interpolation: { escapeValue: false },
-            })}
-            onBlur={(event) => onRenameField(fieldName, event.currentTarget.value)}
-          />
+          {!isRenameDisabled && (
+            <Input
+              defaultValue={renamedFieldName || ''}
+              placeholder={t('transformers.draggable-field-name.rename-placeholder', 'Rename {{fieldName}}', {
+                fieldName,
+                interpolation: { escapeValue: false },
+              })}
+              onBlur={(event) => onRenameField(fieldName, event.currentTarget.value)}
+            />
+          )}
         </Box>
       )}
     </Draggable>
