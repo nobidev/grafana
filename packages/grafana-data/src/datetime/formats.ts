@@ -14,7 +14,6 @@ export interface SystemDateFormatSettings {
 
 const DEFAULT_SYSTEM_DATE_FORMAT = 'YYYY-MM-DD HH:mm:ss';
 const DEFAULT_SYSTEM_DATE_MS_FORMAT = 'YYYY-MM-DD HH:mm:ss.SSS';
-const DEFAULT_LANGUAGE = 'en-US';
 
 export class SystemDateFormatsState {
   fullDate = DEFAULT_SYSTEM_DATE_FORMAT;
@@ -101,15 +100,7 @@ export function localTimeFormat(
     return fallback ?? DEFAULT_SYSTEM_DATE_FORMAT;
   }
   if (!locale && navigator) {
-    try {
-      locale = [...navigator.languages];
-    } catch (error) {
-      // In Linux LANG=c is pretty common and it leads to RangeError
-      if (error instanceof RangeError) {
-        console.log('Error getting browser languages:', error);
-        locale = DEFAULT_LANGUAGE;
-      }
-    }
+    locale = [...navigator.languages];
   }
 
   // https://momentjs.com/docs/#/displaying/format/
