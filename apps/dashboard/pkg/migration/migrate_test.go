@@ -321,6 +321,8 @@ func TestLogMessageStructure(t *testing.T) {
 		t.Log("✓ Error logging includes errorType and error fields")
 		t.Log("✓ Success logging uses Debug level, failure logging uses Error level")
 	})
+}
+
 // findJSONFiles recursively finds all .json files in a directory
 func findJSONFiles(dir string) ([]string, error) {
 	var jsonFiles []string
@@ -392,7 +394,7 @@ func TestMigrateDevDashboards(t *testing.T) {
 			}
 
 			// Input check: migrate to same version should not change anything
-			err := migration.Migrate(inputDashCopy, inputVersion)
+			err := migration.Migrate(context.Background(), inputDashCopy, inputVersion)
 			if err != nil {
 				t.Fatalf("Input check migration failed for %s (v%d): %v", relativeOutputPath, inputVersion, err)
 			}
@@ -426,7 +428,7 @@ func TestMigrateDevDashboards(t *testing.T) {
 func testDevDashboardMigration(t *testing.T, dash map[string]interface{}, outputFileName string, targetVersion int) {
 	t.Helper()
 
-	err := migration.Migrate(dash, targetVersion)
+	err := migration.Migrate(context.Background(), dash, targetVersion)
 	if err != nil {
 		t.Fatalf("Migration to version %d failed for %s: %v", targetVersion, outputFileName, err)
 	}
@@ -451,5 +453,4 @@ func testDevDashboardMigration(t *testing.T, dash map[string]interface{}, output
 	existingBytes, err := os.ReadFile(outPath)
 	require.NoError(t, err, "failed to read existing output file")
 	require.JSONEq(t, string(existingBytes), string(outBytes), "%s did not match", outPath)
->>>>>>> bf9f4e63dff (Add comprehensive dev-dashboard migration testing infrastructure)
 }
