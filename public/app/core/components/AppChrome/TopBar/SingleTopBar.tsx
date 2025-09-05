@@ -60,12 +60,10 @@ export const SingleTopBar = memo(function SingleTopBar({
 }: Props) {
   const { chrome } = useGrafana();
   const state = chrome.useState();
-  const { setDockedComponentId, dockedComponentId, availableComponents } = useExtensionSidebarContext();
   const menuDockedAndOpen = !state.chromeless && state.megaMenuDocked && state.megaMenuOpen;
   const styles = useStyles2(getStyles, menuDockedAndOpen);
   const navIndex = useSelector((state) => state.navIndex);
   const helpNode = cloneDeep(navIndex['help']);
-  const enrichedHelpNode = helpNode ? enrichHelpItem(helpNode) : undefined;
   const profileNode = navIndex['profile'];
   const homeNav = useSelector((state) => state.navIndex)[HOME_NAV_ID];
   const breadcrumbs = buildBreadcrumbs(sectionNav, pageNav, homeNav);
@@ -104,42 +102,9 @@ export const SingleTopBar = memo(function SingleTopBar({
           <TopSearchBarCommandPaletteTrigger />
           {unifiedHistoryEnabled && !isSmallScreen && <HistoryContainer />}
           {!isSmallScreen && <QuickAdd />}
-          {enrichedHelpNode &&
-            (enrichedHelpNode.hideFromTabs && availableComponents.has('grafana-grafanadocsplugin-app') ? (
-              (() => {
-                const componentId = getComponentIdFromComponentMeta('grafana-grafanadocsplugin-app', {
-                  title: 'Grafana Pathfinder',
-                } as any);
-                const isOpen = dockedComponentId === componentId;
-                return (
-                  <ToolbarButton
-                    iconOnly
-                    icon="question-circle"
-                    aria-label={t('navigation.help.aria-label', 'Help')}
-                    className={isOpen ? styles.helpButtonActive : undefined}
-                    onClick={() => {
-                      if (isOpen) {
-                        setDockedComponentId(undefined);
-                      } else {
-                        const appEvents = getAppEvents();
-                        appEvents.publish(
-                          new OpenExtensionSidebarEvent({
-                            pluginId: 'grafana-grafanadocsplugin-app',
-                            componentTitle: 'Grafana Pathfinder',
-                          })
-                        );
-                      }
-                    }}
-                  />
-                );
-              })()
-            ) : (
-              <Dropdown overlay={() => <TopNavBarMenu node={enrichedHelpNode} />} placement="bottom-end">
-                <ToolbarButton iconOnly icon="question-circle" aria-label={t('navigation.help.aria-label', 'Help')} />
-              </Dropdown>
-            ))}
           <NavToolbarSeparator />
           {!isSmallScreen && <ExtensionToolbarItem compact={isSmallScreen} />}
+          <HelpButton helpNode={helpNode} styles={styles} />
           {!showToolbarLevel && actions}
           {!contextSrv.user.isSignedIn && <SignInLink />}
           <InviteUserButton />
@@ -152,6 +117,58 @@ export const SingleTopBar = memo(function SingleTopBar({
     </>
   );
 });
+
+interface HelpButtonProps {
+  helpNode: NavModelItem | undefined;
+  styles: ReturnType<typeof getStyles>;
+}
+
+function HelpButton({ helpNode, styles }: HelpButtonProps) {
+  const { setDockedComponentId, dockedComponentId, availableComponents } = useExtensionSidebarContext();
+  const enrichedHelpNode = helpNode ? enrichHelpItem(helpNode) : undefined;
+
+  if (!enrichedHelpNode) {
+    return null;
+  }
+
+  if (enrichedHelpNode.hideFromTabs && availableComponents.has('grafana-grafanadocsplugin-app')) {
+    const componentId = getComponentIdFromComponentMeta('grafana-grafanadocsplugin-app', {
+      title: 'Grafana Pathfinder',
+      targets: [],
+    });
+
+    const isOpen = dockedComponentId === componentId;
+    const onClick = () => {
+      if (isOpen) {
+        setDockedComponentId(undefined);
+      } else {
+        const appEvents = getAppEvents();
+        appEvents.publish(
+          new OpenExtensionSidebarEvent({
+            pluginId: 'grafana-grafanadocsplugin-app',
+            componentTitle: 'Grafana Pathfinder',
+          })
+        );
+      }
+    };
+
+    return (
+      <ToolbarButton
+        iconOnly
+        icon="question-circle"
+        aria-label={t('navigation.help.aria-label', 'Help')}
+        className={isOpen ? styles.helpButtonActive : undefined}
+        onClick={onClick}
+      />
+    );
+  }
+
+  return (
+    <Dropdown overlay={() => <TopNavBarMenu node={enrichedHelpNode} />} placement="bottom-end">
+      <ToolbarButton iconOnly icon="question-circle" aria-label={t('navigation.help.aria-label', 'Help')} />
+    </Dropdown>
+  );
+}
 
 const getStyles = (theme: GrafanaTheme2, menuDockedAndOpen: boolean) => ({
   layout: css({
