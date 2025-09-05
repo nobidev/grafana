@@ -18,12 +18,27 @@ export function NavLandingPage({ navId, header }: Props) {
   const styles = useStyles2(getStyles);
   const children = node.children?.filter((child) => !child.hideFromTabs);
 
+  const PluginComponents = useExtensionComponents({
+    extensionPoint: `grafana/nav-landing-page/${navId}/v1`,
+    context: { navModel: node } // ?? idk
+  })
+
   return (
     <Page navId={node.id}>
       <Page.Contents>
         <div className={styles.content}>
           {header}
-          {children && children.length > 0 && (
+
+          {/*
+            If we have PluginComponents for this nav ID, render them at full width (inside the <Page />?).
+            Otherwise, use the default cards.
+          */}
+
+          {/* {PluginComponents} */}
+
+          {PluginComponents.length > 0 ? (
+            PluginComponents.map(Component => <Component />)
+          ) : children && children.length > 0 && (
             <section className={styles.grid}>
               {children?.map((child) => (
                 <NavLandingPageCard
