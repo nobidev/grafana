@@ -118,8 +118,8 @@ func (rev *ConfigRevision) GetReceivers(uids []string, prov provenances) ([]*mod
 	return receivers, nil
 }
 
-// GetReceiversNames returns a map of receiver names
-func (rev *ConfigRevision) GetReceiversNames() map[string]struct{} {
+// GetGrafanaReceiversNames returns a map of receiver names that originated from Grafana configuration.
+func (rev *ConfigRevision) GetGrafanaReceiversNames() map[string]struct{} {
 	result := make(map[string]struct{}, len(rev.Config.AlertmanagerConfig.Receivers))
 	for _, r := range rev.Config.AlertmanagerConfig.Receivers {
 		result[r.GetName()] = struct{}{}
