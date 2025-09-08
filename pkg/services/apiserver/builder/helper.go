@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apiserver/pkg/audit"
 	openapinamer "k8s.io/apiserver/pkg/endpoints/openapi"
 	k8srequest "k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
@@ -242,7 +243,7 @@ func SetupConfig(
 		MaxBatchSize:   1,
 		ThrottleEnable: false,
 	})
-	serverConfig.AuditPolicyRuleEvaluator = auditing.PolicyRuleEvaluator{}
+	serverConfig.AuditPolicyRuleEvaluator = auditing.NewUnionPolicyRuleEvaluator(getAuditingPolicyRuleEvaluators(builders))
 
 	serverConfig.EffectiveVersion = getEffectiveVersion(buildTimestamp, buildVersion, buildCommit, buildBranch)
 	// set priority for aggregated discovery
@@ -443,6 +444,32 @@ func InstallAPIs(
 	}
 
 	return nil
+}
+
+func getAuditingPolicyRuleEvaluators(builders []APIGroupBuilder) map[schema.GroupVersion]audit.PolicyRuleEvaluator {
+	policyRuleEvaluators := make(map[schema.GroupVersion]audit.PolicyRuleEvaluator, 0)
+
+	for _, b := range builders {
+		auditor, ok := b.(APIGroupAuditor)
+		if !ok {
+			continue
+		}
+
+		policyRuleEvaluator := auditor.GetPolicyRuleEvaluator()
+		if policyRuleEvaluator == nil {
+			continue
+		}
+
+		for _, gv := range GetGroupVersions(b) {
+			if gv.Empty() {
+				continue
+			}
+
+			policyRuleEvaluators[gv] = policyRuleEvaluator
+		}
+	}
+
+	return policyRuleEvaluators
 }
 
 // AddPostStartHooks adds post start hooks to a generic API server config

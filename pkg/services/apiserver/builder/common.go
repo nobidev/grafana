@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/admission"
+	"k8s.io/apiserver/pkg/audit"
 	"k8s.io/apiserver/pkg/authorization/authorizer"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericapiserver "k8s.io/apiserver/pkg/server"
@@ -56,6 +57,10 @@ type APIGroupVersionsProvider interface {
 
 type APIGroupAuthorizer interface {
 	GetAuthorizer() authorizer.Authorizer
+}
+
+type APIGroupAuditor interface {
+	GetPolicyRuleEvaluator() audit.PolicyRuleEvaluator
 }
 
 type APIGroupMutation interface {

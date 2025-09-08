@@ -4,38 +4,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	auditinternal "k8s.io/apiserver/pkg/apis/audit"
 	"k8s.io/apiserver/pkg/audit"
-	"k8s.io/apiserver/pkg/authorization/authorizer"
 )
-
-// TODO this should be configurable...
-type PolicyRuleEvaluator struct {
-	// cfg *setting.Cfg
-}
-
-var _ audit.PolicyRuleEvaluator = &PolicyRuleEvaluator{}
-
-func (PolicyRuleEvaluator) EvaluatePolicyRule(attrs authorizer.Attributes) audit.RequestAuditConfig {
-	// Skip watch requests otherwise it is too noisy.
-	if attrs.GetVerb() == utils.VerbWatch {
-		return audit.RequestAuditConfig{
-			Level: auditinternal.LevelNone,
-		}
-	}
-
-	return audit.RequestAuditConfig{
-		Level: auditinternal.LevelMetadata,
-		OmitStages: []auditinternal.Stage{
-			auditinternal.StageRequestReceived,
-			auditinternal.StageResponseStarted,
-			auditinternal.StagePanic,
-		},
-		OmitManagedFields: true,
-	}
-}
 
 type GrafanaBackend struct {
 	logger Logger
