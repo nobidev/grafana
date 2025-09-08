@@ -17,7 +17,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/grafana/dskit/concurrency"
-
 	dashboardv1 "github.com/grafana/grafana/apps/dashboard/pkg/apis/dashboard/v1beta1"
 	folderv1 "github.com/grafana/grafana/apps/folder/pkg/apis/folder/v1beta1"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
@@ -109,7 +108,7 @@ func ProvideService(
 
 	supportBundles.RegisterSupportItemCollector(srv.supportBundleCollector())
 
-	ac.RegisterScopeAttributeResolver(dashboards.NewFolderIDScopeResolver(folderStore, srv))
+	ac.RegisterScopeAttributeResolver(dashboards.NewFolderIDScopeResolver(srv))
 	ac.RegisterScopeAttributeResolver(dashboards.NewFolderUIDScopeResolver(srv))
 
 	k8sHandler := client.NewK8sHandler(
@@ -1470,6 +1469,14 @@ func (s *Service) RegisterService(r folder.RegistryService) error {
 	s.registry[r.Kind()] = r
 
 	return nil
+}
+
+func (s *Service) GetFolderUIDFromLegacyID(ctx context.Context, orgID int64, id int64) (string, error) {
+	f, err := s.dashboardFolderStore.GetFolderByID(ctx, orgID, id)
+	if err != nil {
+		return "", err
+	}
+	return f.UID, nil
 }
 
 func (s *Service) supportBundleCollector() supportbundles.Collector {

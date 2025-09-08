@@ -9,6 +9,8 @@ import (
 type Service interface {
 	RegisterService(service RegistryService) error
 
+	GetFolderUIDFromLegacyID(ctx context.Context, orgID int64, id int64) (string, error)
+
 	Create(ctx context.Context, cmd *CreateFolderCommand) (*Folder, error)
 	CreateLegacy(ctx context.Context, cmd *CreateFolderCommand) (*Folder, error)
 

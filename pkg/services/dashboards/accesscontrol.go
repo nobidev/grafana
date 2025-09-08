@@ -5,10 +5,11 @@ import (
 	"errors"
 	"strings"
 
+	"go.opentelemetry.io/otel"
+
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	ac "github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/folder"
-	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -46,7 +47,7 @@ var (
 )
 
 // NewFolderIDScopeResolver provides an ScopeAttributeResolver that is able to convert a scope prefixed with "folders:id:" into an uid based scope.
-func NewFolderIDScopeResolver(folderDB folder.FolderStore, folderSvc folder.Service) (string, ac.ScopeAttributeResolver) {
+func NewFolderIDScopeResolver(folderSvc folder.Service) (string, ac.ScopeAttributeResolver) {
 	prefix := ScopeFoldersProvider.GetResourceScope("")
 	return prefix, ac.ScopeAttributeResolverFunc(func(ctx context.Context, orgID int64, scope string) ([]string, error) {
 		ctx, span := tracer.Start(ctx, "dashboards.NewFolderIDScopeResolver")
@@ -66,17 +67,17 @@ func NewFolderIDScopeResolver(folderDB folder.FolderStore, folderSvc folder.Serv
 		}
 
 		return identity.WithServiceIdentityFn(ctx, orgID, func(ctx context.Context) ([]string, error) {
-			folder, err := folderDB.GetFolderByID(ctx, orgID, id)
+			uid, err := folderSvc.GetFolderUIDFromLegacyID(ctx, orgID, id)
 			if err != nil {
 				return nil, err
 			}
 
-			result, err := GetInheritedScopes(ctx, folder.OrgID, folder.UID, folderSvc)
+			result, err := GetInheritedScopes(ctx, orgID, uid, folderSvc)
 			if err != nil {
 				return nil, err
 			}
 
-			return append([]string{ScopeFoldersProvider.GetResourceScopeUID(folder.UID)}, result...), nil
+			return append([]string{ScopeFoldersProvider.GetResourceScopeUID(uid)}, result...), nil
 		})
 	})
 }
