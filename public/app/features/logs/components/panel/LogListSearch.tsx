@@ -5,7 +5,7 @@ import { VariableSizeList } from 'react-window';
 import { escapeRegex, GrafanaTheme2, shallowCompare } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
-import { IconButton, Input, useStyles2 } from '@grafana/ui';
+import { IconButton, Input, Tooltip, useStyles2 } from '@grafana/ui';
 
 import { useLogListContext } from './LogListContext';
 import { useLogListSearchContext } from './LogListSearchContext';
@@ -137,6 +137,7 @@ export const LogListSearch = ({ listRef, logs }: Props) => {
           'Client-side search for strings within the displayed logs. Not to be confused with query filters. Use this component to search for specific strings in your log results.'
         )}
       />
+      <CaseSensitivityIcon />
       <IconButton
         onClick={prevResult}
         disabled={!matches || !matches.length}
@@ -158,6 +159,48 @@ export const LogListSearch = ({ listRef, logs }: Props) => {
       />
       <IconButton onClick={hideSearch} name="times" aria-label={t('logs.log-list-search.close', 'Close search')} />
     </div>
+  );
+};
+
+const CaseSensitivityIcon = () => {
+  const { caseSensitive, setCaseSensitivity } = useLogListSearchContext();
+  const styles = useStyles2(getStyles);
+
+  const toggleSensitivity = useCallback(() => {
+    setCaseSensitivity(!caseSensitive);
+  }, [caseSensitive, setCaseSensitivity]);
+
+  return (
+    <Tooltip
+      content={
+        caseSensitive
+          ? t('logs.log-list-search.case-sensitivity.disable-tooltip', 'Disable case sensitive search')
+          : t('logs.log-list-search.case-sensitivity.enable-tooltip', 'Enable case sensitive search')
+      }
+    >
+      <button
+        onClick={toggleSensitivity}
+        className={styles.button}
+        aria-label={
+          caseSensitive
+            ? t('logs.log-list-search.case-sensitivity.disable-tooltip', 'Disable case sensitive search')
+            : t('logs.log-list-search.case-sensitivity.enable-tooltip', 'Enable case sensitive search')
+        }
+      >
+        <svg
+          className={caseSensitive ? styles.iconActive : styles.iconInactive}
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* eslint-disable-next-line @grafana/i18n/no-untranslated-strings */}
+          <text fontSize="13" width="16" height="16" x="50%" y="50%" dominantBaseline="central" textAnchor="middle">
+            Aa
+          </text>
+        </svg>
+      </button>
+    </Tooltip>
   );
 };
 
@@ -186,6 +229,20 @@ const getStyles = (theme: GrafanaTheme2) => ({
       width: '95%',
       opacity: 1,
     },
+  }),
+  button: css({
+    alignItems: 'center',
+    border: 'none',
+    backgroundColor: 'transparent',
+    display: 'flex',
+    margin: '0 4px 0 0',
+    padding: 0,
+  }),
+  iconActive: css({
+    fill: theme.colors.text.maxContrast,
+  }),
+  iconInactive: css({
+    fill: theme.colors.text.disabled,
   }),
 });
 
