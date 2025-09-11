@@ -127,7 +127,7 @@ func TestIntegrationFoldersApp(t *testing.T) {
 		modeDw := grafanarest.DualWriterMode(mode)
 
 		t.Run(fmt.Sprintf("with dual write (unified storage, mode %v)", modeDw), func(t *testing.T) {
-			doFolderTests(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
+			doTestingFolders(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
 				AppModeProduction:    true,
 				DisableAnonymous:     true,
 				APIServerStorageType: "unified",
@@ -154,7 +154,7 @@ func TestIntegrationFoldersApp(t *testing.T) {
 		})
 
 		t.Run(fmt.Sprintf("with dual write (unified storage, mode %v, create existing folder)", modeDw), func(t *testing.T) {
-			doCreateDuplicateFolderTest(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
+			doCreateDuplicateTestingFolder(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
 				AppModeProduction:    true,
 				DisableAnonymous:     true,
 				APIServerStorageType: "unified",
@@ -180,7 +180,7 @@ func TestIntegrationFoldersApp(t *testing.T) {
 		})
 
 		t.Run(fmt.Sprintf("with dual write (unified storage, mode %v, create circular reference folder)", modeDw), func(t *testing.T) {
-			doCreateCircularReferenceFolderTest(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
+			doCreateCircularReferenceTestingFolder(t, apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
 				AppModeProduction:    true,
 				DisableAnonymous:     true,
 				APIServerStorageType: "unified",
@@ -220,9 +220,34 @@ func TestIntegrationFoldersApp(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("tree", func(t *testing.T) {
+		root := TestingFolder{
+			Children: []TestingFolder{
+				{Name: "top",
+					Creator: helper.Org1.Admin,
+					Children: []TestingFolder{
+						{Name: "middle",
+							Creator: helper.Org1.Admin,
+							Children: []TestingFolder{
+								{Name: "child",
+									Creator: helper.Org1.Admin,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+		root.RequireUniqueName(t, make(map[string]bool))
+		root.CreateUsingLegacyAPI(t, helper, "")
+
+		legacy := GetFoldersFromSearch(t, helper.Org1.Admin)
+		require.Equal(t, `xx`, legacy.String())
+	})
 }
 
-func doFolderTests(t *testing.T, helper *apis.K8sTestHelper) *apis.K8sTestHelper {
+func doTestingFolders(t *testing.T, helper *apis.K8sTestHelper) *apis.K8sTestHelper {
 	t.Run("Check folder CRUD (just create for now) in legacy API appears in k8s apis", func(t *testing.T) {
 		client := helper.GetResourceClient(apis.ResourceClientArgs{
 			// #TODO: figure out permissions topic
@@ -430,7 +455,7 @@ func doNestedCreateTest(t *testing.T, helper *apis.K8sTestHelper) {
 	require.Equal(t, parentCreate.Result.URL, parent.URL)
 }
 
-func doCreateDuplicateFolderTest(t *testing.T, helper *apis.K8sTestHelper) {
+func doCreateDuplicateTestingFolder(t *testing.T, helper *apis.K8sTestHelper) {
 	client := helper.GetResourceClient(apis.ResourceClientArgs{
 		User: helper.Org1.Admin,
 		GVR:  gvr,
@@ -482,7 +507,7 @@ func doCreateEnsureTitleIsTrimmedTest(t *testing.T, helper *apis.K8sTestHelper) 
 	require.Equal(t, "my folder", create.Result.Title)
 }
 
-func doCreateCircularReferenceFolderTest(t *testing.T, helper *apis.K8sTestHelper) {
+func doCreateCircularReferenceTestingFolder(t *testing.T, helper *apis.K8sTestHelper) {
 	client := helper.GetResourceClient(apis.ResourceClientArgs{
 		User: helper.Org1.Admin,
 		GVR:  gvr,
