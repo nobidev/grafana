@@ -2058,9 +2058,6 @@
       "text-loading-rules": "Loading rules...",
       "title-dashboard-not-saved": "Dashboard not saved"
     },
-    "paused-badge": {
-      "paused": "Paused"
-    },
     "payload-editor": {
       "edit-payload": "Edit payload",
       "label-add-custom-alert-instance": "Add custom alert instance",
@@ -2212,9 +2209,6 @@
       "label-time-range": "Time Range",
       "max-data-points": "MD = {{maxDataPoints}}",
       "min-interval": "Min. Interval = {{minInterval}}"
-    },
-    "query-preview": {
-      "relative-time-range": "<0>{{from}}</0> to now"
     },
     "queryAndExpressionsStep": {
       "disableAdvancedOptions": {
@@ -2560,6 +2554,10 @@
       "pending": "{{pendingStats}} pending",
       "recording": "{{recordingStats}} recording",
       "recovering": "{{recoveringStats}} recovering"
+    },
+    "rule-time-range-label": {
+      "relative": "<0>{{from}}</0> to now",
+      "relative-with-to": "<0>{{from}}</0> to <2>{{to}}</2>"
     },
     "rule-type-picker": {
       "grafana-managed": "Select &ldquo;Grafana managed&rdquo; unless you have a Mimir, Loki or Cortex data source with the Ruler API enabled."
