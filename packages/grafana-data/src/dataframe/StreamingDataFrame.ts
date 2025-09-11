@@ -325,7 +325,8 @@ export class StreamingDataFrame implements DataFrame {
         this.fields = values.map((vals, idx) => {
           let name = `Field ${idx}`;
           let type = guessFieldTypeFromValue(vals[0]);
-          const isTime = idx === 0 && type === FieldType.number && (vals as number[])[0] > 1600016688632;
+          const isTime =
+            idx === 0 && type === FieldType.number && typeof vals[0] === 'number' && vals[0] > 1600016688632;
           if (isTime) {
             type = FieldType.time;
             name = 'Time';
@@ -420,9 +421,7 @@ export class StreamingDataFrame implements DataFrame {
   };
 
   getMatchingFieldIndexes = (fieldPredicate: (f: Field) => boolean): number[] =>
-    this.fields
-      .map((f, index) => (fieldPredicate(f) ? index : undefined))
-      .filter((val) => val !== undefined) as number[];
+    this.fields.map((f, index) => (fieldPredicate(f) ? index : undefined)).filter((val) => val !== undefined);
 
   getValuesFromLastPacket = (): unknown[][] =>
     this.fields.map((f) => {

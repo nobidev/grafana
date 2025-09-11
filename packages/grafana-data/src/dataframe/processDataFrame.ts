@@ -14,7 +14,6 @@ import {
   DataFrameWithValue,
   DataFrameDTO,
   FieldDTO,
-  FieldConfig,
 } from '../types/dataFrame';
 import { DataQueryResponseData } from '../types/datasource';
 import { GraphSeriesXY, GraphSeriesValue } from '../types/graph';
@@ -24,15 +23,15 @@ import { arrayToDataFrame } from './ArrayDataFrame';
 import { dataFrameFromJSON } from './DataFrameJSON';
 
 function convertTableToDataFrame(table: TableData): DataFrame {
-  const fields = table.columns.map((c) => {
+  const fields: Field[] = table.columns.map((c) => {
     // TODO: should be Column but type does not exists there so not sure whats up here.
     const { text, type, ...disp } = c as any;
     const values: unknown[] = [];
     return {
       name: text?.length ? text : c, // rename 'text' to the 'name' field
-      config: (disp || {}) as FieldConfig,
+      config: disp || {},
       values,
-      type: type && Object.values(FieldType).includes(type as FieldType) ? (type as FieldType) : FieldType.other,
+      type: type && Object.values(FieldType).includes(type) ? type : FieldType.other,
     };
   });
 
@@ -65,17 +64,17 @@ function convertTableToDataFrame(table: TableData): DataFrame {
 }
 
 function convertTimeSeriesToDataFrame(timeSeries: TimeSeries): DataFrame {
-  const times: number[] = [];
+  const times: Array<number | null> = [];
   const values: TimeSeriesValue[] = [];
 
   // Sometimes the points are sent as datapoints
   const points = timeSeries.datapoints || (timeSeries as any).points;
   for (const point of points) {
     values.push(point[0]);
-    times.push(point[1] as number);
+    times.push(point[1]);
   }
 
-  const fields = [
+  const fields: Field[] = [
     {
       name: TIME_SERIES_TIME_FIELD_NAME,
       type: FieldType.time,
@@ -94,7 +93,7 @@ function convertTimeSeriesToDataFrame(timeSeries: TimeSeries): DataFrame {
   ];
 
   if (timeSeries.title) {
-    (fields[1].config as FieldConfig).displayNameFromDS = timeSeries.title;
+    fields[1].config.displayNameFromDS = timeSeries.title;
   }
 
   return {

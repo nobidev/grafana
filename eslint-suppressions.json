@@ -52,12 +52,12 @@
       "count": 3
     },
     "@typescript-eslint/no-explicit-any": {
-      "count": 9
+      "count": 4
     }
   },
   "packages/grafana-data/src/dataframe/StreamingDataFrame.ts": {
     "@typescript-eslint/consistent-type-assertions": {
-      "count": 4
+      "count": 2
     }
   },
   "packages/grafana-data/src/dataframe/processDataFrame.test.ts": {
@@ -67,7 +67,7 @@
   },
   "packages/grafana-data/src/dataframe/processDataFrame.ts": {
     "@typescript-eslint/consistent-type-assertions": {
-      "count": 15
+      "count": 10
     },
     "@typescript-eslint/no-explicit-any": {
       "count": 5

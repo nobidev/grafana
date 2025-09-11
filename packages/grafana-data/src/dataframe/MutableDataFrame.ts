@@ -13,6 +13,8 @@ export type MutableField<T = any> = Field<T>;
 /** @deprecated */
 type MutableVectorCreator = (buffer?: unknown[]) => unknown[];
 
+type Parser = (v: string) => any;
+
 export const MISSING_VALUE = undefined; // Treated as connected in new graph panel
 
 /**
@@ -35,7 +37,7 @@ export class MutableDataFrame<T = any> extends FunctionalVector<T> implements Da
     // This creates the underlying storage buffers
     this.creator = creator
       ? creator
-      : (buffer?: any[]) => {
+      : (buffer?: unknown[]) => {
           return buffer ?? [];
         };
 
@@ -80,7 +82,7 @@ export class MutableDataFrame<T = any> extends FunctionalVector<T> implements Da
   }
 
   addField(f: Field | FieldDTO, startLength?: number): Field {
-    let buffer: any[] | undefined = undefined;
+    let buffer: unknown[] | undefined = undefined;
 
     if (f.values) {
       buffer = f.values;
@@ -149,14 +151,14 @@ export class MutableDataFrame<T = any> extends FunctionalVector<T> implements Da
     }
   }
 
-  private parsers: Map<Field, (v: string) => any> | undefined = undefined;
+  private parsers: Map<Field, Parser> | undefined = undefined;
 
   /**
    * @deprecated unclear if this is actually used
    */
-  setParser(field: Field, parser: (v: string) => any) {
+  setParser(field: Field, parser: Parser) {
     if (!this.parsers) {
-      this.parsers = new Map<Field, (v: string) => any>();
+      this.parsers = new Map<Field, Parser>();
     }
     this.parsers.set(field, parser);
     return parser;
@@ -222,7 +224,7 @@ export class MutableDataFrame<T = any> extends FunctionalVector<T> implements Da
    */
   add(value: T): void {
     // Will add one value for every field
-    const obj = value as any;
+    const obj = value as Record<string, unknown>;
     for (const field of this.fields) {
       let val = obj[field.name];
 
