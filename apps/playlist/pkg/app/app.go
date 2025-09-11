@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/grafana/grafana-app-sdk/app"
 	"github.com/grafana/grafana-app-sdk/k8s"
@@ -70,6 +71,19 @@ func New(cfg app.Config) (app.App, error) {
 					ValidateFunc: func(ctx context.Context, req *app.AdmissionRequest) error {
 						// do something here if needed
 						return nil
+					},
+				},
+				CustomRoutes: simple.AppCustomRouteHandlers{
+					// Handle the GET /example subresource route
+					simple.AppCustomRoute{
+						Method: "GET",
+						Path:   "example",
+					}: func(ctx context.Context, crrw app.CustomRouteResponseWriter, crr *app.CustomRouteRequest) error {
+						// Write out an example response
+						resp := playlistv0alpha1.GetExample{
+							Message: "hello, world",
+						}
+						return json.NewEncoder(crrw).Encode(resp)
 					},
 				},
 			},

@@ -35,4 +35,15 @@ playlistv0alpha1: {
 			items: [...#Item]
 		}
 	}
+	// Custom subresource routes for playlists
+	routes: {
+		"/example": {
+			"GET": {
+				response: {
+					id?: string
+					message: string
+				}
+			}
+		}
+	}
 }
