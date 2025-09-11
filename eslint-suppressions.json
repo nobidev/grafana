@@ -1870,11 +1870,6 @@
       "count": 2
     }
   },
-  "public/app/features/alerting/unified/utils/rule-id.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "public/app/features/alerting/unified/utils/rules.ts": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 3
@@ -2038,21 +2033,6 @@
   "public/app/features/dashboard-scene/addToDashboard/AddToDashboardForm.tsx": {
     "no-restricted-syntax": {
       "count": 2
-    }
-  },
-  "public/app/features/dashboard-scene/conditional-rendering/ConditionalRenderingGroupCondition.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "public/app/features/dashboard-scene/conditional-rendering/ConditionalRenderingGroupVisibility.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "public/app/features/dashboard-scene/conditional-rendering/ConditionalRenderingTimeRangeSize.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "public/app/features/dashboard-scene/edit-pane/DashboardEditPaneRenderer.tsx": {

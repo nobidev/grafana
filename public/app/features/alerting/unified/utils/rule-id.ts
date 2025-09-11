@@ -307,13 +307,24 @@ export function getPromRuleFingerprint(rule: Rule, includeQuery: boolean) {
 
 // there can be slight differences in how prom & ruler render a query, this will hash them accounting for the differences
 export function hashQuery(query: string) {
+  // First, handle comments properly by splitting on newlines and removing comment lines
+  // This ensures that ruler queries with comments can match prometheus queries without comments
+  query = query
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+    .join('\n');
+
   // one of them might be wrapped in parens
   if (query.length > 1 && query[0] === '(' && query[query.length - 1] === ')') {
     query = query.slice(1, -1);
   }
 
-  // whitespace could be added or removed
-  query = query.replace(/\s|\n/g, '');
+  // Normalize label selectors - sort labels within each selector while preserving structure
+  query = normalizeLabelSelectors(query);
+
+  // Normalize whitespace and operators consistently
+  query = normalizeWhitespaceAndOperators(query);
 
   // normalize escaped quotes in template strings like {{\"REQ_SENT\"}} -> {{"REQ_SENT"}}
   query = query.replace(/\\"/g, '"');
@@ -322,15 +333,81 @@ export function hashQuery(query: string) {
   // Convert `{{.field}}` to "{{.field}}"
   query = query.replace(/`([^`]*)`/g, '"$1"');
 
-  // remove quotes, brackets, parentheses, backslashes, and backticks
-  query = query.replace(/['"()\[\]\\`]/g, '');
+  // Return the normalized query directly - no character sorting to preserve semantic meaning
+  return query;
+}
 
-  // labels matchers can be reordered, so sort the entire string, essentially comparing just the character counts
-  return query.split('').sort().join('');
+function normalizeLabelSelectors(query: string): string {
+  // Find label selector patterns like {label1="value1", label2="value2"} and normalize them
+  // Sort the labels within each selector while preserving the overall query structure
+  return query.replace(/\{([^}]+)\}/g, (match, labels) => {
+    // Split labels, trim whitespace, and sort them
+    const labelPairs = labels
+      .split(',')
+      .map((label: string) => label.trim())
+      .sort();
+    return `{${labelPairs.join(',')}}`;
+  });
+}
+
+function normalizeWhitespaceAndOperators(query: string): string {
+  return (
+    query
+      // Replace multiple whitespace/newlines with single spaces
+      .replace(/\s+/g, ' ')
+      // Normalize spacing around multi-character comparison operators first (order matters!)
+      .replace(/\s*(>=|<=|==|!=|=~|!~)\s*/g, ' $1 ')
+      // Normalize spacing around single-character operators
+      .replace(/\s*([+\-*/%^<>=])\s*/g, ' $1 ')
+      // Normalize spacing around grouping punctuation
+      .replace(/\s*([(),\[\]])\s*/g, '$1')
+      // Normalize spacing around PromQL keywords
+      .replace(/\s+(by|on|without|group_left|group_right|ignoring|unless|and|or|offset)\s+/g, ' $1 ')
+      // Normalize @ modifier spacing: metric @ timestamp
+      .replace(/\s+@\s+/g, ' @ ')
+      // Clean up any multiple spaces that might have been introduced
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 export function hashLabelsOrAnnotations(item: Labels | Annotations | undefined): string {
-  return JSON.stringify(Object.entries(item || {}).sort((a, b) => a[0].localeCompare(b[0])));
+  return JSON.stringify(Object.entries(item || {}).sort((a, b) => {
+    if (a[0] < b[0]) {
+      return -1;
+    }
+    if (a[0] > b[0]) {
+      return 1;
+    }
+    return 0;
+  }));
+}
+
+// ==============================================================================
+// ORIGINAL IMPLEMENTATION (for benchmarking comparison)
+// ==============================================================================
+
+export function hashQueryOriginal(query: string) {
+  // one of them might be wrapped in parens
+  if (query.length > 1 && query[0] === '(' && query[query.length - 1] === ')') {
+    query = query.slice(1, -1);
+  }
+
+  // normalize escaped quotes in template strings like {{\"REQ_SENT\"}} -> {{"REQ_SENT"}}
+  query = query.replace(/\\"/g, '"');
+
+  // normalize backtick template strings to double quotes for consistency
+  // Convert `{{.field}}` to "{{.field}}"
+  query = query.replace(/`([^`]*)`/g, '"$1"');
+
+  // ORIGINAL APPROACH: Sort characters to handle formatting differences
+  // This destroys semantic meaning and causes false positives
+  return query
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split('')
+    .sort()
+    .join('');
 }
 
 export function ruleIdentifierToRuleSourceName(identifier: RuleIdentifier): string {
