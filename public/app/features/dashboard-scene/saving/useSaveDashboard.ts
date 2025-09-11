@@ -2,7 +2,7 @@ import { useAsyncFn } from 'react-use';
 
 import { locationUtil } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { locationService, reportInteraction } from '@grafana/runtime';
+import { locationService } from '@grafana/runtime';
 import { Dashboard } from '@grafana/schema';
 import { Spec as DashboardV2Spec } from '@grafana/schema/dist/esm/schema/dashboard/v2';
 import appEvents from 'app/core/app_events';
@@ -10,11 +10,13 @@ import { useAppNotification } from 'app/core/copy/appNotification';
 import { updateDashboardName } from 'app/core/reducers/navBarTree';
 import { useSaveDashboardMutation } from 'app/features/browse-dashboards/api/browseDashboardsAPI';
 import { SaveDashboardAsOptions, SaveDashboardOptions } from 'app/features/dashboard/components/SaveDashboard/types';
+import { updateDashboardUidLastUsedDatasource } from 'app/features/dashboard/utils/dashboard';
+import { trackDashboardSceneCreatedOrSaved } from 'app/features/dashboard/utils/tracking';
 import { DashboardSavedEvent } from 'app/types/events';
 import { useDispatch } from 'app/types/store';
 
-import { updateDashboardUidLastUsedDatasource } from '../../dashboard/utils/dashboard';
 import { DashboardScene } from '../scene/DashboardScene';
+import { DashboardInteractions } from '../utils/interactions';
 
 export function useSaveDashboard(isCopy = false) {
   const dispatch = useDispatch();
@@ -62,18 +64,15 @@ export function useSaveDashboard(isCopy = false) {
         appEvents.publish(new DashboardSavedEvent());
         notifyApp.success(t('dashboard-scene.use-save-dashboard.message-dashboard-saved', 'Dashboard saved'));
 
-        //Update local storage dashboard to handle things like last used datasource
-        updateDashboardUidLastUsedDatasource(resultData.uid);
+        // Update local storage dashboard to handle things like last used datasource
+       updateDashboardUidLastUsedDatasource(resultData.uid);
 
         if (isCopy) {
-          reportInteraction('grafana_dashboard_copied', {
-            name: saveModel.title,
-            url: resultData.url,
-          });
+          DashboardInteractions.dashboardCopied({ name: saveModel.title || '', url: resultData.url });
         } else {
-          reportInteraction(`grafana_dashboard_${options.isNew ? 'created' : 'saved'}`, {
-            name: saveModel.title,
-            url: resultData.url,
+          trackDashboardSceneCreatedOrSaved(options.isNew ? 'created' : 'saved', scene, {
+            name: saveModel.title || '',
+            url: resultData.url || '',
           });
         }
 

@@ -14,6 +14,7 @@ import { DashboardSavedEvent } from 'app/types/events';
 import { useDispatch } from 'app/types/store';
 
 import { updateDashboardUidLastUsedDatasource } from '../../utils/dashboard';
+import { trackDashboardCreatedOrSaved } from '../../utils/tracking';
 
 import { SaveDashboardOptions } from './types';
 
@@ -66,10 +67,7 @@ export const useDashboardSave = (isCopy = false) => {
             url: result.url,
           });
         } else {
-          reportInteraction(`grafana_dashboard_${dashboard.id ? 'saved' : 'created'}`, {
-            name: dashboard.title,
-            url: result.url,
-          });
+          trackDashboardCreatedOrSaved(dashboard.id ? 'saved' : 'created', { name: dashboard.title, url: result.url });
         }
 
         const currentPath = locationService.getLocation().pathname;
