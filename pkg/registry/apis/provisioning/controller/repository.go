@@ -215,7 +215,9 @@ func (rc *RepositoryController) handleDelete(ctx context.Context, obj *provision
 		} else {
 			err := rc.finalizer.process(ctx, repo, obj.Finalizers)
 			if err != nil {
-				logger.Warn("error running finalizer", "err", err)
+				logger.Error("error running finalizer", "err", err)
+
+				return fmt.Errorf("running finalizer: %w", err)
 			}
 		}
 
