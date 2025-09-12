@@ -69,8 +69,9 @@ func getDatasourceByUID(ctx *contextmodel.ReqContext, cache datasources.CacheSer
 	}
 	switch expectedType {
 	case apimodels.AlertmanagerBackend:
-		if ds.Type != "alertmanager" {
-			return nil, unexpectedDatasourceTypeError(ds.Type, "alertmanager")
+		// POC: allow using Prometheus-like datasources for Alertmanager routes
+		if ds.Type != "alertmanager" && !isPrometheusCompatible(ds.Type) {
+			return nil, unexpectedDatasourceTypeError(ds.Type, "alertmanager, prometheus, amazon prometheus, azure prometheus")
 		}
 	case apimodels.LoTexRulerBackend:
 		if !isLotexRulerCompatible(ds.Type) {

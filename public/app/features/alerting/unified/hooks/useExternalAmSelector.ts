@@ -6,7 +6,7 @@ import {
 
 import { alertmanagerApi } from '../api/alertmanagerApi';
 import { dataSourcesApi } from '../api/dataSourcesApi';
-import { isAlertmanagerDataSource } from '../utils/datasource';
+import { isAlertmanagerDataSource, isPrometheusLikeSettingsForPOC } from '../utils/datasource';
 
 export type ConnectionStatus = 'active' | 'pending' | 'dropped' | 'inconclusive' | 'uninterested' | 'unknown';
 
@@ -32,7 +32,9 @@ export function useExternalDataSourceAlertmanagers({
     // may have made changes to a data source and came back to the list
     refetchOnMountOrArgChange,
     selectFromResult: (result) => {
-      const alertmanagerDataSources = result.currentData?.filter(isAlertmanagerDataSource) ?? [];
+      // POC: include Prometheus-like datasources in Settings external AM list
+      const alertmanagerDataSources =
+        result.currentData?.filter((ds) => isAlertmanagerDataSource(ds) || isPrometheusLikeSettingsForPOC(ds)) ?? [];
       return { ...result, alertmanagerDataSources };
     },
   });

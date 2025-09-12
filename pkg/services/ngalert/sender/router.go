@@ -230,17 +230,22 @@ func asSHA256(strings []string) string {
 }
 
 func (d *AlertsRouter) alertmanagersFromDatasources(orgID int64) ([]ExternalAMcfg, error) {
-	// We might have alertmanager datasources that are acting as external
-	// alertmanager, let's fetch them.
-	query := &datasources.GetDataSourcesByTypeQuery{
-		OrgID: orgID,
-		Type:  datasources.DS_ALERTMANAGER,
-	}
+	// POC: include alertmanager and prometheus-like datasources
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	dataSources, err := d.datasourceService.GetDataSourcesByType(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch datasources for org: %w", err)
+
+	allTypes := []string{datasources.DS_ALERTMANAGER, datasources.DS_PROMETHEUS, datasources.DS_AMAZON_PROMETHEUS}
+	var dataSources []*datasources.DataSource
+	for _, t := range allTypes {
+		query := &datasources.GetDataSourcesByTypeQuery{
+			OrgID: orgID,
+			Type:  t,
+		}
+		dss, err := d.datasourceService.GetDataSourcesByType(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch datasources for org: %w", err)
+		}
+		dataSources = append(dataSources, dss...)
 	}
 
 	alertmanagers := make([]ExternalAMcfg, 0, len(dataSources))
@@ -279,13 +284,18 @@ func (d *AlertsRouter) alertmanagersFromDatasources(orgID int64) ([]ExternalAMcf
 
 func (d *AlertsRouter) buildExternalURL(ds *datasources.DataSource) (string, error) {
 	// We re-use the same parsing logic as the datasource to make sure it matches whatever output the user received
-	// when doing the healthcheck.
-	parsed, err := datasource.ValidateURL(datasources.DS_ALERTMANAGER, ds.URL)
+	// when doing the healthcheck. For POC, allow prometheus-like types.
+	validateType := datasources.DS_ALERTMANAGER
+	if ds.Type == datasources.DS_PROMETHEUS || ds.Type == datasources.DS_AMAZON_PROMETHEUS {
+		validateType = ds.Type
+	}
+	parsed, err := datasource.ValidateURL(validateType, ds.URL)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse alertmanager datasource url: %w", err)
 	}
 
 	// If this is a Mimir or Cortex implementation, the Alert API is under a different path than config API
+	// For prometheus-like datasources (e.g., AMP), the Alertmanager is usually mounted under /alertmanager.
 	if ds.JsonData != nil {
 		impl := ds.JsonData.Get("implementation").MustString("")
 		switch impl {
@@ -298,6 +308,16 @@ func (d *AlertsRouter) buildExternalURL(ds *datasources.DataSource) (string, err
 				parsed = parsed.JoinPath("/alertmanager")
 			}
 		default:
+			// POC: for prometheus-like DS, append /alertmanager if not present
+			if ds.Type == datasources.DS_PROMETHEUS || ds.Type == datasources.DS_AMAZON_PROMETHEUS {
+				if parsed.Path == "" {
+					parsed.Path = "/"
+				}
+				lastSegment := path.Base(parsed.Path)
+				if lastSegment != "alertmanager" {
+					parsed = parsed.JoinPath("/alertmanager")
+				}
+			}
 		}
 	}
 

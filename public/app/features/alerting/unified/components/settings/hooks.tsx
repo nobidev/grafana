@@ -1,7 +1,7 @@
 import { produce } from 'immer';
 
 import { dataSourcesApi } from '../../api/dataSourcesApi';
-import { isAlertmanagerDataSource } from '../../utils/datasource';
+import { isAlertmanagerDataSource, isPrometheusLikeSettingsForPOC } from '../../utils/datasource';
 
 export const useEnableOrDisableHandlingGrafanaManagedAlerts = () => {
   const [getSettings, getSettingsState] = dataSourcesApi.endpoints.getDataSourceSettingsForUID.useLazyQuery();
@@ -9,12 +9,13 @@ export const useEnableOrDisableHandlingGrafanaManagedAlerts = () => {
 
   const enableOrDisable = async (uid: string, handleGrafanaManagedAlerts: boolean) => {
     const existingSettings = await getSettings(uid).unwrap();
-    if (!isAlertmanagerDataSource(existingSettings)) {
-      throw new Error(`Data source with UID ${uid} is not an Alertmanager data source`);
+    // POC: allow enabling on Prometheus-like datasources too
+    if (!isAlertmanagerDataSource(existingSettings) && !isPrometheusLikeSettingsForPOC(existingSettings)) {
+      throw new Error(`Data source with UID ${uid} is not supported for Alertmanager forwarding`);
     }
 
     const newSettings = produce(existingSettings, (draft) => {
-      draft.jsonData.handleGrafanaManagedAlerts = handleGrafanaManagedAlerts;
+      (draft.jsonData as any).handleGrafanaManagedAlerts = handleGrafanaManagedAlerts;
     });
 
     updateSettings({ uid, settings: newSettings });

@@ -170,6 +170,7 @@ func (am *LotexAM) RouteGetAlertingConfig(ctx *contextmodel.ReqContext) response
 		nil,
 		nil,
 		yamlExtractor(&apimodels.GettableUserConfig{}),
+		// jsonExtractor(&apimodels.GettableUserConfig{}),
 		nil,
 	)
 }

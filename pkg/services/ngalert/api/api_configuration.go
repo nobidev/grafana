@@ -124,13 +124,19 @@ func (srv ConfigSrv) RouteDeleteNGalertConfig(c *contextmodel.ReqContext) respon
 // configured as datasource. The URL does not contain any auth.
 func (srv ConfigSrv) externalAlertmanagers(ctx context.Context, orgID int64) ([]string, error) {
 	var alertmanagers []string
-	query := &datasources.GetDataSourcesByTypeQuery{
-		OrgID: orgID,
-		Type:  datasources.DS_ALERTMANAGER,
-	}
-	dataSources, err := srv.datasourceService.GetDataSourcesByType(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch datasources for org: %w", err)
+	// POC: include Alertmanager and Prometheus-like datasources
+	types := []string{datasources.DS_ALERTMANAGER, datasources.DS_PROMETHEUS, datasources.DS_AMAZON_PROMETHEUS}
+	var dataSources []*datasources.DataSource
+	for _, t := range types {
+		query := &datasources.GetDataSourcesByTypeQuery{
+			OrgID: orgID,
+			Type:  t,
+		}
+		dss, err := srv.datasourceService.GetDataSourcesByType(ctx, query)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch datasources for org: %w", err)
+		}
+		dataSources = append(dataSources, dss...)
 	}
 	for _, ds := range dataSources {
 		if ds.JsonData.Get(apimodels.HandleGrafanaManagedAlerts).MustBool(false) {

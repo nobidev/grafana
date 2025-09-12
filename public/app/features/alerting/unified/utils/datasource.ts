@@ -31,6 +31,8 @@ import { isExtraConfig } from './alertmanager/extraConfigs';
 import { getAllDataSources } from './config';
 import { isGrafanaRuleIdentifier } from './rules';
 
+const NAME_COLLATOR = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
 export const GRAFANA_RULES_SOURCE_NAME = 'grafana';
 export const GRAFANA_DATASOURCE_NAME = '-- Grafana --';
 
@@ -70,7 +72,7 @@ export function getRulesDataSources() {
   return getAllDataSources()
     .filter((ds) => isSupportedExternalRulesSourceType(ds.type))
     .filter((ds) => isDataSourceManagingAlerts(ds))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
 }
 
 export function getRulesSourceUniqueKey(rulesSource: RulesSource): string {
@@ -87,14 +89,32 @@ export function getRulesDataSourceByUID(uid: string) {
 
 export function getAlertManagerDataSources() {
   return getAllDataSources()
-    .filter(isAlertmanagerDataSourceInstance)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .filter((ds) => isAlertmanagerDataSourceInstance(ds) || isPrometheusLikeForPOC(ds))
+    .sort((a, b) => NAME_COLLATOR.compare(a.name, b.name));
 }
 
 export function isAlertmanagerDataSourceInstance(
   dataSource: DataSourceInstanceSettings
 ): dataSource is DataSourceInstanceSettings<AlertManagerDataSourceJsonData> {
   return dataSource.type === DataSourceType.Alertmanager;
+}
+
+// POC: allow Prometheus-like datasources to appear in Alertmanager dropdown
+function isPrometheusLikeForPOC(dataSource: DataSourceInstanceSettings) {
+  return (
+    dataSource.type === DataSourceType.Prometheus ||
+    dataSource.type === DataSourceType.AmazonPrometheus ||
+    dataSource.type === DataSourceType.AzurePrometheus
+  );
+}
+
+// POC: predicate for DataSourceSettings (used in Settings tab)
+export function isPrometheusLikeSettingsForPOC(dataSource: DataSourceSettings) {
+  return (
+    dataSource.type === DataSourceType.Prometheus ||
+    dataSource.type === DataSourceType.AmazonPrometheus ||
+    dataSource.type === DataSourceType.AzurePrometheus
+  );
 }
 
 export function isAlertmanagerDataSource(
@@ -104,7 +124,13 @@ export function isAlertmanagerDataSource(
 }
 
 export function getExternalDsAlertManagers() {
-  return getAlertManagerDataSources().filter((ds) => ds.jsonData.handleGrafanaManagedAlerts);
+  return getAlertManagerDataSources().filter((ds) => {
+    if (isAlertmanagerDataSourceInstance(ds)) {
+      return Boolean(ds.jsonData.handleGrafanaManagedAlerts);
+    }
+    // POC: include Prometheus-like datasources by default
+    return false;
+  });
 }
 
 export function isAlertmanagerDataSourceInterestedInAlerts(
@@ -195,14 +221,27 @@ export function getAlertManagerDataSourcesByPermission(permission: 'instance' | 
   }
 
   if (contextSrv.hasPermission(permissions[permission].external)) {
-    const cloudSources = getAlertManagerDataSources().map<AlertManagerDataSource>((ds) => ({
-      name: ds.name,
-      displayName: ds.name,
-      imgUrl: ds.meta.info.logos.small,
-      meta: ds.meta,
-      hasConfigurationAPI: isAlertManagerWithConfigAPI(ds.jsonData),
-      handleGrafanaManagedAlerts: ds.jsonData.handleGrafanaManagedAlerts,
-    }));
+    const cloudSources = getAlertManagerDataSources().map<AlertManagerDataSource>((ds) => {
+      // if (isAlertmanagerDataSourceInstance(ds)) {
+      return {
+        name: ds.name,
+        displayName: ds.name,
+        imgUrl: ds.meta.info.logos.small,
+        meta: ds.meta,
+        hasConfigurationAPI: isAlertManagerWithConfigAPI(ds.jsonData),
+        handleGrafanaManagedAlerts: ds.jsonData.handleGrafanaManagedAlerts,
+      };
+      // }
+      // POC: Prometheus-like datasources shown without configuration API
+      // return {
+      //   name: ds.name,
+      //   displayName: ds.name,
+      //   imgUrl: ds.meta.info.logos.small,
+      //   meta: ds.meta,
+      //   hasConfigurationAPI: false,
+      //   handleGrafanaManagedAlerts: ds.jsonData.handleGrafanaManagedAlerts,
+      // };
+    });
     availableExternalDataSources.push(...cloudSources);
   }
 
@@ -250,10 +289,20 @@ export function isCloudRulesSource(rulesSource: RulesSource | string): rulesSour
 }
 
 export function isVanillaPrometheusAlertManagerDataSource(name: string): boolean {
-  return (
-    name !== GRAFANA_RULES_SOURCE_NAME &&
-    getAlertmanagerDataSourceByName(name)?.jsonData?.implementation === AlertManagerImplementation.prometheus
-  );
+  if (name === GRAFANA_RULES_SOURCE_NAME) {
+    return false;
+  }
+
+  // Case 1: It is an Alertmanager datasource explicitly configured as Prometheus implementation
+  const am = getAlertmanagerDataSourceByName(name);
+  if (am?.jsonData?.implementation === AlertManagerImplementation.prometheus) {
+    return true;
+  }
+
+  // Case 2 (POC): It is a Prometheus-like datasource being used as Alertmanager
+  // const ds = getDataSourceByName(name);
+  // return ds ? isPrometheusLikeForPOC(ds) : false;
+  return false;
 }
 
 export function isProvisionedDataSource(dataSource: DataSourceSettings): boolean {
