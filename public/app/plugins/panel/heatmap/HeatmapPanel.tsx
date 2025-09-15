@@ -71,7 +71,7 @@ export const HeatmapPanel = ({
         timeRange,
       });
     } catch (ex) {
-      return { warning: `${ex}` };
+      return null;
     }
   }, [data.series, data.annotations, options, palette, theme, replaceVariables, timeRange]);
 
@@ -130,7 +130,7 @@ export const HeatmapPanel = ({
   }, [options, timeZone, data.structureRev, cursorSync]);
 
   const renderLegend = () => {
-    if (!info.heatmap || !options.legend.show) {
+    if (!info?.heatmap || !options.legend.show) {
       return null;
     }
 
@@ -161,7 +161,7 @@ export const HeatmapPanel = ({
     );
   };
 
-  if (info.warning || !info.heatmap) {
+  if (!info || info.warning || !info.heatmap) {
     return (
       <PanelDataErrorView
         panelId={id}

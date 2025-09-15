@@ -66,7 +66,7 @@ export const plugin = new PanelPlugin<Options, GraphFieldConfig>(HeatmapPanel)
           palette,
           theme: config.theme2,
         });
-        isOrdinalY = readHeatmapRowsCustomMeta(v.heatmap).yOrdinalDisplay != null;
+        isOrdinalY = v?.heatmap ? readHeatmapRowsCustomMeta(v.heatmap).yOrdinalDisplay != null : false;
       } catch {}
     }
 
