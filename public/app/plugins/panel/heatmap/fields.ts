@@ -308,7 +308,7 @@ const getDenseHeatmapData = (
   if (!yName) {
     return { warning: 'Missing Y field', heatmap: frame };
   }
-  if (!yName) {
+  if (!xName) {
     return { warning: 'Missing X field', heatmap: frame };
   }
   if (!valueField) {
