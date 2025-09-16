@@ -15,12 +15,17 @@ type provenances = map[string]models.Provenance
 
 func (rev *ConfigRevision) DeleteReceiver(uid string) {
 	// Remove the receiver from the configuration.
-	rev.Config.AlertmanagerConfig.Receivers = slices.DeleteFunc(rev.Config.AlertmanagerConfig.Receivers, func(r *definitions.PostableApiReceiver) bool {
+	updated := slices.DeleteFunc(rev.Config.AlertmanagerConfig.Receivers, func(r *definitions.PostableApiReceiver) bool {
 		return NameToUid(r.GetName()) == uid
 	})
+	if len(updated) != len(rev.Config.AlertmanagerConfig.Receivers) {
+		rev.Config.AlertmanagerConfig.Receivers = updated
+		rev.reset()
+	}
 }
 
 func (rev *ConfigRevision) CreateReceiver(receiver *models.Receiver) (*models.Receiver, error) {
+	defer rev.reset()
 	exists := slices.ContainsFunc(rev.Config.AlertmanagerConfig.Receivers, func(r *definition.PostableApiReceiver) bool {
 		return NameToUid(r.Name) == receiver.GetUID()
 	})
@@ -47,6 +52,7 @@ func (rev *ConfigRevision) CreateReceiver(receiver *models.Receiver) (*models.Re
 }
 
 func (rev *ConfigRevision) UpdateReceiver(receiver *models.Receiver) (*models.Receiver, error) {
+	defer rev.reset()
 	existingIdx := slices.IndexFunc(rev.Config.AlertmanagerConfig.Receivers, func(postable *definitions.PostableApiReceiver) bool {
 		return NameToUid(postable.GetName()) == receiver.GetUID()
 	})
@@ -74,13 +80,13 @@ func (rev *ConfigRevision) UpdateReceiver(receiver *models.Receiver) (*models.Re
 
 // ReceiverNameUsedByRoutes checks if a receiver name is used in any routes.
 func (rev *ConfigRevision) ReceiverNameUsedByRoutes(name string) bool {
-	return isReceiverInUse(name, []*definitions.Route{rev.Config.AlertmanagerConfig.Route})
+	return isReceiverInUse(name, []*definitions.Route{rev.getConfigForRead().Route})
 }
 
 // ReceiverUseByName returns a map of receiver names to the number of times they are used in routes.
 func (rev *ConfigRevision) ReceiverUseByName() map[string]int {
 	m := make(map[string]int)
-	receiverUseCounts([]*definitions.Route{rev.Config.AlertmanagerConfig.Route}, m)
+	receiverUseCounts([]*definitions.Route{rev.getConfigForRead().Route}, m)
 	return m
 }
 
@@ -95,21 +101,45 @@ func (rev *ConfigRevision) GetReceiver(uid string, prov provenances) (*models.Re
 		}
 		return recv, nil
 	}
+	if !rev.includeImported {
+		return nil, ErrReceiverNotFound.Errorf("")
+	}
+	for _, r := range rev.getConfigForRead().Receivers {
+		if NameToUid(r.GetName()) != uid {
+			continue
+		}
+		recv, err := PostableApiReceiverToReceiver(r, GetReceiverProvenance(prov, r, models.ResourceOriginImported), models.ResourceOriginImported)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert receiver %q: %w", r.Name, err)
+		}
+		return recv, nil
+	}
 	return nil, ErrReceiverNotFound.Errorf("")
 }
 
 func (rev *ConfigRevision) GetReceivers(uids []string, prov provenances) ([]*models.Receiver, error) {
+	var grafanaOrigin map[string]struct{}
+	if rev.includeImported {
+		grafanaOrigin = rev.GetGrafanaReceiversNames()
+	}
+	cfg := rev.getConfigForRead()
 	capacity := len(uids)
 	if capacity == 0 {
-		capacity = len(rev.Config.AlertmanagerConfig.Receivers)
+		capacity = len(cfg.Receivers)
 	}
 	receivers := make([]*models.Receiver, 0, capacity)
-	for _, r := range rev.Config.AlertmanagerConfig.Receivers {
+	for _, r := range cfg.Receivers {
 		uid := NameToUid(r.GetName())
 		if len(uids) > 0 && !slices.Contains(uids, uid) {
 			continue
 		}
-		recv, err := PostableApiReceiverToReceiver(r, GetReceiverProvenance(prov, r, models.ResourceOriginGrafana), models.ResourceOriginGrafana)
+		origin := models.ResourceOriginGrafana
+		if rev.includeImported {
+			if _, ok := grafanaOrigin[r.Name]; !ok {
+				origin = models.ResourceOriginImported
+			}
+		}
+		recv, err := PostableApiReceiverToReceiver(r, GetReceiverProvenance(prov, r, origin), origin)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert receiver %q: %w", r.Name, err)
 		}
@@ -129,6 +159,7 @@ func (rev *ConfigRevision) GetGrafanaReceiversNames() map[string]struct{} {
 
 // RenameReceiverInRoutes renames all references to a receiver in routes. Returns number of routes that were updated
 func (rev *ConfigRevision) RenameReceiverInRoutes(oldName, newName string) int {
+	defer rev.reset()
 	return renameReceiverInRoute(oldName, newName, rev.Config.AlertmanagerConfig.Route)
 }
 

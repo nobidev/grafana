@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/ngalert/api/tooling/definitions"
 	"github.com/grafana/grafana/pkg/services/ngalert/models"
 )
@@ -35,7 +36,51 @@ type ConfigRevision struct {
 	Config           *definitions.PostableUserConfig
 	ConcurrencyToken string
 	Version          string
+	readConfig       *definitions.PostableApiAlertingConfig
+	includeImported  bool
 }
+
+// IncludeImported will include staged resources in the Get methods of the receiver.
+func (rev *ConfigRevision) IncludeImported() error {
+	rev.includeImported = len(rev.Config.ExtraConfigs) > 0
+	if rev.includeImported {
+		return rev.loadImported()
+	}
+	return nil
+}
+
+func (rev *ConfigRevision) loadImported() error {
+	if len(rev.Config.ExtraConfigs) == 0 {
+		return nil
+	}
+	m, err := rev.Config.GetMergedAlertmanagerConfig()
+	if err != nil {
+		return err
+	}
+	log.New("ngalert.notify.legacy_storage").Debug("Got configuration with imported resources", append(m.LogContext(), "version", rev.Version)...)
+	rev.readConfig = &m.Config
+	return nil
+}
+
+func (rev *ConfigRevision) getConfigForRead() *definitions.PostableApiAlertingConfig {
+	if !rev.includeImported {
+		return &rev.Config.AlertmanagerConfig
+	}
+	if rev.readConfig != nil {
+		return rev.readConfig
+	}
+	err := rev.loadImported()
+	if err != nil {
+		log.New("ngalert.notify.legacy_storage").Warn("Failed to get merged configuration. Using only Grafana configuration", "error", err, "version", rev.Version)
+		return &rev.Config.AlertmanagerConfig
+	}
+	return rev.readConfig
+}
+
+func (rev *ConfigRevision) reset() {
+	rev.readConfig = nil
+}
+
 type alertmanagerConfigStoreImpl struct {
 	store  amConfigStore
 	crypto crypto
