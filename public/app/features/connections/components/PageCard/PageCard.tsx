@@ -48,11 +48,11 @@ const getStyles = (theme: GrafanaTheme2) => ({
     backgroundColor: theme.colors.background.primary,
     border: `1px solid ${theme.colors.border.weak}`,
     borderRadius: theme.shape.radius.default,
-    padding: `${theme.spacing(3)} ${theme.spacing(4)} ${theme.spacing(2.25)} ${theme.spacing(4)}`,
+    padding: theme.spacing(3),
     minHeight: theme.spacing(19.4),
     '&:hover': {
       cursor: 'pointer',
-      backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
+      backgroundColor: theme.colors.emphasize(theme.colors.background.primary, 0.03),
     },
     width: theme.spacing(48),
   }),

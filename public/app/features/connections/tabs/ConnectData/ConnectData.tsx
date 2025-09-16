@@ -23,7 +23,6 @@ import { NoAccessModal } from './NoAccessModal';
 
 const getStyles = (theme: GrafanaTheme2) => ({
   searchContainer: css({
-    backgroundColor: theme.colors.background.primary,
     paddingTop: theme.spacing(2),
     paddingBottom: theme.spacing(2),
     borderBottom: `1px solid ${theme.colors.border.weak}`,
