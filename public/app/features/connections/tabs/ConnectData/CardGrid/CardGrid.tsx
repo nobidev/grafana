@@ -92,6 +92,7 @@ export const CardGrid = ({ items, onClickItem }: CardGridProps) => {
               onClickItem(e, item);
             }
           }}
+          isOnCanvas={true}
         >
           <Card.Heading className={styles.heading}>{item.name}</Card.Heading>
 

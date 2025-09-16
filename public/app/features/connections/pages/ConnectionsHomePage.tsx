@@ -24,6 +24,7 @@ export default function ConnectionsHomePage() {
         text: '',
         active: true,
       }}
+      background="canvas"
     >
       <Page.Contents>
         <div className={styles.centeredContainer}>

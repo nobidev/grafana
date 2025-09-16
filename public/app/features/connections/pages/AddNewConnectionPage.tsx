@@ -38,7 +38,12 @@ export function AddNewConnectionPage() {
   );
 
   return (
-    <Page navId={'connections-add-new-connection'} actions={updateAllButton} className={styles.pageContainer}>
+    <Page
+      navId={'connections-add-new-connection'}
+      actions={updateAllButton}
+      className={styles.pageContainer}
+      background="canvas"
+    >
       <Page.Contents>
         <AddNewConnection />
         <RoadmapLinks />
