@@ -251,4 +251,4 @@ public/mockServiceWorker.js
 # Ignore unified storage kv store files
 /grafana-kv-data
 
-codeowners-manifest/
+/codeowners-manifest/
