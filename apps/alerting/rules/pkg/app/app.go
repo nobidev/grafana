@@ -31,7 +31,7 @@ func New(cfg app.Config) (app.App, error) {
 			"v0alpha1": {
 				simple.AppVersionRoute{
 					Namespaced: true,
-					Path:       "/fooo",
+					Path:       "fooo",
 					Method:     "GET",
 				}: func(ctx context.Context, writer app.CustomRouteResponseWriter, request *app.CustomRouteRequest) error {
 					writer.WriteHeader(444)
