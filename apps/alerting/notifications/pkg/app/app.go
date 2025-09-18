@@ -42,7 +42,7 @@ func New(cfg app.Config) (app.App, error) {
 			v0alpha1.APIVersion: {
 				simple.AppVersionRoute{
 					Namespaced: true,
-					Path:       fmt.Sprintf("/%s", v0alpha1.ReceiverTestingResource),
+					Path:       v0alpha1.ReceiverTestingResource,
 					Method:     "POST",
 				}: customCfg.ReceiverTestingHandler.HandleReceiverTestingRequest,
 			},
