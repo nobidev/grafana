@@ -278,8 +278,13 @@ func (ss *FolderUnifiedStoreImpl) GetChildren(ctx context.Context, q folder.GetC
 			ParentUID: item.Folder,
 		}
 
-		if item.Field.GetNestedString(resource.SEARCH_FIELD_MANAGER_KIND) != "" {
-			f.ManagedBy = utils.ParseManagerKindString(item.Field.GetNestedString(resource.SEARCH_FIELD_MANAGER_KIND))
+		v := item.Field.GetNestedString(resource.SEARCH_FIELD_MANAGER_KIND)
+		if v != "" {
+			f.ManagerKind = utils.ParseManagerKindString(v)
+		}
+		v = item.Field.GetNestedString(resource.SEARCH_FIELD_MANAGER_ID)
+		if v != "" {
+			f.ManagedBy = v
 		}
 
 		hits = append(hits, f)

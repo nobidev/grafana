@@ -674,6 +674,9 @@ func (dr *DashboardServiceImpl) BuildSaveDashboardCommand(ctx context.Context, d
 		return nil, err
 	}
 
+	// When saving to a managed folder
+	managedRepoId := ""
+
 	// Validate folder
 	if dash.FolderID != 0 || dash.FolderUID != "" { // nolint:staticcheck
 		folder, err := dr.folderService.Get(ctx, &folder.GetFolderQuery{
@@ -685,6 +688,11 @@ func (dr *DashboardServiceImpl) BuildSaveDashboardCommand(ctx context.Context, d
 		if err != nil {
 			return nil, err
 		}
+
+		if folder.ManagerKind == utils.ManagerKindRepo {
+			managedRepoId = folder.ManagedBy
+		}
+
 		metrics.MFolderIDsServiceCount.WithLabelValues(metrics.Dashboard).Inc()
 		// nolint:staticcheck
 		dash.FolderID = folder.ID
@@ -742,15 +750,16 @@ func (dr *DashboardServiceImpl) BuildSaveDashboardCommand(ctx context.Context, d
 
 	metrics.MFolderIDsServiceCount.WithLabelValues(metrics.Dashboard).Inc()
 	cmd := &dashboards.SaveDashboardCommand{
-		Dashboard: dash.Data,
-		Message:   dto.Message,
-		OrgID:     dto.OrgID,
-		Overwrite: dto.Overwrite,
-		UserID:    userID,
-		FolderID:  dash.FolderID, // nolint:staticcheck
-		FolderUID: dash.FolderUID,
-		IsFolder:  dash.IsFolder,
-		PluginID:  dash.PluginID,
+		Dashboard:     dash.Data,
+		Message:       dto.Message,
+		OrgID:         dto.OrgID,
+		Overwrite:     dto.Overwrite,
+		UserID:        userID,
+		FolderID:      dash.FolderID, // nolint:staticcheck
+		FolderUID:     dash.FolderUID,
+		IsFolder:      dash.IsFolder,
+		PluginID:      dash.PluginID,
+		ManagedRepoID: managedRepoId,
 	}
 
 	if !dto.UpdatedAt.IsZero() {
@@ -1028,7 +1037,7 @@ func (dr *DashboardServiceImpl) SaveDashboard(ctx context.Context, dto *dashboar
 		return nil, err
 	}
 
-	dash, err := dr.saveDashboard(ctx, cmd)
+	dash, err := dr.saveDashboardThroughK8s(ctx, cmd, cmd.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -1039,10 +1048,6 @@ func (dr *DashboardServiceImpl) SaveDashboard(ctx context.Context, dto *dashboar
 	}
 
 	return dash, nil
-}
-
-func (dr *DashboardServiceImpl) saveDashboard(ctx context.Context, cmd *dashboards.SaveDashboardCommand) (*dashboards.Dashboard, error) {
-	return dr.saveDashboardThroughK8s(ctx, cmd, cmd.OrgID)
 }
 
 // DeleteDashboard removes dashboard from the DB. Errors out if the dashboard was provisioned. Should be used for
@@ -1092,7 +1097,7 @@ func (dr *DashboardServiceImpl) ImportDashboard(ctx context.Context, dto *dashbo
 		return nil, err
 	}
 
-	dash, err := dr.saveDashboard(ctx, cmd)
+	dash, err := dr.saveDashboardThroughK8s(ctx, cmd, cmd.OrgID)
 	if err != nil {
 		return nil, err
 	}
@@ -1762,6 +1767,10 @@ func (dr *DashboardServiceImpl) saveDashboardThroughK8s(ctx context.Context, cmd
 		return nil, err
 	}
 	dashboard.SetPluginIDMeta(obj, cmd.PluginID)
+
+	if cmd.ManagedRepoID != "" {
+
+	}
 
 	out, err := dr.k8sclient.Update(ctx, obj, orgID, v1.UpdateOptions{
 		FieldValidation: v1.FieldValidationIgnore,

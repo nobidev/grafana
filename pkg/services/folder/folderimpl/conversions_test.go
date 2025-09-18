@@ -8,11 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/services/user"
 	"github.com/grafana/grafana/pkg/services/user/usertest"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestFolderConversions(t *testing.T) {
@@ -77,7 +78,8 @@ func TestFolderConversions(t *testing.T) {
 		Title:        "test folder",
 		Description:  "Something set in the file",
 		URL:          "/dashboards/f/be79sztagf20wd/test-folder",
-		ManagedBy:    utils.ManagerKindRepo,
+		ManagerKind:  utils.ManagerKindRepo,
+		ManagedBy:    "example",
 		Created:      created,
 		Updated:      created.Add(time.Hour * 5),
 		CreatedBy:    1,

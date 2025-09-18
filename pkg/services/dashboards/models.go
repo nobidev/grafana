@@ -208,9 +208,10 @@ type SaveDashboardCommand struct {
 	APIVersion   string           `json:"-" xorm:"api_version"`
 
 	// Deprecated: use FolderUID instead
-	FolderID  int64  `json:"folderId" xorm:"folder_id"`
-	FolderUID string `json:"folderUid" xorm:"folder_uid"`
-	IsFolder  bool   `json:"isFolder"`
+	FolderID      int64  `json:"folderId" xorm:"folder_id"`
+	FolderUID     string `json:"folderUid" xorm:"folder_uid"`
+	IsFolder      bool   `json:"isFolder"`
+	ManagedRepoID string `json:"-"`
 
 	UpdatedAt time.Time
 }
