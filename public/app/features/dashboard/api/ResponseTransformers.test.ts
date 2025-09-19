@@ -39,39 +39,33 @@ jest.mock('@grafana/runtime', () => ({
   ...jest.requireActual('@grafana/runtime'),
   config: {
     ...jest.requireActual('@grafana/runtime').config,
-    bootData: {
-      ...jest.requireActual('@grafana/runtime').config.bootData,
-      settings: {
-        ...jest.requireActual('@grafana/runtime').config.bootData.settings,
-        datasources: {
-          PromTest: {
-            uid: 'xyz-abc',
-            name: 'PromTest',
-            id: 'prometheus',
-            meta: {
-              id: 'prometheus',
-              name: 'PromTest',
-              type: 'datasource',
-            },
-            isDefault: true,
-            apiVersion: 'v2',
-          },
-          '-- Grafana --': {
-            uid: 'grafana',
-            name: '-- Grafana --',
-            id: 'grafana',
-            meta: {
-              id: 'grafana',
-              name: '-- Grafana --',
-              type: 'datasource',
-            },
-            isDefault: false,
-          },
+    datasources: {
+      PromTest: {
+        uid: 'xyz-abc',
+        name: 'PromTest',
+        id: 'prometheus',
+        meta: {
+          id: 'prometheus',
+          name: 'PromTest',
+          type: 'datasource',
         },
-
-        defaultDatasource: 'PromTest',
+        isDefault: true,
+        apiVersion: 'v2',
+      },
+      '-- Grafana --': {
+        uid: 'grafana',
+        name: '-- Grafana --',
+        id: 'grafana',
+        meta: {
+          id: 'grafana',
+          name: '-- Grafana --',
+          type: 'datasource',
+        },
+        isDefault: false,
       },
     },
+
+    defaultDatasource: 'PromTest',
   },
 }));
 
@@ -326,7 +320,10 @@ describe('ResponseTransformers', () => {
             targets: [
               {
                 refId: 'A',
-                datasource: 'datasource1',
+                datasource: {
+                  uid: 'datasource1',
+                  type: 'prometheus',
+                },
                 expr: 'test-query',
                 hide: false,
               },
@@ -580,7 +577,10 @@ describe('ResponseTransformers', () => {
             targets: [
               {
                 refId: 'A',
-                datasource: 'datasource1',
+                datasource: {
+                  type: 'prometheus',
+                  uid: 'datasource1',
+                },
                 expr: 'test-query',
                 hide: false,
               },
@@ -625,7 +625,10 @@ describe('ResponseTransformers', () => {
             targets: [
               {
                 refId: 'A',
-                datasource: 'datasource1',
+                datasource: {
+                  type: 'prometheus',
+                  uid: 'datasource1',
+                },
                 expr: 'test-query',
                 hide: false,
               },
@@ -654,7 +657,10 @@ describe('ResponseTransformers', () => {
                 targets: [
                   {
                     refId: 'A',
-                    datasource: 'datasource1',
+                    datasource: {
+                      type: 'prometheus',
+                      uid: 'datasource1',
+                    },
                     expr: 'test-query',
                     hide: false,
                   },
