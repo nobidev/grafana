@@ -129,28 +129,28 @@ module.exports = (env = {}) => {
             }),
           ]
         : []),
-      parseInt(env.noTsCheck, 10)
-        ? new DefinePlugin({}) // bogus plugin to satisfy webpack API
-        : new ForkTsCheckerWebpackPlugin({
-            async: true, // don't block webpack emit
-            typescript: {
-              mode: 'write-references',
-              memoryLimit: 5096,
-              diagnosticOptions: {
-                semantic: true,
-                syntactic: true,
-              },
-            },
-          }),
-      parseInt(env.noLint, 10)
-        ? new DefinePlugin({}) // bogus plugin to satisfy webpack API
-        : new ESLintPlugin({
-            cache: true,
-            lintDirtyModulesOnly: true, // don't lint on start, only lint changed files
-            extensions: ['.ts', '.tsx'],
-            configType: 'flat',
-            failOnError: false,
-          }),
+      // parseInt(env.noTsCheck, 10)
+      //   ? new DefinePlugin({}) // bogus plugin to satisfy webpack API
+      //   : new ForkTsCheckerWebpackPlugin({
+      //       async: true, // don't block webpack emit
+      //       typescript: {
+      //         mode: 'write-references',
+      //         memoryLimit: 5096,
+      //         diagnosticOptions: {
+      //           semantic: true,
+      //           syntactic: true,
+      //         },
+      //       },
+      //     }),
+      // parseInt(env.noLint, 10)
+      //   ? new DefinePlugin({}) // bogus plugin to satisfy webpack API
+      //   : new ESLintPlugin({
+      //       cache: true,
+      //       lintDirtyModulesOnly: true, // don't lint on start, only lint changed files
+      //       extensions: ['.ts', '.tsx'],
+      //       configType: 'flat',
+      //       failOnError: false,
+      //     }),
       new MiniCssExtractPlugin({
         filename: 'grafana.[name].[contenthash].css',
       }),
