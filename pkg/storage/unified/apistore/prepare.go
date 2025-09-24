@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apiserver/pkg/storage"
-	"k8s.io/klog/v2"
 
 	authlib "github.com/grafana/authlib/types"
 	"github.com/grafana/grafana-app-sdk/logging"
@@ -97,8 +96,8 @@ func (s *Storage) prepareObjectForStorage(ctx context.Context, newObject runtime
 	if obj.GetUID() == "" {
 		obj.SetUID(types.UID(uuid.NewString()))
 	}
-	if obj.GetFolder() != "" && !s.opts.EnableFolderSupport {
-		return v, apierrors.NewBadRequest(fmt.Sprintf("folders are not supported for: %s", s.gr.String()))
+	if err = s.checkFolder(obj); err != nil {
+		return v, err
 	}
 
 	v.grantPermissions = obj.GetAnnotation(utils.AnnoKeyGrantPermissions)
@@ -157,6 +156,9 @@ func (s *Storage) prepareObjectForUpdate(ctx context.Context, updateObject runti
 	if obj.GetName() == "" {
 		return v, fmt.Errorf("updated object must have a name")
 	}
+	if err = s.checkFolder(obj); err != nil {
+		return v, err
+	}
 
 	previous, err := utils.MetaAccessor(previousObject)
 	if err != nil {
@@ -164,7 +166,7 @@ func (s *Storage) prepareObjectForUpdate(ctx context.Context, updateObject runti
 	}
 
 	if previous.GetUID() == "" {
-		klog.Errorf("object is missing UID: %s, %s", obj.GetGroupVersionKind().String(), obj.GetName())
+		logging.FromContext(ctx).Error("object is missing UID:", obj.GetGroupVersionKind().String(), obj.GetName())
 	} else if obj.GetUID() != previous.GetUID() {
 		// Eventually this should be a real error or logged
 		// However the dashboard dual write behavior hits this every time, so we will ignore it
@@ -197,11 +199,7 @@ func (s *Storage) prepareObjectForUpdate(ctx context.Context, updateObject runti
 
 	// Check if we should bump the generation
 	if obj.GetFolder() != previous.GetFolder() {
-		if !s.opts.EnableFolderSupport {
-			return v, apierrors.NewBadRequest(fmt.Sprintf("folders are not supported for: %s", s.gr.String()))
-		}
-		// TODO: check that we can move the folder?
-		v.hasChanged = true
+		v.hasChanged = true // unified storage checks if we have write access
 	} else if obj.GetDeletionTimestamp() != nil && previous.GetDeletionTimestamp() == nil {
 		v.hasChanged = true // bump generation when deleted
 	} else if !v.hasChanged {
@@ -266,6 +264,17 @@ func (s *Storage) handleLargeResources(ctx context.Context, obj utils.GrafanaMet
 
 		// Now encode the smaller version
 		return s.codec.Encode(orig, buf)
+	}
+	return nil
+}
+
+func (s *Storage) checkFolder(obj utils.GrafanaMetaAccessor) error {
+	if obj.GetFolder() == "" {
+		if s.opts.EnableFolderSupport {
+			return apierrors.NewBadRequest("missing folder annotation")
+		}
+	} else if !s.opts.EnableFolderSupport {
+		return apierrors.NewBadRequest(fmt.Sprintf("folders are not supported for: %s", s.gr.String()))
 	}
 	return nil
 }

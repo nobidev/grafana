@@ -236,6 +236,29 @@ func TestPrepareObjectForStorage(t *testing.T) {
 		require.Equal(t, v.grantPermissions, "default")
 	})
 
+	t.Run("check folder state", func(t *testing.T) {
+		s := &Storage{
+			opts: StorageOptions{
+				EnableFolderSupport: true,
+			},
+		}
+		obj, err := utils.MetaAccessor(&dashv1.Dashboard{})
+		require.NoError(t, err)
+
+		err = s.checkFolder(obj)
+		require.ErrorContains(t, err, "missing")
+		obj.SetFolder("xxx")
+		err = s.checkFolder(obj)
+		require.NoError(t, err)
+
+		s.opts.EnableFolderSupport = false
+		err = s.checkFolder(obj)
+		require.ErrorContains(t, err, "not supported")
+		obj.SetFolder("")
+		err = s.checkFolder(obj)
+		require.NoError(t, err)
+	})
+
 	t.Run("calculate generation", func(t *testing.T) {
 		dash := &dashv1.Dashboard{
 			ObjectMeta: v1.ObjectMeta{

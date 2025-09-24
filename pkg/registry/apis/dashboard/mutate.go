@@ -17,6 +17,7 @@ import (
 	"github.com/grafana/grafana/apps/dashboard/pkg/migration"
 	"github.com/grafana/grafana/apps/dashboard/pkg/migration/schemaversion"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
+	"github.com/grafana/grafana/pkg/services/folder"
 )
 
 func (b *DashboardsAPIBuilder) Mutate(ctx context.Context, a admission.Attributes, o admission.ObjectInterfaces) (err error) {
@@ -31,6 +32,11 @@ func (b *DashboardsAPIBuilder) Mutate(ctx context.Context, a admission.Attribute
 	meta, err := utils.MetaAccessor(obj)
 	if err != nil {
 		return err
+	}
+
+	// Make sure there is parent folder configured
+	if meta.GetFolder() == "" {
+		meta.SetFolder(folder.GeneralFolderUID)
 	}
 
 	var migrationErr error
