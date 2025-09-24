@@ -1,4 +1,2 @@
 module: "github.com/grafana/grafana/apps/playlist/kinds"
-language: {
-	version: "v0.9.0"
-}
+language: version: "v0.9.2"
