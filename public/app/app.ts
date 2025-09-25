@@ -45,6 +45,7 @@ import {
   setMegaMenuOpenHook,
 } from '@grafana/runtime';
 import {
+  initOpenFeature,
   setGetObservablePluginComponents,
   setGetObservablePluginLinks,
   setPanelDataErrorView,
@@ -75,7 +76,6 @@ import { loadTranslations } from './core/internationalization/loadTranslations';
 import { postInitTasks, preInitTasks } from './core/lifecycle-hooks';
 import { setMonacoEnv } from './core/monacoEnv';
 import { interceptLinkClicks } from './core/navigation/patch/interceptLinkClicks';
-import { initOpenFeature } from './core/openFeature';
 import { CorrelationsService } from './core/services/CorrelationsService';
 import { NewFrontendAssetsChecker } from './core/services/NewFrontendAssetsChecker';
 import { backendSrv } from './core/services/backend_srv';
@@ -137,10 +137,14 @@ export class GrafanaApp {
       // Let iframe container know grafana has started loading
       window.parent.postMessage('GrafanaAppInit', '*');
 
-      try {
-        await initOpenFeature();
-      } catch (err) {
-        console.error('Failed to initialize OpenFeature provider', err);
+      // Currently the OpenFeature API requires a signed in user. This means feature flags cannot be used
+      // on the login page.
+      if (contextSrv.user.isSignedIn) {
+        try {
+          await initOpenFeature();
+        } catch (err) {
+          console.error('Failed to initialize OpenFeature provider', err);
+        }
       }
 
       const regionalFormat = config.featureToggles.localeFormatPreference
