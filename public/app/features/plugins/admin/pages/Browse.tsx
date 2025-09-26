@@ -115,6 +115,7 @@ export default function Browse() {
                     { value: 'datasource', label: t('plugins.browse.label.data-sources', 'Data sources') },
                     { value: 'panel', label: t('plugins.browse.label.panels', 'Panels') },
                     { value: 'app', label: t('plugins.browse.label.applications', 'Applications') },
+                    { value: 'theme', label: t('plugins.browse.label.theme', 'Theme') },
                   ]}
                 />
               </Field>

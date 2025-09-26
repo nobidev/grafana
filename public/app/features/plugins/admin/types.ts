@@ -25,6 +25,7 @@ export enum PluginIconName {
   datasource = 'database',
   panel = 'credit-card',
   renderer = 'capture',
+  theme = 'palette',
 }
 
 export interface CatalogPlugin extends WithAccessControlMetadata {
