@@ -27,7 +27,7 @@ func ProvideDiscoveryStage(cfg *config.PluginManagementCfg, pr registry.Service)
 	return discovery.New(cfg, discovery.Opts{
 		FilterFuncs: []discovery.FilterFunc{
 			discovery.NewPermittedPluginTypesFilterStep([]plugins.Type{
-				plugins.TypeDataSource, plugins.TypeApp, plugins.TypePanel,
+				plugins.TypeDataSource, plugins.TypeApp, plugins.TypePanel, plugins.TypeTheme,
 			}),
 			func(ctx context.Context, _ plugins.Class, b []*plugins.FoundBundle) ([]*plugins.FoundBundle, error) {
 				return NewDuplicatePluginIDFilterStep(pr).Filter(ctx, b)

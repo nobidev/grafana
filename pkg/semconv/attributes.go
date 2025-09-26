@@ -112,6 +112,8 @@ var (
 	GrafanaPluginTypeApp = grafanaPluginTypeKey.String("app")
 	// Renderer Plugin
 	GrafanaPluginTypeRenderer = grafanaPluginTypeKey.String("renderer")
+	// Theme Plugin
+	GrafanaPluginTypeTheme = grafanaPluginTypeKey.String("theme")
 )
 
 // GrafanaPluginId returns an attribute KeyValue conforming to the

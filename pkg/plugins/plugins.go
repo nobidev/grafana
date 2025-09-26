@@ -513,6 +513,7 @@ var PluginTypes = []Type{
 	TypePanel,
 	TypeApp,
 	TypeRenderer,
+	TypeTheme,
 }
 
 type Type string
@@ -522,11 +523,12 @@ const (
 	TypePanel      Type = "panel"
 	TypeApp        Type = "app"
 	TypeRenderer   Type = "renderer"
+	TypeTheme      Type = "theme"
 )
 
 func (pt Type) IsValid() bool {
 	switch pt {
-	case TypeDataSource, TypePanel, TypeApp, TypeRenderer:
+	case TypeDataSource, TypePanel, TypeApp, TypeRenderer, TypeTheme:
 		return true
 	}
 	return false

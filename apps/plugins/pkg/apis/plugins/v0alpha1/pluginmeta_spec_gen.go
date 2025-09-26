@@ -423,6 +423,7 @@ const (
 	PluginMetaJSONDataTypeDatasource PluginMetaJSONDataType = "datasource"
 	PluginMetaJSONDataTypePanel      PluginMetaJSONDataType = "panel"
 	PluginMetaJSONDataTypeRenderer   PluginMetaJSONDataType = "renderer"
+	PluginMetaJSONDataTypeTheme      PluginMetaJSONDataType = "theme"
 )
 
 // +k8s:openapi-gen=true
