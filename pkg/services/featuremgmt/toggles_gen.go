@@ -1066,4 +1066,7 @@ const (
 	// FlagFilterOutBotsFromFrontendLogs
 	// Filter out bots from collecting data for Frontend Observability
 	FlagFilterOutBotsFromFrontendLogs = "filterOutBotsFromFrontendLogs"
+
+	// FlagAssistantForVizSuggestions
+	FlagAssistantForVizSuggestions = "assistantForVizSuggestions"
 )

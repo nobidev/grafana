@@ -1188,4 +1188,9 @@ export interface FeatureToggles {
   * @default false
   */
   filterOutBotsFromFrontendLogs?: boolean;
+  /**
+  * 
+  * @default false
+  */
+  assistantForVizSuggestions?: boolean;
 }
