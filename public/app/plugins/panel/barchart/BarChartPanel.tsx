@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
 import { PanelProps, VizOrientation } from '@grafana/data';
-import { config, PanelDataErrorView } from '@grafana/runtime';
+import { PanelDataErrorView } from '@grafana/runtime';
 import {
   AdHocFilterItem,
   TooltipDisplayMode,
@@ -175,7 +175,6 @@ export const BarChartPanel = (props: PanelProps<Options>) => {
                 // are derived from a data source, but are not present in the data source.
                 // We choose `xField` here because it contains the label-value pair, rather than `field` which is the numeric Value.
                 if (
-                  config.featureToggles.adhocFiltersInTooltips &&
                   xField.config.filterable &&
                   onAddAdHocFilter != null
                 ) {

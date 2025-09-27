@@ -514,7 +514,6 @@ sqlExpressionsColumnAutoComplete,2025-07-23T21:49:58Z,,5bfed408edcc6f74dd8b0780b
 timeComparison,2025-07-24T20:07:28Z,,219672722662938633ffae3f6e8bfa89f8f29661,Drew Slobodnjak
 kubernetesAuthnMutation,2025-07-25T15:05:32Z,,5f6fc38430494e3cb642a09e32415ae62a92ad56,Victor Cinaglia
 alertmanagerRemoteSecondaryWithRemoteState,2025-07-25T15:06:59Z,,dcb965b7dcf1ec47d0847968fa362d2b308328f8,Santiago
-adhocFiltersInTooltips,2025-07-29T17:53:43Z,,2174a84b36b9a086018972654c5ec661c19937a1,Sam Jewell
 scanRowInvalidDashboardParseFallbackEnabled,2025-07-30T14:18:38Z,,98e37f2ca9b4fa1a6cac0c3a2ae355a5ff60dbd9,Mustafa Sencer Özcan
 dashboardLevelTimeMacros,2025-07-31T09:49:07Z,,e7cfe0c0237394f6c87d01ad4a5e6f29954212fb,Oscar Kilhed
 useScopeSingleNodeEndpoint,2025-07-31T14:32:41Z,,972e2f31e5f3dfd8d9f8152b3bb1fe7224e5d1e1,Tobias Skarhed
