@@ -1,12 +1,16 @@
 import { css } from '@emotion/css';
+import { useState } from 'react';
 
-import { CoreApp, GrafanaTheme2 } from '@grafana/data';
+import { CoreApp, GrafanaTheme2, type PluginExtensionLink, PluginExtensionPoints } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
+import { reportInteraction, usePluginLinks } from '@grafana/runtime';
 import { ToolbarButton, useTheme2, Dropdown, Menu, ButtonGroup } from '@grafana/ui';
 import { useSelector } from 'app/types/store';
 import { createDatasourcesList } from 'app/core/utils/richHistory';
-import { selectExploreDSMaps } from './state/selectors';
+import { MIXED_DATASOURCE_NAME } from 'app/plugins/datasource/mixed/MixedDataSource';
+import { ConfirmNavigationModal } from './extensions/ConfirmNavigationModal';
+import { selectExploreDSMaps, getExploreItemSelector } from './state/selectors';
 
 import { useQueriesDrawerContext } from './QueriesDrawer/QueriesDrawerContext';
 import { useQueryLibraryContext } from './QueryLibrary/QueryLibraryContext';
@@ -18,6 +22,7 @@ type Props = {
   richHistoryRowButtonHidden?: boolean;
   queryInspectorButtonActive?: boolean;
   sparkJoy?: boolean;
+  exploreId: string;
 
   onClickAddQueryRowButton: () => void;
   onClickQueryInspectorButton: () => void;
@@ -43,17 +48,53 @@ export function SecondaryActions({
   onSelectQueryFromLibrary,
   queryInspectorButtonActive,
   sparkJoy = false,
+  exploreId,
 }: Props) {
   const theme = useTheme2();
   const styles = getStyles(theme);
-  const { queryLibraryEnabled, openDrawer: openQueryLibraryDrawer } = useQueryLibraryContext();
-  const { setDrawerOpened } = useQueriesDrawerContext();
-
   const exploreActiveDS = useSelector(selectExploreDSMaps);
+
+  // Prefill the query library filter with the dataSource.
+  // Get current dataSource that is open. As this is only used in Explore we get it from Explore state.
   const listOfDatasources = createDatasourcesList();
   const activeDatasources = exploreActiveDS.dsToExplore
-    .map((eDs) => listOfDatasources.find((ds) => ds.uid === eDs.datasource?.uid)?.name)
-    .filter((name): name is string => !!name);
+    .map((eDs) => {
+      return listOfDatasources.find((ds) => ds.uid === eDs.datasource?.uid)?.name;
+    })
+    .filter((name): name is string => !!name && name !== MIXED_DATASOURCE_NAME);
+
+  // Use the same logic as ToolbarExtensionPoint to get queryless extensions
+  const selectExploreItem = getExploreItemSelector(exploreId);
+  const { links } = usePluginLinks({
+    extensionPointId: PluginExtensionPoints.ExploreToolbarAction,
+    context: {
+      exploreId,
+      targets: useSelector(selectExploreItem)?.queries || [],
+      data: useSelector(selectExploreItem)?.queryResponse,
+      timeRange: useSelector(selectExploreItem)?.range?.raw,
+      timeZone: 'browser',
+      shouldShowAddCorrelation: false,
+    },
+    limitPerPlugin: 3,
+  });
+
+  const QUERYLESS_APPS = [
+    'grafana-pyroscope-app',
+    'grafana-lokiexplore-app',
+    'grafana-exploretraces-app',
+    'grafana-metricsdrilldown-app',
+  ];
+
+  const noQueriesInPane = Boolean(useSelector(selectExploreItem)?.queries?.length);
+  const querylessExtensions = links.filter((link) => QUERYLESS_APPS.includes(link.pluginId));
+  const { queryLibraryEnabled, openDrawer: openQueryLibraryDrawer } = useQueryLibraryContext();
+  const { setDrawerOpened } = useQueriesDrawerContext();
+  
+  // State for queryless extensions modal
+  const [selectedExtension, setSelectedExtension] = useState<PluginExtensionLink | undefined>();
+
+  // Debug logging
+  // console.log('SecondaryActions Debug:', { sparkJoy, querylessExtensionsLength: querylessExtensions.length, noQueriesInPane, exploreId, allLinksLength: links.length });
 
   return (
     <div className={styles.containerMargin}>
@@ -107,6 +148,24 @@ export function SecondaryActions({
                       }}
                       disabled={addQueryRowButtonDisabled}
                     />
+                    {querylessExtensions.length > 0 && (
+                      <Menu.Item
+                        icon="external-link-alt"
+                        label={t('explore.toolbar.add-to-queryless-extensions', 'Go queryless')}
+                        onClick={() => {
+                          if (querylessExtensions.length === 1) {
+                            const extension = querylessExtensions[0];
+                            setSelectedExtension(extension);
+                            reportInteraction('grafana_explore_queryless_app_link_clicked', {
+                              pluginId: extension.pluginId,
+                            });
+                          }
+                          // For multiple extensions, we could show a submenu or handle differently
+                          // For now, just select the first one as per the original QuerylessAppsExtensions logic
+                        }}
+                        disabled={!Boolean(noQueriesInPane)}
+                      />
+                    )}
                   </Menu>
                 }
                 placement="bottom-start"
@@ -155,6 +214,13 @@ export function SecondaryActions({
       >
         <Trans i18nKey="explore.secondary-actions.query-inspector-button">Query inspector</Trans>
       </ToolbarButton>
+      {!!selectedExtension && !!selectedExtension.path && (
+        <ConfirmNavigationModal
+          path={selectedExtension.path}
+          title={selectedExtension.title}
+          onDismiss={() => setSelectedExtension(undefined)}
+        />
+      )}
     </div>
   );
 }
