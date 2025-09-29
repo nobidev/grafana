@@ -122,6 +122,8 @@ export interface DashboardSceneState extends SceneObjectState {
   controls?: DashboardControls;
   /** True when editing */
   isEditing?: boolean;
+  /** Is adding */
+  isAdding?: boolean;
   /** True when user made a change */
   isDirty?: boolean;
   /** meta flags */

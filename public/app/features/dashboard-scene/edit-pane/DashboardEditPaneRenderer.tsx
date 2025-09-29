@@ -2,13 +2,15 @@ import { css, cx } from '@emotion/css';
 import { Resizable } from 're-resizable';
 import { useLocalStorage } from 'react-use';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { GrafanaTheme2, getDataSourceRef } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
 import { useSceneObjectState } from '@grafana/scenes';
 import { useStyles2, useSplitter, ToolbarButton, ScrollContainer, Text, Icon, clearButtonStyles } from '@grafana/ui';
+import { DataSourcePicker } from 'app/features/datasources/components/picker/DataSourcePicker';
 
 import { DashboardInteractions } from '../utils/interactions';
+import { getDashboardSceneFor, getDefaultVizPanel, getQueryRunnerFor } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DashboardOutline } from './DashboardOutline';
@@ -96,44 +98,66 @@ export function DashboardEditPaneRenderer({ editPane, isEditPaneCollapsed, onTog
 
   return (
     <div className={styles.wrapper}>
-      <div {...splitter.containerProps}>
-        <div {...splitter.primaryProps} className={cx(splitter.primaryProps.className, styles.paneContent)}>
-          <ElementEditPane
-            element={editableElement}
-            key={selectedObject?.state.key}
-            editPane={editPane}
-            isNewElement={isNewElement}
+      {editPane.state.isAdding ? (
+        <div>
+          <DataSourcePicker
+            metrics
+            logs
+            tracing
+            dashboard
+            variables
+            mixed
+            onChange={(ds) => {
+              const dashboard = getDashboardSceneFor(editPane);
+              const panel = getDefaultVizPanel();
+              const runner = getQueryRunnerFor(panel);
+              if (runner) {
+                runner.setState({ datasource: getDataSourceRef(ds) });
+              }
+              dashboard.addPanel(panel);
+            }}
           />
         </div>
-        <div
-          {...splitter.splitterProps}
-          className={cx(splitter.splitterProps.className, styles.splitter)}
-          data-edit-pane-splitter={true}
-        />
-        <div {...splitter.secondaryProps} className={cx(splitter.secondaryProps.className, styles.paneContent)}>
-          <button
-            type="button"
-            onClick={() => {
-              DashboardInteractions.dashboardOutlineClicked();
-              setOutlineCollapsed(!outlineCollapsed);
-            }}
-            className={cx(clearButton, styles.outlineCollapseButton)}
-            data-testid={selectors.components.PanelEditor.Outline.section}
-          >
-            <Text weight="medium">
-              <Trans i18nKey="dashboard-scene.dashboard-edit-pane-renderer.outline">Outline</Trans>
-            </Text>
-            <Icon name={outlineCollapsed ? 'angle-up' : 'angle-down'} />
-          </button>
-          {!outlineCollapsed && (
-            <div className={styles.outlineContainer}>
-              <ScrollContainer showScrollIndicators={true}>
-                <DashboardOutline editPane={editPane} />
-              </ScrollContainer>
-            </div>
-          )}
+      ) : (
+        <div {...splitter.containerProps}>
+          <div {...splitter.primaryProps} className={cx(splitter.primaryProps.className, styles.paneContent)}>
+            <ElementEditPane
+              element={editableElement}
+              key={selectedObject?.state.key}
+              editPane={editPane}
+              isNewElement={isNewElement}
+            />
+          </div>
+          <div
+            {...splitter.splitterProps}
+            className={cx(splitter.splitterProps.className, styles.splitter)}
+            data-edit-pane-splitter={true}
+          />
+          <div {...splitter.secondaryProps} className={cx(splitter.secondaryProps.className, styles.paneContent)}>
+            <button
+              type="button"
+              onClick={() => {
+                DashboardInteractions.dashboardOutlineClicked();
+                setOutlineCollapsed(!outlineCollapsed);
+              }}
+              className={cx(clearButton, styles.outlineCollapseButton)}
+              data-testid={selectors.components.PanelEditor.Outline.section}
+            >
+              <Text weight="medium">
+                <Trans i18nKey="dashboard-scene.dashboard-edit-pane-renderer.outline">Outline</Trans>
+              </Text>
+              <Icon name={outlineCollapsed ? 'angle-up' : 'angle-down'} />
+            </button>
+            {!outlineCollapsed && (
+              <div className={styles.outlineContainer}>
+                <ScrollContainer showScrollIndicators={true}>
+                  <DashboardOutline editPane={editPane} />
+                </ScrollContainer>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

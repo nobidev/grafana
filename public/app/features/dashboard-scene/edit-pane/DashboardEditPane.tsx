@@ -24,6 +24,8 @@ export interface DashboardEditPaneState extends SceneObjectState {
   selection?: ElementSelection;
   selectionContext: ElementSelectionContextState;
 
+  isAdding: boolean;
+
   undoStack: DashboardEditActionEventPayload[];
   redoStack: DashboardEditActionEventPayload[];
 }
@@ -39,6 +41,7 @@ export class DashboardEditPane extends SceneObjectBase<DashboardEditPaneState> {
       },
       undoStack: [],
       redoStack: [],
+      isAdding: false,
     });
 
     this.addActivationHandler(this.onActivate.bind(this));

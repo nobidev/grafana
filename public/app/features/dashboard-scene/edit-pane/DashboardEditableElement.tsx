@@ -81,6 +81,9 @@ export class DashboardEditableElement implements EditableDashboardElement {
         >
           <Trans i18nKey="dashboard.actions.open-settings">Settings</Trans>
         </Button>
+        <Button variant="primary" size="sm" onClick={() => this.dashboard.state.editPane.setState({ isAdding: true })}>
+          <Trans i18nKey="dashboard.actions.add-panel">Add</Trans>
+        </Button>
       </>
     );
   }
