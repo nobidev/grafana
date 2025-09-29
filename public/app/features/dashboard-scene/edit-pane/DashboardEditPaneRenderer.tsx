@@ -2,16 +2,15 @@ import { css, cx } from '@emotion/css';
 import { Resizable } from 're-resizable';
 import { useLocalStorage } from 'react-use';
 
-import { GrafanaTheme2, getDataSourceRef } from '@grafana/data';
+import { GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
 import { useSceneObjectState } from '@grafana/scenes';
 import { useStyles2, useSplitter, ToolbarButton, ScrollContainer, Text, Icon, clearButtonStyles } from '@grafana/ui';
-import { DataSourcePicker } from 'app/features/datasources/components/picker/DataSourcePicker';
 
 import { DashboardInteractions } from '../utils/interactions';
-import { getDashboardSceneFor, getDefaultVizPanel, getQueryRunnerFor } from '../utils/utils';
 
+import { DashboardAddPanelPane } from './DashboardAddPanelPane';
 import { DashboardEditPane } from './DashboardEditPane';
 import { DashboardOutline } from './DashboardOutline';
 import { ElementEditPane } from './ElementEditPane';
@@ -99,25 +98,7 @@ export function DashboardEditPaneRenderer({ editPane, isEditPaneCollapsed, onTog
   return (
     <div className={styles.wrapper}>
       {editPane.state.isAdding ? (
-        <div>
-          <DataSourcePicker
-            metrics
-            logs
-            tracing
-            dashboard
-            variables
-            mixed
-            onChange={(ds) => {
-              const dashboard = getDashboardSceneFor(editPane);
-              const panel = getDefaultVizPanel();
-              const runner = getQueryRunnerFor(panel);
-              if (runner) {
-                runner.setState({ datasource: getDataSourceRef(ds) });
-              }
-              dashboard.addPanel(panel);
-            }}
-          />
-        </div>
+        <DashboardAddPanelPane editPane={editPane} />
       ) : (
         <div {...splitter.containerProps}>
           <div {...splitter.primaryProps} className={cx(splitter.primaryProps.className, styles.paneContent)}>
@@ -178,7 +159,7 @@ function getStyles(theme: GrafanaTheme2) {
       right: 0,
       bottom: 0,
       top: theme.spacing(2),
-      position: 'absolute !important' as 'absolute',
+      position: 'absolute',
       background: theme.colors.background.primary,
       borderLeft: `1px solid ${theme.colors.border.weak}`,
       borderTop: `1px solid ${theme.colors.border.weak}`,
