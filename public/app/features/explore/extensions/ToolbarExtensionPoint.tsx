@@ -25,6 +25,7 @@ const QUERYLESS_APPS = [
   'grafana-lokiexplore-app',
   'grafana-exploretraces-app',
   'grafana-metricsdrilldown-app',
+  'grafana-telemetrydrilldown-app',
 ];
 
 export function ToolbarExtensionPoint(props: Props): ReactElement | null {

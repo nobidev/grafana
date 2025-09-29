@@ -29,4 +29,5 @@ export const ALLOWED_DATASOURCE_EXTENSION_PLUGINS = [
   'grafana-monitoring-app',
   'grafana-troubleshooting-app',
   'grafana-assistant-app',
+  'grafana-telemetrydrilldown-app',
 ];
