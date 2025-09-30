@@ -51,7 +51,8 @@ function getStyles(theme: GrafanaTheme2) {
     wrapper: css({
       display: 'flex',
       flexDirection: 'column',
-      margin: theme.spacing(1),
+      padding: theme.spacing(2),
+      paddingTop: theme.spacing(0),
     }),
     dsButton: css({
       textAlign: 'left',
