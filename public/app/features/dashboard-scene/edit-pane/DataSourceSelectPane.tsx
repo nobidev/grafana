@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -26,6 +26,7 @@ export function DataSourceSelectPane(props: Props) {
   });
 
   const filtered = useMemo(
+    // This filter probably needs to filter for datasources that support this flow.
     () => dataSources.filter((ds) => matchDataSourceWithSearch(ds, searchQuery)),
     [dataSources, searchQuery]
   );
@@ -104,9 +105,10 @@ function getStyles(theme: GrafanaTheme2) {
       alignItems: 'center',
       gap: theme.spacing(1),
       padding: theme.spacing(1),
+      marginBottom: theme.spacing(1),
       background: theme.colors.background.secondary,
-      border: `1px solid ${theme.colors.border.weak}`,
       borderRadius: theme.shape.radius.default,
+      border: 'none',
       cursor: 'pointer',
       textAlign: 'left',
       ':hover': {
@@ -125,7 +127,7 @@ function getStyles(theme: GrafanaTheme2) {
       flexDirection: 'column',
     }),
     itemName: css({
-      fontWeight: theme.typography.weightMedium,
+      fontWeight: theme.typography.fontWeightMedium,
     }),
     itemMeta: css({
       color: theme.colors.text.secondary,

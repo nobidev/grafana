@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { useMemo, useState } from 'react';
 
-import { DataSourceInstanceSettings } from '@grafana/data';
+import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { useStyles2, ToolbarButton, ButtonGroup } from '@grafana/ui';
 import { dataSourceLabel } from 'app/features/datasources/components/picker/utils';
@@ -46,11 +46,12 @@ export function DataSourceButton(props: Props) {
   );
 }
 
-function getStyles() {
+function getStyles(theme: GrafanaTheme2) {
   return {
     wrapper: css({
       display: 'flex',
       flexDirection: 'column',
+      margin: theme.spacing(1),
     }),
     dsButton: css({
       textAlign: 'left',

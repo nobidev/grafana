@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useLocalStorage } from 'react-use';
 
 import { DataSourceInstanceSettings } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -13,9 +12,11 @@ interface Props {
 }
 
 export function DashboardAddPanelPane({ editPane }: Props) {
-  const [isDsPickerOpen, setIsDsPickerOpen] = useLocalStorage('grafana.dashboard.edit-pane.ds-picker.open', false);
-
+  // This should probably be the same if this pane is opened again. Also store in dashboard state?
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
+
+  // This defaults to open, but should probably not be open if there is a current datasource.
+  const [isDsPickerOpen, setIsDsPickerOpen] = useState(true);
 
   return (
     <div>
@@ -26,15 +27,10 @@ export function DashboardAddPanelPane({ editPane }: Props) {
           onOpen={() => setIsDsPickerOpen(true)}
         />
       )}
+      {/* Metric selector goes here */}
       {isDsPickerOpen && (
         <DataSourceSelectPane
           current={currentDatasource}
-          metrics={true}
-          logs={true}
-          tracing={true}
-          dashboard={true}
-          variables={true}
-          mixed={true}
           onSelect={(ds) => {
             setCurrentDatasource(ds);
             setIsDsPickerOpen(false);
