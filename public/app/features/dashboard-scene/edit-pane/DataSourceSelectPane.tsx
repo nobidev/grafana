@@ -81,12 +81,12 @@ function getStyles(theme: GrafanaTheme2) {
       flex: '1 1 100%',
       height: '100%',
       background: theme.colors.background.primary,
-      border: `1px solid ${theme.colors.border.weak}`,
-      padding: theme.spacing(1),
+      padding: theme.spacing(2),
+      paddingTop: theme.spacing(0),
     }),
     searchRow: css({
       display: 'flex',
-      marginBottom: theme.spacing(1),
+      marginBottom: theme.spacing(2),
     }),
     closeButton: css({
       marginLeft: theme.spacing(1),
