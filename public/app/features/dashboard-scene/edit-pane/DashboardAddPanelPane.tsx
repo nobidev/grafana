@@ -8,6 +8,7 @@ import { Icon, useStyles2 } from '@grafana/ui';
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
 import { DataSourceSelectPane } from './DataSourceSelectPane';
+import { PromMetricSelector } from './PromMetricSelector';
 
 interface Props {
   editPane: DashboardEditPane;
@@ -29,7 +30,8 @@ export function DashboardAddPanelPane({ editPane }: Props) {
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
 
   // This defaults to open, but should probably not be open if there is a current datasource.
-  const [isDsPickerOpen, setIsDsPickerOpen] = useState(true);
+  // FIXME [HACK] it was set as false for fast development purposes
+  const [isDsPickerOpen, setIsDsPickerOpen] = useState(false);
 
   const styles = useStyles2(getStyles);
 
@@ -81,6 +83,8 @@ export function DashboardAddPanelPane({ editPane }: Props) {
           </div>
         </>
       )}
+
+      <PromMetricSelector selectedDatasource={currentDatasource} />
 
       {isDsPickerOpen && (
         <DataSourceSelectPane
