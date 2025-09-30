@@ -13,6 +13,8 @@ import { Stack } from '../Layout/Stack/Stack';
 
 import { SubMenu } from './SubMenu';
 
+export const MENU_ITEM_PADDING = 2;
+
 /** @internal */
 export type MenuItemElement = HTMLAnchorElement & HTMLButtonElement & HTMLDivElement;
 
