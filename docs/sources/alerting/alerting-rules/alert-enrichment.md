@@ -1,6 +1,6 @@
 ---
 aliases:
-canonical: https://grafana.com/docs/grafana/latest/alerting/alerting-rules/alert-enrichment
+canonical: https://grafana.com/docs/grafana-cloud/alerting-and-irm/alerting/configure-notifications/alert-enrichment/
 description: Alert enrichment
 labels:
   products:
@@ -14,7 +14,7 @@ weight: 120
 
 # Alert enrichment
 
-Grafana's alert enrichment feature makes your alert notifications more actionable by running preliminary analysis and adding more context. With Alert enrichment, you can configure various enrichment types to add add to alert notifications. Alert enrichments can be scoped by either labels, annotations, or applied across all alerts.
+Grafana's alert enrichment feature makes your alert notifications richer and more actionable with a variety of enrichment options. With Alert enrichment, you can configure different enrichment types to add add to preliminary analysis or additional context. Alert enrichments can be scoped by either labels, annotations, or applied across all alerts.
 
 ## Before you begin
 
