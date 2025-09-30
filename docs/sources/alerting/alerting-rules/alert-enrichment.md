@@ -14,20 +14,20 @@ weight: 120
 
 # Alert enrichment
 
-Grafana's alert enrichment feature makes your alert notifications richer and more actionable with a variety of enrichment options. With Alert enrichment, you can configure different enrichment types to add add to preliminary analysis or additional context. Alert enrichments can be scoped by either labels, annotations, or applied across all alerts.
+Grafana Cloud alert enrichment feature makes your alert notifications richer and more actionable with a variety of enrichment options. With Alert enrichment, you can configure different enrichment types to add add to preliminary analysis or additional context. Alert enrichments can be scoped by either labels, annotations, or applied across all alerts.
 
 ## Before you begin
 
 Alert enrichments must be turned on by a feature flag.
 
-Only an alerting admin can create alert enrichments.
+Only an alerting administrator can create alert enrichments.
 
 ## Create a new enrichment
 
 1. To create a new alert enrichment, go to **Alerting > Settings > Alert Enrichment**. 
 Click **+ New alert enrichment** to create a new enrichment.
 
-1. Give your enrichment a name an an optional description.
+1. Give your enrichment a name an optional description.
 
 1. Enter a timeout for the enrichment.
 
@@ -38,7 +38,7 @@ Click **+ New alert enrichment** to create a new enrichment.
     - Data Source Query: assign a PromQL data source query to be added to alerts.
     - Asserts: use Asserts enrichment.
     - Sift: create a [Sift investigation](/docs/grafana-cloud/machine-learning/sift/) for alerts.
-    - Explain: create a LLM enrichment for alerts. Requires [LLM plugin to be enabled(docs/grafana-cloud/machine-learning/llm/llm-setup/)].
+    - Explain: create a LLM enrichment for alerts. Requires [LLM plugin to be enabled](docs/grafana-cloud/machine-learning/llm/llm-setup/).
     - Assistant Investigations: enrichments from Grafana Assistant.
 
 1. Define the Scope of the enrichment. You can choose to have the enrichment scoped to All alerts, Label scoped, or Annotation scoped.
