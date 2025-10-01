@@ -1,5 +1,6 @@
 import { css } from '@emotion/css';
 import { useCallback, useEffect, useState } from 'react';
+import Highlighter from 'react-highlight-words';
 
 import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
@@ -284,7 +285,14 @@ export function MetricSelectorSidePanel({
                       className={`${styles.metricCard} ${selectedMetric === metric ? styles.selectedMetric : ''}`}
                       onClick={() => handleMetricSelection(metric)}
                     >
-                      <Card.Heading>{metric}</Card.Heading>
+                      <Card.Heading>
+                        <Highlighter
+                          textToHighlight={metric}
+                          searchWords={[metricSearchTerm]}
+                          autoEscape
+                          highlightClassName={styles.matchHighLight}
+                        />
+                      </Card.Heading>
                       <Card.Description>{formatMetricDescription(metric)}</Card.Description>
                     </Card>
                   ))}
@@ -364,6 +372,11 @@ function getStyles(theme: GrafanaTheme2) {
       textAlign: 'center',
       padding: theme.spacing(3),
       color: theme.colors.text.secondary,
+    }),
+    matchHighLight: css({
+      background: 'inherit',
+      color: theme.components.textHighlight.text,
+      backgroundColor: theme.components.textHighlight.background,
     }),
   };
 }
