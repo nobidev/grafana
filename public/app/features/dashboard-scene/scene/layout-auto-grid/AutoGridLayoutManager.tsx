@@ -16,6 +16,7 @@ import {
   getGridItemKeyForPanelId,
   getVizPanelKeyForPanelId,
   buildVizPanelForPromDrop,
+  SuggestedPanel,
 } from '../../utils/utils';
 import { DashboardGridItem } from '../layout-default/DashboardGridItem';
 import { clearClipboard, getAutoGridItemFromClipboard } from '../layouts-shared/paste';
@@ -340,12 +341,7 @@ function AutoGridLayoutManagerRenderer({ model }: SceneComponentProps<AutoGridLa
       return;
     }
     try {
-      const payload: {
-        type: string;
-        name: string;
-        query: string;
-        datasourceUid?: string;
-      } = JSON.parse(raw);
+      const payload: SuggestedPanel = JSON.parse(raw);
 
       if (payload.type !== 'prometheus-query') {
         return;

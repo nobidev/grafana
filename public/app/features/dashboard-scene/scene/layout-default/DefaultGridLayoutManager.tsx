@@ -43,6 +43,7 @@ import {
   getLayoutOrchestratorFor,
   getDashboardSceneFor,
   buildVizPanelForPromDrop,
+  SuggestedPanel,
 } from '../../utils/utils';
 import { useSoloPanelContext } from '../SoloPanelContext';
 import { AutoGridItem } from '../layout-auto-grid/AutoGridItem';
@@ -600,12 +601,7 @@ function DefaultGridLayoutManagerRenderer({ model }: SceneComponentProps<Default
       return;
     }
     try {
-      const payload: {
-        type: string;
-        name: string;
-        query: string;
-        datasourceUid?: string;
-      } = JSON.parse(raw);
+      const payload: SuggestedPanel = JSON.parse(raw);
 
       if (payload.type !== 'prometheus-query') {
         return;

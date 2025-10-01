@@ -22,7 +22,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
 
   const [panels, setPanels] = useState<SuggestedPanel[]>([
     {
-      type: 'timeseries',
+      type: 'prometheus-query',
       name: 'Up',
       targets: [
         {
@@ -62,14 +62,9 @@ export function DashboardAddPanelPane({ editPane }: Props) {
                 className={styles.listItem}
                 draggable
                 onDragStart={(e) => {
-                  const payload: SuggestedPanel = {
-                    type: 'prometheus-query',
-                    name: p.name,
-                    targets: p.targets,
-                    datasourceUid: currentDatasource?.uid,
-                  };
+                  p.datasourceUid = currentDatasource?.uid;
                   e.dataTransfer.effectAllowed = 'copy';
-                  e.dataTransfer.setData('application/x-grafana-query', JSON.stringify(payload));
+                  e.dataTransfer.setData('application/x-grafana-query', JSON.stringify(p));
                 }}
                 aria-label={t('dashboard.add-panel-pane.drag-query', 'Drag to dashboard')}
               >

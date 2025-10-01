@@ -39,6 +39,8 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
   const [isMetadataLoading, setIsMetadataLoading] = useState(false);
   const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const [initialMetrics, setInitialMetrics] = useState<ComboboxOption[]>([]);
+  const [isLoadingInitialMetrics, setIsLoadingInitialMetrics] = useState(false);
 
   // Initialize datasource instance when component mounts or selectedDatasource changes
   useEffect(() => {
@@ -55,11 +57,13 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
 
           // Fetch metadata immediately after setting datasource instance
           // limit = 0 means fetch all without limit
-          return promDs.languageProvider.queryMetricsMetadata(100000);
+          return promDs.languageProvider.queryMetricsMetadata(100000).then(() => promDs);
         })
-        .then(() => {
+        .then((promDs) => {
           setIsMetadataLoaded(true);
           setIsMetadataLoading(false);
+          // Fetch initial metrics after metadata is loaded
+          fetchInitialMetrics(promDs);
         })
         .catch((error) => {
           console.error('Failed to get datasource instance or metadata:', error);
@@ -70,9 +74,36 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
     }
   }, [selectedDatasource?.uid]);
 
+  const fetchInitialMetrics = async (promDs: PrometheusDatasource) => {
+    setIsLoadingInitialMetrics(true);
+    try {
+      // FIXME use the dashboard's timerange
+      const timeRange = getDefaultTimeRange();
+      const metrics = await promDs.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, undefined, 500);
+      // Limit to first 500 metrics for performance
+      const limitedMetrics = metrics.slice(0, 500);
+      const options = limitedMetrics.map((metric) => ({
+        label: metric,
+        value: metric,
+      }));
+
+      setInitialMetrics(options);
+      setIsLoadingInitialMetrics(false);
+    } catch (error) {
+      console.error('Error loading initial metrics:', error);
+      setInitialMetrics([]);
+      setIsLoadingInitialMetrics(false);
+    }
+  };
+
   const loadMetricOptions = async (inputValue: string): Promise<ComboboxOption[]> => {
-    if (!datasourceInstance || !isMetadataLoaded || !inputValue.trim()) {
+    if (!datasourceInstance || !isMetadataLoaded) {
       return [];
+    }
+
+    // If no input, return initial metrics
+    if (!inputValue.trim()) {
+      return initialMetrics;
     }
 
     setIsLoadingOptions(true);
@@ -90,7 +121,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
         label: metric,
         value: metric,
       }));
-      
+
       setIsLoadingOptions(false);
       return options;
     } catch (error) {
@@ -102,7 +133,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
 
   const handleMetricSelection = (option: ComboboxOption | null) => {
     setSelectedMetric(option);
-    
+
     if (option && datasourceInstance) {
       const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
       const suggestedPanels = getQueriesForMetric(option.value, metricMetadata);
@@ -112,7 +143,6 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
     }
   };
 
-
   return (
     <>
       <div className={styles.metricSelector}>
@@ -120,9 +150,11 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
           options={loadMetricOptions}
           value={selectedMetric}
           onChange={handleMetricSelection}
-          placeholder={isMetadataLoading ? 'Loading metrics...' : 'Search and select a metric...'}
+          placeholder={
+            isMetadataLoading || isLoadingInitialMetrics ? 'Loading metrics...' : 'Search and select a metric...'
+          }
           disabled={!isMetadataLoaded}
-          loading={isLoadingOptions}
+          loading={isLoadingOptions || isLoadingInitialMetrics}
         />
       </div>
     </>
