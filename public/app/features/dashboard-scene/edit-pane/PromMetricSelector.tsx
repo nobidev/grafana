@@ -1,13 +1,14 @@
 import { css } from '@emotion/css';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
 import { PrometheusDatasource } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
+import { QueryBuilderLabelFilter } from '@grafana/prometheus/src/querybuilder/shared/types';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Combobox, ComboboxOption, useStyles2 } from '@grafana/ui';
+import { Box, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
 import { SuggestedPanel } from '../utils/utils';
@@ -28,18 +29,45 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
     mixed: false,
     all: true,
     type: 'prometheus',
-    filter: selectedDatasource ? (ds) => ds.uid === selectedDatasource.uid : undefined,
+    // FIXME only for development purposes. Don't commit
+    filter: (ds) => ds.uid === 'zxS5e5W4k',
   });
 
   const effectiveDatasource = selectedDatasource || promDsInstances[0];
 
-  const [selectedMetric, setSelectedMetric] = useState<ComboboxOption | null>(null);
+  const [selectedMetric, setSelectedMetric] = useState<string>('');
   const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
   const [isMetadataLoading, setIsMetadataLoading] = useState(false);
   const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
-  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
-  const [initialMetrics, setInitialMetrics] = useState<ComboboxOption[]>([]);
-  const [isLoadingInitialMetrics, setIsLoadingInitialMetrics] = useState(false);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const [metrics, setMetrics] = useState<string[]>([]);
+  const [filteredMetrics, setFilteredMetrics] = useState<string[]>([]);
+  const [labelFilters, setLabelFilters] = useState<string[]>([]);
+  const [metricSearchTerm, setMetricSearchTerm] = useState('');
+  const [showMetricsList, setShowMetricsList] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const fetchMetrics = useCallback(
+    async (promDs: PrometheusDatasource, filters: QueryBuilderLabelFilter[]) => {
+      setIsLoadingMetrics(true);
+      try {
+        const filterArray = filters.length > 0 ? formatPrometheusLabelFilters(filters) : [];
+        const match = filterArray.length > 0 ? `{${filterArray.join('').substring(1)}}` : undefined;
+
+        const metricNames = await promDs.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match, 500);
+        // Limit to first 500 metrics for performance
+        const limitedMetrics = metricNames.slice(0, 500);
+
+        setMetrics(limitedMetrics);
+        setIsLoadingMetrics(false);
+      } catch (error) {
+        console.error('Error loading metrics:', error);
+        setMetrics([]);
+        setIsLoadingMetrics(false);
+      }
+    },
+    [timeRange]
+  );
 
   // Initialize datasource instance when component mounts or effective datasource changes
   useEffect(() => {
@@ -76,7 +104,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
         setIsMetadataLoading(false);
 
         // Fetch initial metrics after metadata is loaded
-        fetchInitialMetrics(promDs);
+        fetchMetrics(promDs, []);
       } catch (error) {
         if (!isCancelled) {
           console.error('Failed to get datasource instance or metadata:', error);
@@ -92,105 +120,232 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
     return () => {
       isCancelled = true;
     };
-  }, [effectiveDatasource?.uid]);
+  }, [effectiveDatasource?.uid, fetchMetrics]);
 
-  const fetchInitialMetrics = async (promDs: PrometheusDatasource) => {
-    setIsLoadingInitialMetrics(true);
-    try {
-      const metrics = await promDs.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, undefined, 500);
-      // Limit to first 500 metrics for performance
-      const limitedMetrics = metrics.slice(0, 500);
-      const options = limitedMetrics.map((metric) => ({
-        label: metric,
-        value: metric,
-      }));
+  // Parse label filter strings like "instance=my-instance" into QueryBuilderLabelFilter objects
+  const parseLabelFilters = useCallback((filterStrings: string[]): QueryBuilderLabelFilter[] => {
+    return filterStrings
+      .map((filterStr) => {
+        // Match patterns like: label=value, label="value", label=~"regex", etc.
+        const match = filterStr.match(/^([^=!~]+)(=~?|!=|!~)(.+)$/);
+        if (match) {
+          const [, label, op, value] = match;
+          // Remove quotes if present
+          const cleanValue = value.replace(/^["']|["']$/g, '');
+          return { label: label.trim(), op: op as '=' | '!=' | '=~' | '!~', value: cleanValue };
+        }
+        // Default to equality if no operator found
+        const [label, ...valueParts] = filterStr.split('=');
+        return { label: label.trim(), op: '=' as const, value: valueParts.join('=').replace(/^["']|["']$/g, '') };
+      })
+      .filter((filter) => filter.label && filter.value);
+  }, []);
 
-      setInitialMetrics(options);
-      setIsLoadingInitialMetrics(false);
-    } catch (error) {
-      console.error('Error loading initial metrics:', error);
-      setInitialMetrics([]);
-      setIsLoadingInitialMetrics(false);
-    }
-  };
-
-  const loadMetricOptions = async (inputValue: string): Promise<ComboboxOption[]> => {
-    if (!datasourceInstance || !isMetadataLoaded) {
-      return [];
-    }
-
-    // If no input, return initial metrics
-    if (!inputValue.trim()) {
-      return initialMetrics;
+  // Filter metrics based on search term
+  useEffect(() => {
+    if (!metricSearchTerm.trim()) {
+      setFilteredMetrics(metrics);
+      return;
     }
 
-    setIsLoadingOptions(true);
-    try {
-      const queryString = regexifyLabelValuesQueryString(inputValue);
-      // FIXME when we have label filters use this
-      const queryLabels = undefined;
-      const filterArray = queryLabels ? formatPrometheusLabelFilters(queryLabels) : [];
-      const match = `{__name__=~"(?i).*${queryString}"${filterArray ? filterArray.join('') : ''}}`;
+    const searchRegex = new RegExp(regexifyLabelValuesQueryString(metricSearchTerm), 'i');
+    const filtered = metrics.filter((metric) => searchRegex.test(metric));
+    setFilteredMetrics(filtered);
+  }, [metrics, metricSearchTerm]);
 
-      const metrics = await datasourceInstance.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match);
-      const options = metrics.map((metric) => ({
-        label: metric,
-        value: metric,
-      }));
-
-      setIsLoadingOptions(false);
-      return options;
-    } catch (error) {
-      console.error('Error loading metric options:', error);
-      setIsLoadingOptions(false);
-      return [];
+  // Refetch metrics when label filters change
+  useEffect(() => {
+    if (datasourceInstance && isMetadataLoaded) {
+      const filters = parseLabelFilters(labelFilters);
+      fetchMetrics(datasourceInstance, filters);
     }
-  };
+  }, [datasourceInstance, fetchMetrics, isMetadataLoaded, labelFilters, parseLabelFilters, timeRange]);
 
-  const handleMetricSelection = (option: ComboboxOption | null) => {
-    setSelectedMetric(option);
+  const handleMetricSelection = useCallback(
+    (metric: string) => {
+      setSelectedMetric(metric);
+      setMetricSearchTerm(metric); // Set the input value to the selected metric
+      setShowMetricsList(false); // Hide the metrics list
 
-    if (option && datasourceInstance) {
-      const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
-      const suggestedPanels = getQueriesForMetric(option.value, metricMetadata);
-      setPanels(suggestedPanels);
-    } else {
-      setPanels([]);
+      if (metric && datasourceInstance) {
+        const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
+        const suggestedPanels = getQueriesForMetric(metric, metricMetadata);
+        setPanels(suggestedPanels);
+      } else {
+        setPanels([]);
+      }
+    },
+    [datasourceInstance, setPanels]
+  );
+
+  const handleLabelFiltersChange = useCallback((filters: string[]) => {
+    setLabelFilters(filters);
+  }, []);
+
+  const handleMetricSearchChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setMetricSearchTerm(event.target.value);
+      if (!showMetricsList) {
+        setShowMetricsList(true); // Show metrics list when typing
+      }
+    },
+    [showMetricsList]
+  );
+
+  const handleInputFocus = useCallback(() => {
+    setShowMetricsList(true);
+  }, []);
+
+  const handleInputBlur = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
+    // Only hide if not clicking on a metric item
+    setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) {
+        setShowMetricsList(false);
+      }
+    }, 100);
+  }, []);
+
+  // Handle clicks outside the component
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setShowMetricsList(false);
+      }
+    };
+
+    if (showMetricsList) {
+      document.addEventListener('click', handleClickOutside);
     }
-  };
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showMetricsList]);
 
   return (
-    <>
-      <div className={styles.metricSelector}>
-        <Combobox
-          options={loadMetricOptions}
-          value={selectedMetric}
-          onChange={handleMetricSelection}
-          placeholder={
-            isMetadataLoading || isLoadingInitialMetrics ? 'Loading metrics...' : 'Search and select a metric...'
-          }
+    <div className={styles.container}>
+      <div className={styles.filtersSection}>
+        <TagsInput
+          placeholder="Add label filters (e.g., instance=my-instance)"
+          tags={labelFilters}
+          onChange={handleLabelFiltersChange}
           disabled={!isMetadataLoaded}
-          loading={isLoadingOptions || isLoadingInitialMetrics}
         />
       </div>
-    </>
+
+      <div className={styles.searchSection}>
+        <div className={styles.inputContainer} ref={containerRef}>
+          <Input
+            placeholder={isMetadataLoading ? 'Loading metrics...' : 'Click to search metrics...'}
+            value={metricSearchTerm}
+            onChange={handleMetricSearchChange}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
+            disabled={!isMetadataLoaded}
+          />
+
+          {showMetricsList && (
+            <div className={styles.metricsDropdown}>
+              <ScrollContainer height={300}>
+                {isLoadingMetrics ? (
+                  <div className={styles.loadingMessage}>Loading metrics...</div>
+                ) : filteredMetrics.length === 0 ? (
+                  <div className={styles.emptyMessage}>
+                    {metricSearchTerm || labelFilters.length > 0
+                      ? 'No metrics found matching your criteria'
+                      : 'No metrics available'}
+                  </div>
+                ) : (
+                  <div className={styles.metricsList}>
+                    {filteredMetrics.map((metric) => (
+                      <div
+                        key={metric}
+                        className={`${styles.metricItem} ${selectedMetric === metric ? styles.selectedMetric : ''}`}
+                        onClick={() => handleMetricSelection(metric)}
+                        onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+                      >
+                        {metric}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollContainer>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
 function getStyles(theme: GrafanaTheme2) {
   return {
-    selectorWrapper: css({
+    container: css({
       display: 'flex',
       flexDirection: 'column',
+      gap: theme.spacing(2),
       margin: theme.spacing(1),
     }),
-    metricSelector: css({
+    filtersSection: css({
       display: 'flex',
       flexDirection: 'column',
-      margin: theme.spacing(1),
     }),
-    metricButton: css({
+    searchSection: css({
+      display: 'flex',
+      flexDirection: 'column',
+    }),
+    inputContainer: css({
+      position: 'relative',
+    }),
+    metricsDropdown: css({
+      position: 'absolute',
+      top: '100%',
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      backgroundColor: theme.colors.background.primary,
+      border: `1px solid ${theme.colors.border.medium}`,
+      borderRadius: theme.shape.radius.default,
+      boxShadow: theme.shadows.z3,
+      marginTop: theme.spacing(0.5),
+    }),
+    metricsList: css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: theme.spacing(0.5),
+      padding: theme.spacing(1),
+    }),
+    metricItem: css({
+      padding: theme.spacing(1, 1.5),
+      cursor: 'pointer',
+      backgroundColor: 'transparent',
       textAlign: 'left',
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+      '&:hover': {
+        backgroundColor: theme.colors.background.secondary,
+      },
+      '&:last-child': {
+        borderBottom: 'none',
+      },
+    }),
+    selectedMetric: css({
+      backgroundColor: theme.colors.primary.main,
+      color: theme.colors.primary.contrastText,
+      borderColor: theme.colors.primary.main,
+      '&:hover': {
+        backgroundColor: theme.colors.primary.shade,
+        borderColor: theme.colors.primary.shade,
+      },
+    }),
+    loadingMessage: css({
+      textAlign: 'center',
+      padding: theme.spacing(2),
+      color: theme.colors.text.secondary,
+    }),
+    emptyMessage: css({
+      textAlign: 'center',
+      padding: theme.spacing(2),
+      color: theme.colors.text.secondary,
     }),
   };
 }
