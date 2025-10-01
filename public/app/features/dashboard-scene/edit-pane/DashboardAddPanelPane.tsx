@@ -119,7 +119,7 @@ function getStyles(theme: GrafanaTheme2) {
     }),
     listItem: css({
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: theme.spacing(1),
       padding: theme.spacing(1),
       marginBottom: theme.spacing(1),
@@ -138,13 +138,19 @@ function getStyles(theme: GrafanaTheme2) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
+      marginTop: theme.spacing(0.25), // Slight offset to align with first line of text
+      flexShrink: 0, // Prevent icon from shrinking
     }),
     itemText: css({
       display: 'flex',
       flexDirection: 'column',
+      flex: 1,
+      minWidth: 0, // Allow flex item to shrink below its content size
     }),
     itemName: css({
       fontWeight: theme.typography.fontWeightMedium,
+      wordBreak: 'break-word',
+      lineHeight: theme.typography.body.lineHeight,
     }),
     itemMeta: css({
       color: theme.colors.text.secondary,
