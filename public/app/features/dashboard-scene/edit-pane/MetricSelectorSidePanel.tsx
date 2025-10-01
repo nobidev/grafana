@@ -9,11 +9,11 @@ import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuild
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { QueryBuilderLabelFilter } from '@grafana/prometheus/src/querybuilder/shared/types';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Button, Drawer, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
+import { Card, Drawer, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
 
 import { SuggestedPanel } from '../utils/utils';
 
-import { getQueriesForMetric } from './promQueries';
+import { findMetadataForMetric, getQueriesForMetric } from './promQueries';
 
 type Props = {
   isOpen: boolean;
@@ -52,10 +52,8 @@ export function MetricSelectorSidePanel({
         const match = filterArray.length > 0 ? `{${filterArray.join('').substring(1)}}` : undefined;
 
         const metricNames = await promDs.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match, 500);
-        // Limit to first 500 metrics for performance
-        const limitedMetrics = metricNames.slice(0, 500);
 
-        setMetrics(limitedMetrics);
+        setMetrics(metricNames);
         setIsLoadingMetrics(false);
       } catch (error) {
         console.error('Error loading metrics:', error);
@@ -190,6 +188,25 @@ export function MetricSelectorSidePanel({
     setMetricSearchTerm(event.target.value);
   }, []);
 
+  const formatMetricDescription = useCallback(
+    (metric: string) => {
+      if (!datasourceInstance) {
+        return '';
+      }
+
+      const metadata = findMetadataForMetric(metric, datasourceInstance.languageProvider.retrieveMetricsMetadata());
+      if (!metadata) {
+        return '';
+      }
+
+      const type = metadata.type || 'unknown';
+      const description = metadata.help || 'No description available';
+
+      return `${type} | ${description}`;
+    },
+    [datasourceInstance]
+  );
+
   if (!isOpen) {
     return null;
   }
@@ -237,9 +254,8 @@ export function MetricSelectorSidePanel({
 
         <div className={styles.metricsSection}>
           <div className={styles.sectionTitle}>
-            <Trans i18nKey="dashboard-scene.metric-selector-side-panel.available-metrics">
-              Available Metrics ({filteredMetrics.length})
-            </Trans>
+            <Trans i18nKey="dashboard-scene.metric-selector-side-panel.available-metrics">Available Metrics</Trans>(
+            {filteredMetrics.length})
           </div>
           <div className={styles.metricsContainer}>
             {isLoadingMetrics ? (
@@ -259,18 +275,18 @@ export function MetricSelectorSidePanel({
                 )}
               </div>
             ) : (
-              <ScrollContainer id="ismail-scroll">
+              <ScrollContainer>
                 <div className={styles.metricsList}>
                   {filteredMetrics.map((metric) => (
-                    <Button
+                    <Card
                       key={metric}
-                      variant={selectedMetric === metric ? 'primary' : 'secondary'}
-                      fill="text"
-                      className={styles.metricItem}
+                      noMargin
+                      className={`${selectedMetric === metric ? styles.selectedMetric : ''}`}
                       onClick={() => handleMetricSelection(metric)}
                     >
-                      {metric}
-                    </Button>
+                      <Card.Heading>{metric}</Card.Heading>
+                      <Card.Description>{formatMetricDescription(metric)}</Card.Description>
+                    </Card>
                   ))}
                 </div>
               </ScrollContainer>
@@ -326,18 +342,12 @@ function getStyles(theme: GrafanaTheme2) {
       flexDirection: 'column',
       gap: theme.spacing(0.5),
       padding: theme.spacing(1),
-      border: '2px solid red',
     }),
-    metricItem: css({
-      width: '100%',
-      justifyContent: 'flex-start',
-      textAlign: 'left',
-      borderBottom: `1px solid ${theme.colors.border.weak}`,
-      '&:last-child': {
-        borderBottom: 'none',
-      },
+    selectedMetric: css({
+      backgroundColor: theme.colors.primary.main,
+      color: theme.colors.primary.contrastText,
       '&:hover': {
-        backgroundColor: theme.colors.action.hover,
+        backgroundColor: theme.colors.primary.shade,
       },
     }),
     loadingMessage: css({
