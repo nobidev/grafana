@@ -31,29 +31,6 @@ export function DashboardAddPanelPane({ editPane }: Props) {
         },
       ],
     },
-    {
-      type: 'timeseries',
-      name: 'HTTP rate (5m)', targets: [{ refId: 'cidr-B', expr: 'rate(http_requests_total[5m])' }] },
-    {
-      type: 'timeseries',
-      name: 'CPU usage (5m)',
-      targets: [{ refId: 'cidr-B', expr: 'sum(rate(container_cpu_usage_seconds_total{image!=""}[5m]))' }],
-    },
-    {
-      type: 'timeseries',
-      name: '95th latency (5m)',
-      targets: [
-        {
-          refId: 'cidr-B',
-          expr: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
-        },
-      ],
-    },
-    {
-      type: 'timeseries',
-      name: 'Memory usage by job',
-      targets: [{ refId: 'cidr-B', expr: 'sum by (job) (process_resident_memory_bytes)' }],
-    },
   ]);
 
   // This defaults to open, but should probably not be open if there is a current datasource.

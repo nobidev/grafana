@@ -1,6 +1,5 @@
 import { css } from '@emotion/css';
-import debounce from 'debounce-promise';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DataSourceInstanceSettings, getDefaultTimeRange, GrafanaTheme2 } from '@grafana/data';
 import { PrometheusDatasource } from '@grafana/prometheus';
@@ -8,7 +7,7 @@ import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Card, Icon, Input, useStyles2 } from '@grafana/ui';
+import { Combobox, ComboboxOption, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
 import { SuggestedPanel } from '../utils/utils';
@@ -20,7 +19,7 @@ type Props = {
   setPanels: (panels: SuggestedPanel[]) => void;
 };
 
-export function PromMetricSelector({ selectedDatasource }: Props) {
+export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
   const styles = useStyles2(getStyles);
 
   const preselectedDs = useDatasources({
@@ -35,10 +34,11 @@ export function PromMetricSelector({ selectedDatasource }: Props) {
     selectedDatasource = preselectedDs;
   }
 
-  const [searchText, setSearchText] = useState('');
+  const [selectedMetric, setSelectedMetric] = useState<ComboboxOption | null>(null);
   const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
   const [isMetadataLoading, setIsMetadataLoading] = useState(false);
   const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
   // Initialize datasource instance when component mounts or selectedDatasource changes
   useEffect(() => {
@@ -70,58 +70,60 @@ export function PromMetricSelector({ selectedDatasource }: Props) {
     }
   }, [selectedDatasource?.uid]);
 
-  const handleMetricSearchChange = (text: string) => {
-    setSearchText(text);
-    debouncedBackendSearch(text);
+  const loadMetricOptions = async (inputValue: string): Promise<ComboboxOption[]> => {
+    if (!datasourceInstance || !isMetadataLoaded || !inputValue.trim()) {
+      return [];
+    }
+
+    setIsLoadingOptions(true);
+    try {
+      // FIXME use the dashboard's timerange
+      const timeRange = getDefaultTimeRange();
+      const queryString = regexifyLabelValuesQueryString(inputValue);
+      // FIXME when we have label filters use this
+      const queryLabels = undefined;
+      const filterArray = queryLabels ? formatPrometheusLabelFilters(queryLabels) : [];
+      const match = `{__name__=~"(?i).*${queryString}"${filterArray ? filterArray.join('') : ''}}`;
+
+      const metrics = await datasourceInstance.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match);
+      const options = metrics.map((metric) => ({
+        label: metric,
+        value: metric,
+      }));
+      
+      setIsLoadingOptions(false);
+      return options;
+    } catch (error) {
+      console.error('Error loading metric options:', error);
+      setIsLoadingOptions(false);
+      return [];
+    }
   };
 
-  const debouncedBackendSearch = useMemo(
-    () =>
-      debounce(async (text: string) => {
-        if (!datasourceInstance || !isMetadataLoaded) {
-          console.warn('Datasource instance or metadata not available for search');
-          return;
-        }
+  const handleMetricSelection = (option: ComboboxOption | null) => {
+    setSelectedMetric(option);
+    
+    if (option && datasourceInstance) {
+      const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
+      const suggestedPanels = getQueriesForMetric(option.value, metricMetadata);
+      setPanels(suggestedPanels);
+    } else {
+      setPanels([]);
+    }
+  };
 
-        // FIXME use the dashboard's timerange
-        const timeRange = getDefaultTimeRange();
-        const queryString = regexifyLabelValuesQueryString(text);
-        // FIXME when we have label filters use this
-        const queryLabels = undefined;
-        const filterArray = queryLabels ? formatPrometheusLabelFilters(queryLabels) : [];
-        const match = `{__name__=~"(?i).*${queryString}"${filterArray ? filterArray.join('') : ''}}`;
-
-        try {
-          const metrics = await datasourceInstance.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match);
-          const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
-          const suggestedPanels = metrics.map((m) => getQueriesForMetric(m, metricMetadata));
-          console.log(suggestedPanels);
-        } catch (error) {
-          console.error('Error during metric search:', error);
-        }
-      }, 300),
-    [datasourceInstance, isMetadataLoaded]
-  );
 
   return (
     <>
       <div className={styles.metricSelector}>
-        <Input
-          prefix={<Icon name="search" />}
-          onChange={(e) => handleMetricSearchChange(e.currentTarget.value)}
-          value={searchText}
+        <Combobox
+          options={loadMetricOptions}
+          value={selectedMetric}
+          onChange={handleMetricSelection}
+          placeholder={isMetadataLoading ? 'Loading metrics...' : 'Search and select a metric...'}
           disabled={!isMetadataLoaded}
-          placeholder={isMetadataLoading ? 'Loading metrics...' : 'Search metrics...'}
+          loading={isLoadingOptions}
         />
-
-        <Card noMargin isCompact>
-          <Card.Heading>http_requests_total</Card.Heading>
-          <Card.Description>counter | Total number of HTTP requests received</Card.Description>
-        </Card>
-        <Card noMargin isCompact>
-          <Card.Heading>http_requests_total</Card.Heading>
-          <Card.Description>counter | Total number of HTTP requests received</Card.Description>
-        </Card>
       </div>
     </>
   );
