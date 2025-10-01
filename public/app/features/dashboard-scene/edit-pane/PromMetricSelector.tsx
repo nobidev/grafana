@@ -22,17 +22,15 @@ type Props = {
 export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
   const styles = useStyles2(getStyles);
 
-  const preselectedDs = useDatasources({
+  const promDsInstances = useDatasources({
     dashboard: false,
     mixed: false,
     all: true,
     type: 'prometheus',
-    filter: (ds) => ds.uid === 'zxS5e5W4k',
-  })[0];
+    filter: (ds) => ds.uid === (selectedDatasource?.uid ?? 'zxS5e5W4k'),
+  });
 
-  if (!selectedDatasource) {
-    selectedDatasource = preselectedDs;
-  }
+  const effectiveDatasource = promDsInstances[0];
 
   const [selectedMetric, setSelectedMetric] = useState<ComboboxOption | null>(null);
   const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
@@ -42,15 +40,15 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
   const [initialMetrics, setInitialMetrics] = useState<ComboboxOption[]>([]);
   const [isLoadingInitialMetrics, setIsLoadingInitialMetrics] = useState(false);
 
-  // Initialize datasource instance when component mounts or selectedDatasource changes
+  // Initialize datasource instance when component mounts or effective datasource changes
   useEffect(() => {
-    if (selectedDatasource?.uid) {
+    if (effectiveDatasource?.uid) {
       setIsMetadataLoading(true);
       setIsMetadataLoaded(false);
       setDatasourceInstance(null);
 
       getDataSourceSrv()
-        .get(selectedDatasource.uid)
+        .get(effectiveDatasource.uid)
         .then((ds) => {
           const promDs = ds as PrometheusDatasource;
           setDatasourceInstance(promDs);
@@ -72,7 +70,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
           setIsMetadataLoaded(false);
         });
     }
-  }, [selectedDatasource?.uid]);
+  }, [effectiveDatasource?.uid]);
 
   const fetchInitialMetrics = async (promDs: PrometheusDatasource) => {
     setIsLoadingInitialMetrics(true);

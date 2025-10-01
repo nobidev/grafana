@@ -54,6 +54,9 @@ export function DashboardAddPanelPane({ editPane }: Props) {
               onOpen={() => setIsDsPickerOpen(true)}
             />
           </div>
+
+          <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} />
+
           <div className={styles.list}>
             {panels.map((p) => (
               <button
@@ -82,8 +85,6 @@ export function DashboardAddPanelPane({ editPane }: Props) {
           </div>
         </>
       )}
-
-      <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} />
 
       {isDsPickerOpen && (
         <DataSourceSelectPane
