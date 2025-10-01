@@ -638,11 +638,14 @@ export const SparkJoySection = <TQuery extends DataQuery>({
     },
     columnsContainer: {
       display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
+      gridTemplateColumns: 'auto auto',
       gap: theme.spacing(3),
+      justifyContent: 'start',
+      maxWidth: '1000px', // Limit the total width
     },
     column: {
       minHeight: '200px',
+      width: '600px', // Fixed width for each column
     },
     columnHeader: {
       display: 'flex',
