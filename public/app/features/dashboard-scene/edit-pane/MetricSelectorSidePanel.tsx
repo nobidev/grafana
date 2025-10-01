@@ -281,7 +281,7 @@ export function MetricSelectorSidePanel({
                     <Card
                       key={metric}
                       noMargin
-                      className={`${selectedMetric === metric ? styles.selectedMetric : ''}`}
+                      className={`${styles.metricCard} ${selectedMetric === metric ? styles.selectedMetric : ''}`}
                       onClick={() => handleMetricSelection(metric)}
                     >
                       <Card.Heading>{metric}</Card.Heading>
@@ -342,6 +342,11 @@ function getStyles(theme: GrafanaTheme2) {
       flexDirection: 'column',
       gap: theme.spacing(0.5),
       padding: theme.spacing(1),
+      width: '100%',
+      boxSizing: 'border-box',
+    }),
+    metricCard: css({
+      overflow: 'hidden',
     }),
     selectedMetric: css({
       backgroundColor: theme.colors.primary.main,
