@@ -97,7 +97,7 @@ export function DashboardEditPaneRenderer({ editPane, isEditPaneCollapsed, onTog
 
   return (
     <div className={styles.wrapper}>
-      {!editPane.state.isAdding ? (
+      {editPane.state.isAdding ? (
         <DashboardAddPanelPane editPane={editPane} />
       ) : (
         <div {...splitter.containerProps}>
