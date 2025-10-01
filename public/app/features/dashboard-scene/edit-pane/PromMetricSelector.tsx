@@ -42,34 +42,55 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
 
   // Initialize datasource instance when component mounts or effective datasource changes
   useEffect(() => {
-    if (effectiveDatasource?.uid) {
+    if (!effectiveDatasource?.uid) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const initializeDatasource = async () => {
       setIsMetadataLoading(true);
       setIsMetadataLoaded(false);
       setDatasourceInstance(null);
 
-      getDataSourceSrv()
-        .get(effectiveDatasource.uid)
-        .then((ds) => {
-          const promDs = ds as PrometheusDatasource;
-          setDatasourceInstance(promDs);
+      try {
+        const ds = await getDataSourceSrv().get(effectiveDatasource.uid);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const promDs = ds as PrometheusDatasource;
 
-          // Fetch metadata immediately after setting datasource instance
-          // limit = 0 means fetch all without limit
-          return promDs.languageProvider.queryMetricsMetadata(100000).then(() => promDs);
-        })
-        .then((promDs) => {
-          setIsMetadataLoaded(true);
-          setIsMetadataLoading(false);
-          // Fetch initial metrics after metadata is loaded
-          fetchInitialMetrics(promDs);
-        })
-        .catch((error) => {
+        if (isCancelled) {
+          return;
+        }
+
+        setDatasourceInstance(promDs);
+
+        // Fetch metadata immediately after setting datasource instance
+        await promDs.languageProvider.queryMetricsMetadata(100000);
+
+        if (isCancelled) {
+          return;
+        }
+
+        setIsMetadataLoaded(true);
+        setIsMetadataLoading(false);
+
+        // Fetch initial metrics after metadata is loaded
+        fetchInitialMetrics(promDs);
+      } catch (error) {
+        if (!isCancelled) {
           console.error('Failed to get datasource instance or metadata:', error);
           setDatasourceInstance(null);
           setIsMetadataLoading(false);
           setIsMetadataLoaded(false);
-        });
-    }
+        }
+      }
+    };
+
+    initializeDatasource();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [effectiveDatasource?.uid]);
 
   const fetchInitialMetrics = async (promDs: PrometheusDatasource) => {
