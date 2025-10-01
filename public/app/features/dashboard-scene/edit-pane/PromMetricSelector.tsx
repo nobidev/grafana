@@ -3,7 +3,7 @@ import debounce from 'debounce-promise';
 import { useEffect, useMemo, useState } from 'react';
 
 import { DataSourceInstanceSettings, getDefaultTimeRange, GrafanaTheme2 } from '@grafana/data';
-import { PrometheusDatasource } from '@grafana/prometheus';
+import { PrometheusDatasource, PromQuery } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
 import { generateMetricData } from '@grafana/prometheus/src/querybuilder/components/metrics-modal/helpers';
@@ -15,6 +15,7 @@ import { useDatasources } from '../../datasources/hooks';
 
 type Props = {
   selectedDatasource?: DataSourceInstanceSettings | undefined;
+  setPanels: (panels: Array<{ name: string; targets: PromQuery[] }>) => void;
 };
 
 export function PromMetricSelector({ selectedDatasource }: Props) {

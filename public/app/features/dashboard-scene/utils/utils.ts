@@ -274,7 +274,7 @@ export function getDefaultVizPanel(): VizPanel {
 export type DroppedPromQueryPayload = {
   type: string;
   name: string;
-  query: string;
+  targets: PromQuery[];
   datasourceUid?: string;
 };
 
@@ -295,8 +295,8 @@ export function buildVizPanelForPromDrop(payload: DroppedPromQueryPayload): VizP
 
   const dsRef = getDataSourceRef(dsSettings);
   const runner = getQueryRunnerFor(panel);
-  const promQuery: PromQuery = { refId: 'A', expr: payload.query };
-  runner?.setState({ datasource: dsRef, queries: [promQuery] });
+  // const promQuery: PromQuery = { refId: 'A', expr: payload.query };
+  runner?.setState({ datasource: dsRef, queries: payload.targets });
   return panel;
 }
 

@@ -3,7 +3,10 @@ import { useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
+import { PromQuery } from '@grafana/prometheus';
 import { Icon, useStyles2 } from '@grafana/ui';
+
+import { DroppedPromQueryPayload } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
@@ -14,20 +17,39 @@ interface Props {
   editPane: DashboardEditPane;
 }
 
-const queries = [
-  { name: 'Up', query: 'up' },
-  { name: 'HTTP rate (5m)', query: 'rate(http_requests_total[5m])' },
-  { name: 'CPU usage (5m)', query: 'sum(rate(container_cpu_usage_seconds_total{image!=""}[5m]))' },
-  {
-    name: '95th latency (5m)',
-    query: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
-  },
-  { name: 'Memory usage by job', query: 'sum by (job) (process_resident_memory_bytes)' },
-];
-
 export function DashboardAddPanelPane({ editPane }: Props) {
   // This should probably be the same if this pane is opened again. Also store in dashboard state?
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
+
+  const [panels, setPanels] = useState<Array<{ name: string; targets: PromQuery[] }>>([
+    {
+      name: 'Up',
+      targets: [
+        {
+          refId: 'cidr-A',
+          expr: 'up',
+        },
+      ],
+    },
+    { name: 'HTTP rate (5m)', targets: [{ refId: 'cidr-B', expr: 'rate(http_requests_total[5m])' }] },
+    {
+      name: 'CPU usage (5m)',
+      targets: [{ refId: 'cidr-B', expr: 'sum(rate(container_cpu_usage_seconds_total{image!=""}[5m]))' }],
+    },
+    {
+      name: '95th latency (5m)',
+      targets: [
+        {
+          refId: 'cidr-B',
+          expr: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
+        },
+      ],
+    },
+    {
+      name: 'Memory usage by job',
+      targets: [{ refId: 'cidr-B', expr: 'sum by (job) (process_resident_memory_bytes)' }],
+    },
+  ]);
 
   // This defaults to open, but should probably not be open if there is a current datasource.
   // FIXME [HACK] it was set as false for fast development purposes
@@ -51,17 +73,17 @@ export function DashboardAddPanelPane({ editPane }: Props) {
             />
           </div>
           <div className={styles.list}>
-            {queries.map((q) => (
+            {panels.map((p) => (
               <button
-                key={q.name}
+                key={p.name}
                 type="button"
                 className={styles.listItem}
                 draggable
                 onDragStart={(e) => {
-                  const payload = {
+                  const payload: DroppedPromQueryPayload = {
                     type: 'prometheus-query',
-                    name: q.name,
-                    query: q.query,
+                    name: p.name,
+                    targets: p.targets,
                     datasourceUid: currentDatasource?.uid,
                   };
                   e.dataTransfer.effectAllowed = 'copy';
@@ -73,7 +95,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
                   <Icon name="search" />
                 </span>
                 <span className={styles.itemText}>
-                  <span className={styles.itemName}>{q.name}</span>
+                  <span className={styles.itemName}>{p.name}</span>
                   <span className={styles.itemMeta}>
                     <Icon name="info-circle" /> {t('dashboard.add-panel-pane.query-language', 'PromQL')}
                   </span>
@@ -84,7 +106,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
         </>
       )}
 
-      <PromMetricSelector selectedDatasource={currentDatasource} />
+      <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} />
 
       {isDsPickerOpen && (
         <DataSourceSelectPane
