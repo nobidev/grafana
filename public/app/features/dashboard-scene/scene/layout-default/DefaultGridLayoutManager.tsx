@@ -1,4 +1,5 @@
 import { css, cx } from '@emotion/css';
+import type { DragEvent as ReactDragEvent } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -41,6 +42,7 @@ import {
   useDashboard,
   getLayoutOrchestratorFor,
   getDashboardSceneFor,
+  buildVizPanelForPromDrop,
 } from '../../utils/utils';
 import { useSoloPanelContext } from '../SoloPanelContext';
 import { AutoGridItem } from '../layout-auto-grid/AutoGridItem';
@@ -579,8 +581,155 @@ function DefaultGridLayoutManagerRenderer({ model }: SceneComponentProps<Default
     );
   }
 
+  const onCanvasDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!isEditing) {
+      return;
+    }
+    if (e.dataTransfer.types.includes('application/x-grafana-query')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const onCanvasDrop = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!isEditing) {
+      return;
+    }
+    const raw = e.dataTransfer.getData('application/x-grafana-query');
+    if (!raw) {
+      return;
+    }
+    try {
+      const payload: {
+        type: string;
+        name: string;
+        query: string;
+        datasourceUid?: string;
+      } = JSON.parse(raw);
+
+      if (payload.type !== 'prometheus-query') {
+        return;
+      }
+
+      const vizPanel = buildVizPanelForPromDrop(payload);
+      if (!vizPanel) {
+        return;
+      }
+
+      const currentTarget = e.currentTarget;
+      const containerRect = currentTarget ? currentTarget.getBoundingClientRect() : new DOMRect(0, 0, 0, 0);
+      const colWidth = containerRect.width / GRID_COLUMN_COUNT;
+      const baseCol = Math.floor((e.clientX - containerRect.left) / colWidth);
+
+      const occupied = new Set<string>();
+      let maxY = 0;
+      const addOcc = (x: number, y: number, w: number, h: number) => {
+        for (let dx = 0; dx < w; dx++) {
+          for (let dy = 0; dy < h; dy++) {
+            occupied.add(`${x + dx},${y + dy}`);
+          }
+        }
+        if (y + h > maxY) {
+          maxY = y + h;
+        }
+      };
+      for (const child of model.state.grid.state.children) {
+        if (child instanceof SceneGridRow) {
+          for (const rowChild of child.state.children) {
+            addOcc(rowChild.state.x!, rowChild.state.y!, rowChild.state.width!, rowChild.state.height!);
+          }
+        } else {
+          addOcc(child.state.x!, child.state.y!, child.state.width!, child.state.height!);
+        }
+      }
+
+      const canFitAt = (x: number, y: number, w: number, h: number) => {
+        if (x < 0 || x + w > GRID_COLUMN_COUNT) {
+          return false;
+        }
+        for (let dx = 0; dx < w; dx++) {
+          for (let dy = 0; dy < h; dy++) {
+            if (occupied.has(`${x + dx},${y + dy}`)) {
+              return false;
+            }
+          }
+        }
+        return true;
+      };
+
+      const DESIRED_W = 12;
+      const DESIRED_H = 8;
+      const MIN_W = 8;
+      const MIN_H = 6;
+      let placeX = baseCol;
+      let placeY = 0;
+      let placeW = DESIRED_W;
+      let placeH = DESIRED_H;
+      let found = false;
+
+      for (let y = 0; y <= maxY + 40 && !found; y++) {
+        const desiredX = Math.max(0, Math.min(GRID_COLUMN_COUNT - DESIRED_W, baseCol - Math.floor(DESIRED_W / 2)));
+        if (canFitAt(desiredX, y, DESIRED_W, DESIRED_H)) {
+          placeX = desiredX;
+          placeY = y;
+          found = true;
+          break;
+        }
+
+        const minX = Math.max(0, Math.min(GRID_COLUMN_COUNT - MIN_W, baseCol - Math.floor(MIN_W / 2)));
+        if (canFitAt(minX, y, MIN_W, MIN_H)) {
+          placeX = minX;
+          placeY = y;
+          placeW = MIN_W;
+          placeH = MIN_H;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        const cell = findSpaceForNewPanel(model.state.grid) || { x: 0, y: maxY, width: DESIRED_W, height: DESIRED_H };
+        placeX = cell.x;
+        placeY = cell.y;
+        placeW = cell.width;
+        placeH = cell.height;
+      }
+
+      const panelId = dashboardSceneGraph.getNextPanelId(model);
+      vizPanel.setState({ key: getVizPanelKeyForPanelId(panelId) });
+      const newGridItem = new DashboardGridItem({
+        x: placeX,
+        y: placeY,
+        width: placeW,
+        height: placeH,
+        itemHeight: placeH,
+        body: vizPanel,
+        key: getGridItemKeyForPanelId(panelId),
+      });
+
+      dashboardEditActions.addElement({
+        addedObject: vizPanel,
+        source: model,
+        perform: () => {
+          model.state.grid.setState({ children: [...model.state.grid.state.children, newGridItem] });
+        },
+        undo: () => {
+          model.state.grid.setState({
+            children: model.state.grid.state.children.filter((child) => child !== newGridItem),
+          });
+        },
+      });
+    } catch (err) {
+      return;
+    }
+  };
+
   return (
-    <div className={cx(styles.container, isEditing && styles.containerEditing)}>
+    <div
+      className={cx(styles.container, isEditing && styles.containerEditing)}
+      onDragOver={onCanvasDragOver}
+      onDrop={onCanvasDrop}
+    >
       {model.state.grid.Component && <model.state.grid.Component model={model.state.grid} />}
       {showCanvasActions && (
         <div className={styles.actionsWrapper}>

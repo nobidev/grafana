@@ -1,3 +1,5 @@
+import type { DragEvent as ReactDragEvent } from 'react';
+
 import { t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
 import { SceneComponentProps, SceneObject, SceneObjectBase, SceneObjectState, VizPanel } from '@grafana/scenes';
@@ -13,6 +15,7 @@ import {
   getDashboardSceneFor,
   getGridItemKeyForPanelId,
   getVizPanelKeyForPanelId,
+  buildVizPanelForPromDrop,
 } from '../../utils/utils';
 import { DashboardGridItem } from '../layout-default/DashboardGridItem';
 import { clearClipboard, getAutoGridItemFromClipboard } from '../layouts-shared/paste';
@@ -315,7 +318,93 @@ export class AutoGridLayoutManager
 }
 
 function AutoGridLayoutManagerRenderer({ model }: SceneComponentProps<AutoGridLayoutManager>) {
-  return <model.state.layout.Component model={model.state.layout} />;
+  const dashboard = getDashboardSceneFor(model);
+  const { isEditing } = dashboard.useState();
+
+  const onCanvasDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!isEditing) {
+      return;
+    }
+    if (e.dataTransfer.types.includes('application/x-grafana-query')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const onCanvasDrop = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!isEditing) {
+      return;
+    }
+    const raw = e.dataTransfer.getData('application/x-grafana-query');
+    if (!raw) {
+      return;
+    }
+    try {
+      const payload: {
+        type: string;
+        name: string;
+        query: string;
+        datasourceUid?: string;
+      } = JSON.parse(raw);
+
+      if (payload.type !== 'prometheus-query') {
+        return;
+      }
+
+      const vizPanel = buildVizPanelForPromDrop(payload);
+      if (!vizPanel) {
+        return;
+      }
+
+      const layout = model.state.layout;
+      const container = layout.containerRef.current;
+      const containerRect = container?.getBoundingClientRect();
+      const centerX = e.clientX;
+      const centerY = e.clientY;
+
+      let insertIndex = layout.state.children.length;
+      if (containerRect) {
+        for (let i = 0; i < layout.state.children.length; i++) {
+          const child = layout.state.children[i];
+          const { top, left, width, height } = child.getBoundingBox();
+          const absTop = (container?.scrollTop ?? 0) + top + (containerRect?.top ?? 0);
+          const absLeft = (container?.scrollLeft ?? 0) + left + (containerRect?.left ?? 0);
+          const absRight = absLeft + width;
+          const absBottom = absTop + height;
+
+          if (centerY < absBottom && centerX < absRight) {
+            insertIndex = i;
+            break;
+          }
+        }
+      }
+
+      const panelId = dashboardSceneGraph.getNextPanelId(model);
+      vizPanel.setState({ key: getVizPanelKeyForPanelId(panelId) });
+      const newGridItem = new AutoGridItem({ body: vizPanel, key: getGridItemKeyForPanelId(panelId) });
+
+      dashboardEditActions.addElement({
+        addedObject: vizPanel,
+        source: model,
+        perform: () => {
+          const children = [...layout.state.children];
+          children.splice(insertIndex, 0, newGridItem);
+          layout.setState({ children });
+        },
+        undo: () => {
+          layout.setState({ children: layout.state.children.filter((c) => c !== newGridItem) });
+        },
+      });
+    } catch (err) {
+      return;
+    }
+  };
+
+  return (
+    <div onDragOver={onCanvasDragOver} onDrop={onCanvasDrop}>
+      <model.state.layout.Component model={model.state.layout} />
+    </div>
+  );
 }
 
 export function getTemplateColumnsTemplate(maxColumnCount: number, columnWidth: AutoGridColumnWidth) {

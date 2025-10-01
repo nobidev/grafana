@@ -1,5 +1,6 @@
 import { getDataSourceRef, IntervalVariableModel } from '@grafana/data';
 import { t } from '@grafana/i18n';
+import type { PromQuery } from '@grafana/prometheus';
 import { config, getDataSourceSrv } from '@grafana/runtime';
 import {
   CancelActivationHandler,
@@ -268,6 +269,35 @@ export function getDefaultVizPanel(): VizPanel {
       transformations: [],
     }),
   });
+}
+
+export type DroppedPromQueryPayload = {
+  type: string;
+  name: string;
+  query: string;
+  datasourceUid?: string;
+};
+
+/**
+ * Create a VizPanel pre-wired with a datasource and a single PromQL query from a drag-and-drop payload.
+ * Returns null if datasource resolution fails.
+ */
+export function buildVizPanelForPromDrop(payload: DroppedPromQueryPayload): VizPanel | null {
+  const panel = getDefaultVizPanel();
+  panel.setState({ title: payload.name, pluginId: 'timeseries' });
+
+  const dsSettings = payload.datasourceUid
+    ? getDataSourceSrv().getInstanceSettings(payload.datasourceUid)
+    : getDataSourceSrv().getInstanceSettings(null);
+  if (!dsSettings) {
+    return null;
+  }
+
+  const dsRef = getDataSourceRef(dsSettings);
+  const runner = getQueryRunnerFor(panel);
+  const promQuery: PromQuery = { refId: 'A', expr: payload.query };
+  runner?.setState({ datasource: dsRef, queries: [promQuery] });
+  return panel;
 }
 
 export function isLibraryPanel(vizPanel: VizPanel): boolean {
