@@ -2,13 +2,14 @@ import { css } from '@emotion/css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
+import { t, Trans } from '@grafana/i18n';
 import { PrometheusDatasource } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { QueryBuilderLabelFilter } from '@grafana/prometheus/src/querybuilder/shared/types';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Box, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
+import { Button, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
 import { SuggestedPanel } from '../utils/utils';
@@ -124,6 +125,8 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
 
   // Parse label filter strings like "instance=my-instance" into QueryBuilderLabelFilter objects
   const parseLabelFilters = useCallback((filterStrings: string[]): QueryBuilderLabelFilter[] => {
+    const validOperators: string[] = ['=', '!=', '=~', '!~'] as const;
+
     return filterStrings
       .map((filterStr) => {
         // Match patterns like: label=value, label="value", label=~"regex", etc.
@@ -132,11 +135,14 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
           const [, label, op, value] = match;
           // Remove quotes if present
           const cleanValue = value.replace(/^["']|["']$/g, '');
-          return { label: label.trim(), op: op as '=' | '!=' | '=~' | '!~', value: cleanValue };
+
+          if (validOperators.includes(op)) {
+            return { label: label.trim(), op, value: cleanValue };
+          }
         }
         // Default to equality if no operator found
         const [label, ...valueParts] = filterStr.split('=');
-        return { label: label.trim(), op: '=' as const, value: valueParts.join('=').replace(/^["']|["']$/g, '') };
+        return { label: label.trim(), op: '=', value: valueParts.join('=').replace(/^["']|["']$/g, '') };
       })
       .filter((filter) => filter.label && filter.value);
   }, []);
@@ -226,17 +232,25 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
     <div className={styles.container}>
       <div className={styles.filtersSection}>
         <TagsInput
-          placeholder="Add label filters (e.g., instance=my-instance)"
+          placeholder={t(
+            'dashboard-scene.prom-metric-selector.placeholder-add-label-filters-eg-instancemyinstance',
+            'Add label filters (e.g., instance=my-instance)'
+          )}
           tags={labelFilters}
           onChange={handleLabelFiltersChange}
           disabled={!isMetadataLoaded}
+          autoColors={false}
         />
       </div>
 
       <div className={styles.searchSection}>
         <div className={styles.inputContainer} ref={containerRef}>
           <Input
-            placeholder={isMetadataLoading ? 'Loading metrics...' : 'Click to search metrics...'}
+            placeholder={
+              isMetadataLoading
+                ? t('dashboard-scene.prom-metric-selector.loading-metrics', 'Loading metrics...')
+                : t('dashboard-scene.prom-metric-selector.click-to-search-metrics', 'Click to search metrics...')
+            }
             value={metricSearchTerm}
             onChange={handleMetricSearchChange}
             onFocus={handleInputFocus}
@@ -248,24 +262,34 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
             <div className={styles.metricsDropdown}>
               <ScrollContainer height={300}>
                 {isLoadingMetrics ? (
-                  <div className={styles.loadingMessage}>Loading metrics...</div>
+                  <div className={styles.loadingMessage}>
+                    <Trans i18nKey="dashboard-scene.prom-metric-selector.loading-metrics">Loading metrics...</Trans>
+                  </div>
                 ) : filteredMetrics.length === 0 ? (
                   <div className={styles.emptyMessage}>
-                    {metricSearchTerm || labelFilters.length > 0
-                      ? 'No metrics found matching your criteria'
-                      : 'No metrics available'}
+                    {metricSearchTerm || labelFilters.length > 0 ? (
+                      <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-found-matching-criteria">
+                        No metrics found matching your criteria
+                      </Trans>
+                    ) : (
+                      <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-available">
+                        No metrics available
+                      </Trans>
+                    )}
                   </div>
                 ) : (
                   <div className={styles.metricsList}>
                     {filteredMetrics.map((metric) => (
-                      <div
+                      <Button
                         key={metric}
-                        className={`${styles.metricItem} ${selectedMetric === metric ? styles.selectedMetric : ''}`}
+                        variant={selectedMetric === metric ? 'primary' : 'secondary'}
+                        fill="text"
+                        className={styles.metricItem}
                         onClick={() => handleMetricSelection(metric)}
                         onMouseDown={(e) => e.preventDefault()} // Prevent input blur
                       >
                         {metric}
-                      </div>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -316,25 +340,11 @@ function getStyles(theme: GrafanaTheme2) {
       padding: theme.spacing(1),
     }),
     metricItem: css({
-      padding: theme.spacing(1, 1.5),
-      cursor: 'pointer',
-      backgroundColor: 'transparent',
-      textAlign: 'left',
+      width: '100%',
+      justifyContent: 'flex-start',
       borderBottom: `1px solid ${theme.colors.border.weak}`,
-      '&:hover': {
-        backgroundColor: theme.colors.background.secondary,
-      },
       '&:last-child': {
         borderBottom: 'none',
-      },
-    }),
-    selectedMetric: css({
-      backgroundColor: theme.colors.primary.main,
-      color: theme.colors.primary.contrastText,
-      borderColor: theme.colors.primary.main,
-      '&:hover': {
-        backgroundColor: theme.colors.primary.shade,
-        borderColor: theme.colors.primary.shade,
       },
     }),
     loadingMessage: css({
