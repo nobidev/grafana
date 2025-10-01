@@ -12,6 +12,7 @@ import { getDataSourceSrv } from '@grafana/runtime';
 import { Card, Icon, Input, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
+import { getQueriesForMetric } from './promQueries';
 
 type Props = {
   selectedDatasource?: DataSourceInstanceSettings | undefined;
