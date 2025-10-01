@@ -88,9 +88,10 @@ interface Props {
    * - 'draft' non-saveable form mode used for exporting to provisioning formats
    */
   mode: 'edit' | 'draft';
+  sparkJoy?: boolean;
 }
 
-export const QueryAndExpressionsStep = ({ editingExistingRule, onDataChange, mode }: Props) => {
+export const QueryAndExpressionsStep = ({ editingExistingRule, onDataChange, mode, sparkJoy }: Props) => {
   const {
     setValue,
     getValues,
@@ -533,7 +534,7 @@ export const QueryAndExpressionsStep = ({ editingExistingRule, onDataChange, mod
               panelData={queryPreviewData}
               condition={condition}
               onSetCondition={handleSetCondition}
-              sparkJoy={true}
+              sparkJoy={sparkJoy}
             />
             {!simplifiedQueryStep && (
               <Tooltip

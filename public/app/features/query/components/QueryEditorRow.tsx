@@ -90,6 +90,7 @@ interface State<TQuery extends DataQuery> {
   showingHelp: boolean;
   recentQueries: RichHistoryQuery[];
   isLoadingHistory: boolean;
+  sparkJoy: boolean;
 }
 
 export class QueryEditorRow<TQuery extends DataQuery> extends PureComponent<Props<TQuery>, State<TQuery>> {
@@ -558,6 +559,7 @@ export class QueryEditorRow<TQuery extends DataQuery> extends PureComponent<Prop
       app,
       queryLibraryRef,
       onCancelQueryLibraryEdit,
+      sparkJoy,
     } = this.props;
     const { datasource, showingHelp, data } = this.state;
     const isHidden = query.hide;
@@ -571,6 +573,7 @@ export class QueryEditorRow<TQuery extends DataQuery> extends PureComponent<Prop
     if (!datasource) {
       return null;
     }
+    const shouldShowSparkJoy = sparkJoy && this.props.query && 'expr' in this.props.query && !this.props.query.expr;
 
     const editor = this.renderPluginEditor();
     const DatasourceCheatsheet = datasource.components?.QueryEditorHelp;
@@ -598,7 +601,7 @@ export class QueryEditorRow<TQuery extends DataQuery> extends PureComponent<Prop
               </OperationRowHelp>
             )}
             {editor}
-            {this.props.sparkJoy && (
+            {shouldShowSparkJoy && (
               <SparkJoySection
                 datasource={datasource}
                 history={this.state.recentQueries}
