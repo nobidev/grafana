@@ -60,6 +60,7 @@ export class AlertStatesDataLayer
     this.runWithTimeRange(timeRange);
   }
 
+  // TODO: does this one need to be updated too?
   private async runWithTimeRange(timeRange: SceneTimeRangeLike) {
     const dashboard = getDashboardSceneFor(this);
     const { uid, id } = dashboard.state;
