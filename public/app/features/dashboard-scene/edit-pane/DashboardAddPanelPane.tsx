@@ -3,10 +3,9 @@ import { useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
-import { PromQuery } from '@grafana/prometheus';
 import { Icon, useStyles2 } from '@grafana/ui';
 
-import { DroppedPromQueryPayload } from '../utils/utils';
+import { SuggestedPanel } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
@@ -21,8 +20,9 @@ export function DashboardAddPanelPane({ editPane }: Props) {
   // This should probably be the same if this pane is opened again. Also store in dashboard state?
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
 
-  const [panels, setPanels] = useState<Array<{ name: string; targets: PromQuery[] }>>([
+  const [panels, setPanels] = useState<SuggestedPanel[]>([
     {
+      type: 'timeseries',
       name: 'Up',
       targets: [
         {
@@ -31,12 +31,16 @@ export function DashboardAddPanelPane({ editPane }: Props) {
         },
       ],
     },
-    { name: 'HTTP rate (5m)', targets: [{ refId: 'cidr-B', expr: 'rate(http_requests_total[5m])' }] },
     {
+      type: 'timeseries',
+      name: 'HTTP rate (5m)', targets: [{ refId: 'cidr-B', expr: 'rate(http_requests_total[5m])' }] },
+    {
+      type: 'timeseries',
       name: 'CPU usage (5m)',
       targets: [{ refId: 'cidr-B', expr: 'sum(rate(container_cpu_usage_seconds_total{image!=""}[5m]))' }],
     },
     {
+      type: 'timeseries',
       name: '95th latency (5m)',
       targets: [
         {
@@ -46,6 +50,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
       ],
     },
     {
+      type: 'timeseries',
       name: 'Memory usage by job',
       targets: [{ refId: 'cidr-B', expr: 'sum by (job) (process_resident_memory_bytes)' }],
     },
@@ -80,7 +85,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
                 className={styles.listItem}
                 draggable
                 onDragStart={(e) => {
-                  const payload: DroppedPromQueryPayload = {
+                  const payload: SuggestedPanel = {
                     type: 'prometheus-query',
                     name: p.name,
                     targets: p.targets,

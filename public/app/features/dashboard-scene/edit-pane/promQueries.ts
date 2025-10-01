@@ -1,135 +1,321 @@
-import { PromQuery } from '@grafana/prometheus';
-import { QueryEditorMode } from '@grafana/prometheus/src/querybuilder/shared/types';
+import { SuggestedPanel } from '../utils/utils';
 
-const queryMap = new Map<string, PromQuery[]>([
-  ['counter', [
-    {
-      refId: 'A',
-      expr: 'rate({{metric_name}}[5m])',
-      legendFormat: 'Rate per second',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'B',
-      expr: 'increase({{metric_name}}[1h])',
-      legendFormat: 'Increase over 1h',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'C',
-      expr: 'sum(rate({{metric_name}}[5m]))',
-      legendFormat: 'Total rate',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'D',
-      expr: 'sum by (instance) (rate({{metric_name}}[5m]))',
-      legendFormat: 'Rate by instance',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'E',
-      expr: 'irate({{metric_name}}[5m])',
-      legendFormat: 'Instantaneous rate',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-  ]],
-  ['gauge', [
-    {
-      refId: 'A',
-      expr: '{{metric_name}}',
-      legendFormat: 'Current value',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'B',
-      expr: 'avg({{metric_name}})',
-      legendFormat: 'Average',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'C',
-      expr: 'max({{metric_name}})',
-      legendFormat: 'Maximum',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'D',
-      expr: 'min({{metric_name}})',
-      legendFormat: 'Minimum',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'E',
-      expr: 'avg_over_time({{metric_name}}[5m])',
-      legendFormat: '5m average',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-  ]],
-  ['histogram', [
-    {
-      refId: 'A',
-      expr: 'histogram_quantile(0.95, rate({{metric_name}}_bucket[5m]))',
-      legendFormat: '95th percentile',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'B',
-      expr: 'histogram_quantile(0.50, rate({{metric_name}}_bucket[5m]))',
-      legendFormat: '50th percentile (median)',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'C',
-      expr: 'rate({{metric_name}}_sum[5m]) / rate({{metric_name}}_count[5m])',
-      legendFormat: 'Average',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'D',
-      expr: 'rate({{metric_name}}_count[5m])',
-      legendFormat: 'Request rate',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-    {
-      refId: 'E',
-      expr: 'histogram_quantile(0.99, rate({{metric_name}}_bucket[5m]))',
-      legendFormat: '99th percentile',
-      format: 'time_series',
-      editorMode: QueryEditorMode.Code,
-    },
-  ]],
+// Define the metadata types locally to avoid importing from grafana-prometheus
+interface PromMetricsMetadataItem {
+  type: string;
+  help: string;
+  unit?: string;
+}
+
+interface PromMetricsMetadata {
+  [metric: string]: PromMetricsMetadataItem;
+}
+
+const queryMap = new Map<string, SuggestedPanel[]>([
+  [
+    'counter',
+    [
+      {
+        type: 'prometheus-query',
+        name: 'Rate per second',
+        targets: [
+          {
+            refId: 'A',
+            expr: 'rate({{metric_name}}[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Increase over 1h',
+        targets: [
+          {
+            refId: 'B',
+            expr: 'increase({{metric_name}}[1h])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Total rate',
+        targets: [
+          {
+            refId: 'C',
+            expr: 'sum(rate({{metric_name}}[5m]))',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Rate by instance',
+        targets: [
+          {
+            refId: 'D',
+            expr: 'sum by (instance) (rate({{metric_name}}[5m]))',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Instantaneous rate',
+        targets: [
+          {
+            refId: 'E',
+            expr: 'irate({{metric_name}}[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    'gauge',
+    [
+      {
+        type: 'prometheus-query',
+        name: 'Current value',
+        targets: [
+          {
+            refId: 'A',
+            expr: '{{metric_name}}',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Average',
+        targets: [
+          {
+            refId: 'B',
+            expr: 'avg({{metric_name}})',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Maximum',
+        targets: [
+          {
+            refId: 'C',
+            expr: 'max({{metric_name}})',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Minimum',
+        targets: [
+          {
+            refId: 'D',
+            expr: 'min({{metric_name}})',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: '5m average',
+        targets: [
+          {
+            refId: 'E',
+            expr: 'avg_over_time({{metric_name}}[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    'histogram',
+    [
+      {
+        type: 'prometheus-query',
+        name: '95th percentile',
+        targets: [
+          {
+            refId: 'A',
+            expr: 'histogram_quantile(0.95, rate({{metric_name}}_bucket[5m]))',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: '50th percentile (median)',
+        targets: [
+          {
+            refId: 'B',
+            expr: 'histogram_quantile(0.50, rate({{metric_name}}_bucket[5m]))',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Average',
+        targets: [
+          {
+            refId: 'C',
+            expr: 'rate({{metric_name}}_sum[5m]) / rate({{metric_name}}_count[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Request rate',
+        targets: [
+          {
+            refId: 'D',
+            expr: 'rate({{metric_name}}_count[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: '99th percentile',
+        targets: [
+          {
+            refId: 'E',
+            expr: 'histogram_quantile(0.99, rate({{metric_name}}_bucket[5m]))',
+            format: 'time_series',
+          },
+        ],
+      },
+    ],
+  ],
+  [
+    'summary',
+    [
+      {
+        type: 'prometheus-query',
+        name: 'Average',
+        targets: [
+          {
+            refId: 'A',
+            expr: 'rate({{metric_name}}_sum[5m]) / rate({{metric_name}}_count[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Rate',
+        targets: [
+          {
+            refId: 'B',
+            expr: 'rate({{metric_name}}_count[5m])',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Total sum',
+        targets: [
+          {
+            refId: 'C',
+            expr: '{{metric_name}}_sum',
+            format: 'time_series',
+          },
+        ],
+      },
+      {
+        type: 'prometheus-query',
+        name: 'Total count',
+        targets: [
+          {
+            refId: 'D',
+            expr: '{{metric_name}}_count',
+            format: 'time_series',
+          },
+        ],
+      },
+    ],
+  ],
 ]);
 
 /**
- * Returns queries for a given metric name and type with the metric name substituted
- * @param metricName - The name of the metric to substitute in the queries
- * @param metricType - The type of metric ('counter', 'gauge', 'histogram')
- * @returns Array of PromQuery objects with the metric name substituted, or empty array if type not found
+ * Common Prometheus metric suffixes that are automatically added based on metric type
+ * Ordered by specificity - more specific suffixes first to avoid incorrect matches
  */
-export function getQueriesForMetric(metricName: string, metricType: string): PromQuery[] {
-  const queries = queryMap.get(metricType);
-  if (!queries) {
+const PROMETHEUS_SUFFIXES = [
+  // Histogram/Summary suffixes (these are always auto-generated)
+  '_bucket',
+  '_count',
+  '_sum',
+
+  // Counter suffixes (these are always auto-generated)
+  '_total',
+
+  // Unit suffixes (only common patterns that are likely auto-generated)
+  '_seconds_total', // e.g., cpu_seconds_total
+  '_bytes_total', // e.g., bytes_total
+  '_milliseconds', // duration metrics
+  '_seconds', // duration metrics
+  '_bytes', // size metrics
+];
+
+/**
+ * Finds metadata for a metric name by checking the exact name first, then trying without common suffixes
+ * @param metricName - The actual metric name from time series (e.g., 'http_requests_total')
+ * @param metricsMetadata - The metadata object containing metric information
+ * @returns The metadata item if found, undefined otherwise
+ */
+function findMetadataForMetric(
+  metricName: string,
+  metricsMetadata: PromMetricsMetadata
+): PromMetricsMetadataItem | undefined {
+  // First try exact match
+  if (metricsMetadata[metricName]) {
+    return metricsMetadata[metricName];
+  }
+
+  // Try removing common Prometheus suffixes to find the base metric
+  for (const suffix of PROMETHEUS_SUFFIXES) {
+    if (metricName.endsWith(suffix)) {
+      const baseMetricName = metricName.slice(0, -suffix.length);
+      if (metricsMetadata[baseMetricName]) {
+        return metricsMetadata[baseMetricName];
+      }
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Returns queries for a given metric name with the metric name substituted
+ * @param metricName - The name of the metric to substitute in the queries
+ * @param metricsMetadata - The metadata object containing metric information
+ * @returns Array of SuggestedPanel objects with the metric name substituted, or empty array if type not found
+ */
+export function getQueriesForMetric(metricName: string, metricsMetadata: PromMetricsMetadata): SuggestedPanel[] {
+  const metadata = findMetadataForMetric(metricName, metricsMetadata);
+  if (!metadata) {
     return [];
   }
 
-  return queries.map((query) => ({
-    ...query,
-    expr: query.expr.replace(/\{\{metric_name\}\}/g, metricName),
+  const panels = queryMap.get(metadata.type);
+  if (!panels) {
+    return [];
+  }
+
+  return panels.map((panel) => ({
+    ...panel,
+    name: `${metricName} - ${panel.name}`,
+    targets: panel.targets.map((target) => ({
+      ...target,
+      expr: target.expr.replace(/\{\{metric_name\}\}/g, metricName),
+    })),
   }));
 }
 
@@ -140,3 +326,6 @@ export function getQueriesForMetric(metricName: string, metricType: string): Pro
 export function getAvailableMetricTypes(): string[] {
   return Array.from(queryMap.keys());
 }
+
+// Export the helper function for testing purposes
+export { findMetadataForMetric };

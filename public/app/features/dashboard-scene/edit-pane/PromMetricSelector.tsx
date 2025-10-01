@@ -3,20 +3,21 @@ import debounce from 'debounce-promise';
 import { useEffect, useMemo, useState } from 'react';
 
 import { DataSourceInstanceSettings, getDefaultTimeRange, GrafanaTheme2 } from '@grafana/data';
-import { PrometheusDatasource, PromQuery } from '@grafana/prometheus';
+import { PrometheusDatasource } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
-import { generateMetricData } from '@grafana/prometheus/src/querybuilder/components/metrics-modal/helpers';
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { getDataSourceSrv } from '@grafana/runtime';
 import { Card, Icon, Input, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
+import { SuggestedPanel } from '../utils/utils';
+
 import { getQueriesForMetric } from './promQueries';
 
 type Props = {
   selectedDatasource?: DataSourceInstanceSettings | undefined;
-  setPanels: (panels: Array<{ name: string; targets: PromQuery[] }>) => void;
+  setPanels: (panels: SuggestedPanel[]) => void;
 };
 
 export function PromMetricSelector({ selectedDatasource }: Props) {
@@ -54,7 +55,7 @@ export function PromMetricSelector({ selectedDatasource }: Props) {
 
           // Fetch metadata immediately after setting datasource instance
           // limit = 0 means fetch all without limit
-          return promDs.languageProvider.queryMetricsMetadata(0);
+          return promDs.languageProvider.queryMetricsMetadata(100000);
         })
         .then(() => {
           setIsMetadataLoaded(true);
@@ -82,7 +83,6 @@ export function PromMetricSelector({ selectedDatasource }: Props) {
           return;
         }
 
-        console.log('searching: ', text);
         // FIXME use the dashboard's timerange
         const timeRange = getDefaultTimeRange();
         const queryString = regexifyLabelValuesQueryString(text);
@@ -93,8 +93,9 @@ export function PromMetricSelector({ selectedDatasource }: Props) {
 
         try {
           const metrics = await datasourceInstance.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, match);
-          const withMetadata = metrics.map((m) => generateMetricData(m, datasourceInstance.languageProvider));
-          console.log(withMetadata);
+          const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
+          const suggestedPanels = metrics.map((m) => getQueriesForMetric(m, metricMetadata));
+          console.log(suggestedPanels);
         } catch (error) {
           console.error('Error during metric search:', error);
         }

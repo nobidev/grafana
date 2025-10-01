@@ -271,7 +271,7 @@ export function getDefaultVizPanel(): VizPanel {
   });
 }
 
-export type DroppedPromQueryPayload = {
+export type SuggestedPanel = {
   type: string;
   name: string;
   targets: PromQuery[];
@@ -282,7 +282,7 @@ export type DroppedPromQueryPayload = {
  * Create a VizPanel pre-wired with a datasource and a single PromQL query from a drag-and-drop payload.
  * Returns null if datasource resolution fails.
  */
-export function buildVizPanelForPromDrop(payload: DroppedPromQueryPayload): VizPanel | null {
+export function buildVizPanelForPromDrop(payload: SuggestedPanel): VizPanel | null {
   const panel = getDefaultVizPanel();
   panel.setState({ title: payload.name, pluginId: 'timeseries' });
 
