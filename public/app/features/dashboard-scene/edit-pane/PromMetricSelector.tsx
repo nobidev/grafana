@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
@@ -9,7 +9,7 @@ import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuild
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { QueryBuilderLabelFilter } from '@grafana/prometheus/src/querybuilder/shared/types';
 import { getDataSourceSrv } from '@grafana/runtime';
-import { Button, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
+import { Button, ClickOutsideWrapper, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
 
 import { useDatasources } from '../../datasources/hooks';
 import { SuggestedPanel } from '../utils/utils';
@@ -46,7 +46,6 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
   const [labelFilters, setLabelFilters] = useState<string[]>([]);
   const [metricSearchTerm, setMetricSearchTerm] = useState('');
   const [showMetricsList, setShowMetricsList] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchMetrics = useCallback(
     async (promDs: PrometheusDatasource, filters: QueryBuilderLabelFilter[]) => {
@@ -202,31 +201,14 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
     setShowMetricsList(true);
   }, []);
 
-  const handleInputBlur = useCallback((event: React.FocusEvent<HTMLInputElement>) => {
-    // Only hide if not clicking on a metric item
-    setTimeout(() => {
-      if (!containerRef.current?.contains(document.activeElement)) {
-        setShowMetricsList(false);
-      }
-    }, 100);
+  const handleInputBlur = useCallback(() => {
+    // Hide the list when input loses focus
+    setShowMetricsList(false);
   }, []);
 
-  // Handle clicks outside the component
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setShowMetricsList(false);
-      }
-    };
-
-    if (showMetricsList) {
-      document.addEventListener('click', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
-  }, [showMetricsList]);
+  const handleClickOutside = useCallback(() => {
+    setShowMetricsList(false);
+  }, []);
 
   return (
     <div className={styles.container}>
@@ -244,59 +226,61 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
       </div>
 
       <div className={styles.searchSection}>
-        <div className={styles.inputContainer} ref={containerRef}>
-          <Input
-            placeholder={
-              isMetadataLoading
-                ? t('dashboard-scene.prom-metric-selector.loading-metrics', 'Loading metrics...')
-                : t('dashboard-scene.prom-metric-selector.click-to-search-metrics', 'Click to search metrics...')
-            }
-            value={metricSearchTerm}
-            onChange={handleMetricSearchChange}
-            onFocus={handleInputFocus}
-            onBlur={handleInputBlur}
-            disabled={!isMetadataLoaded}
-          />
+        <ClickOutsideWrapper onClick={handleClickOutside}>
+          <div className={styles.inputContainer}>
+            <Input
+              placeholder={
+                isMetadataLoading
+                  ? t('dashboard-scene.prom-metric-selector.loading-metrics', 'Loading metrics...')
+                  : t('dashboard-scene.prom-metric-selector.click-to-search-metrics', 'Click to search metrics...')
+              }
+              value={metricSearchTerm}
+              onChange={handleMetricSearchChange}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              disabled={!isMetadataLoaded}
+            />
 
-          {showMetricsList && (
-            <div className={styles.metricsDropdown}>
-              <ScrollContainer height={300}>
-                {isLoadingMetrics ? (
-                  <div className={styles.loadingMessage}>
-                    <Trans i18nKey="dashboard-scene.prom-metric-selector.loading-metrics">Loading metrics...</Trans>
-                  </div>
-                ) : filteredMetrics.length === 0 ? (
-                  <div className={styles.emptyMessage}>
-                    {metricSearchTerm || labelFilters.length > 0 ? (
-                      <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-found-matching-criteria">
-                        No metrics found matching your criteria
-                      </Trans>
-                    ) : (
-                      <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-available">
-                        No metrics available
-                      </Trans>
-                    )}
-                  </div>
-                ) : (
-                  <div className={styles.metricsList}>
-                    {filteredMetrics.map((metric) => (
-                      <Button
-                        key={metric}
-                        variant={selectedMetric === metric ? 'primary' : 'secondary'}
-                        fill="text"
-                        className={styles.metricItem}
-                        onClick={() => handleMetricSelection(metric)}
-                        onMouseDown={(e) => e.preventDefault()} // Prevent input blur
-                      >
-                        {metric}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </ScrollContainer>
-            </div>
-          )}
-        </div>
+            {showMetricsList && (
+              <div className={styles.metricsDropdown}>
+                <ScrollContainer height={300}>
+                  {isLoadingMetrics ? (
+                    <div className={styles.loadingMessage}>
+                      <Trans i18nKey="dashboard-scene.prom-metric-selector.loading-metrics">Loading metrics...</Trans>
+                    </div>
+                  ) : filteredMetrics.length === 0 ? (
+                    <div className={styles.emptyMessage}>
+                      {metricSearchTerm || labelFilters.length > 0 ? (
+                        <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-found-matching-criteria">
+                          No metrics found matching your criteria
+                        </Trans>
+                      ) : (
+                        <Trans i18nKey="dashboard-scene.prom-metric-selector.no-metrics-available">
+                          No metrics available
+                        </Trans>
+                      )}
+                    </div>
+                  ) : (
+                    <div className={styles.metricsList}>
+                      {filteredMetrics.map((metric) => (
+                        <Button
+                          key={metric}
+                          variant={selectedMetric === metric ? 'primary' : 'secondary'}
+                          fill="text"
+                          className={styles.metricItem}
+                          onClick={() => handleMetricSelection(metric)}
+                          onMouseDown={(e) => e.preventDefault()} // Prevent input blur
+                        >
+                          {metric}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </ScrollContainer>
+              </div>
+            )}
+          </div>
+        </ClickOutsideWrapper>
       </div>
     </div>
   );
