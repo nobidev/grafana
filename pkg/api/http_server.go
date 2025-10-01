@@ -196,6 +196,7 @@ type HTTPServer struct {
 	dashboardPermissionsService  accesscontrol.DashboardPermissionsService
 	dashboardVersionService      dashver.Service
 	PublicDashboardsApi          *publicdashboardsApi.Api
+	AlertingProvisioningService  *ngalertprovisioning.ProvisioningSrv
 	starService                  star.Service
 	playlistService              playlist.Service
 	apiKeyService                apikey.Service
