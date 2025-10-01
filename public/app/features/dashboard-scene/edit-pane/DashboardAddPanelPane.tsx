@@ -3,9 +3,10 @@ import { useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
+import { sceneGraph } from '@grafana/scenes';
 import { Icon, useStyles2 } from '@grafana/ui';
 
-import { SuggestedPanel } from '../utils/utils';
+import { getDashboardSceneFor, SuggestedPanel } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
@@ -19,6 +20,10 @@ interface Props {
 export function DashboardAddPanelPane({ editPane }: Props) {
   // This should probably be the same if this pane is opened again. Also store in dashboard state?
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
+
+  // Get dashboard timerange
+  const dashboard = getDashboardSceneFor(editPane);
+  const { value: timeRange } = sceneGraph.getTimeRange(dashboard).useState();
 
   const [panels, setPanels] = useState<SuggestedPanel[]>([
     {
@@ -55,7 +60,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
             />
           </div>
 
-          <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} />
+          <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} timeRange={timeRange} />
 
           <div className={styles.list}>
             {panels.map((p) => (

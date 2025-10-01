@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { useEffect, useState } from 'react';
 
-import { DataSourceInstanceSettings, getDefaultTimeRange, GrafanaTheme2 } from '@grafana/data';
+import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
 import { PrometheusDatasource } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
@@ -17,9 +17,10 @@ import { getQueriesForMetric } from './promQueries';
 type Props = {
   selectedDatasource?: DataSourceInstanceSettings | undefined;
   setPanels: (panels: SuggestedPanel[]) => void;
+  timeRange: TimeRange;
 };
 
-export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
+export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }: Props) {
   const styles = useStyles2(getStyles);
 
   const promDsInstances = useDatasources({
@@ -27,10 +28,10 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
     mixed: false,
     all: true,
     type: 'prometheus',
-    filter: (ds) => ds.uid === (selectedDatasource?.uid ?? 'zxS5e5W4k'),
+    filter: selectedDatasource ? (ds) => ds.uid === selectedDatasource.uid : undefined,
   });
 
-  const effectiveDatasource = promDsInstances[0];
+  const effectiveDatasource = selectedDatasource || promDsInstances[0];
 
   const [selectedMetric, setSelectedMetric] = useState<ComboboxOption | null>(null);
   const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
@@ -96,8 +97,6 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
   const fetchInitialMetrics = async (promDs: PrometheusDatasource) => {
     setIsLoadingInitialMetrics(true);
     try {
-      // FIXME use the dashboard's timerange
-      const timeRange = getDefaultTimeRange();
       const metrics = await promDs.languageProvider.queryLabelValues(timeRange, METRIC_LABEL, undefined, 500);
       // Limit to first 500 metrics for performance
       const limitedMetrics = metrics.slice(0, 500);
@@ -127,8 +126,6 @@ export function PromMetricSelector({ selectedDatasource, setPanels }: Props) {
 
     setIsLoadingOptions(true);
     try {
-      // FIXME use the dashboard's timerange
-      const timeRange = getDefaultTimeRange();
       const queryString = regexifyLabelValuesQueryString(inputValue);
       // FIXME when we have label filters use this
       const queryLabels = undefined;
