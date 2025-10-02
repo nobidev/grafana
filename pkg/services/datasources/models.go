@@ -70,6 +70,9 @@ type DataSource struct {
 	// swagger:ignore
 	IsPrunable bool `xorm:"is_prunable"`
 
+	// Free-form comments stored on the datasource
+	Comment string `json:"comment" xorm:"comment"`
+
 	Created time.Time `json:"created,omitempty"`
 	Updated time.Time `json:"updated,omitempty"`
 
@@ -165,6 +168,7 @@ type AddDataSourceCommand struct {
 	JsonData        *simplejson.Json  `json:"jsonData"`
 	SecureJsonData  map[string]string `json:"secureJsonData"`
 	UID             string            `json:"uid"`
+	Comment         string            `json:"comment"`
 	// swagger:ignore
 	APIVersion string `json:"apiVersion,omitempty"`
 	// swagger:ignore
@@ -192,6 +196,7 @@ type UpdateDataSourceCommand struct {
 	JsonData        *simplejson.Json  `json:"jsonData"`
 	SecureJsonData  map[string]string `json:"secureJsonData"`
 	UID             string            `json:"uid"`
+	Comment         string            `json:"comment"`
 	// swagger:ignore
 	APIVersion string `json:"apiVersion,omitempty"`
 	// swagger:ignore

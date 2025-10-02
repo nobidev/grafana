@@ -728,6 +728,7 @@ func (hs *HTTPServer) convertModelToDtos(ctx context.Context, ds *datasources.Da
 		SecureJsonFields: map[string]bool{},
 		Version:          ds.Version,
 		ReadOnly:         ds.ReadOnly,
+		Comment:          ds.Comment,
 		APIVersion:       ds.APIVersion,
 	}
 

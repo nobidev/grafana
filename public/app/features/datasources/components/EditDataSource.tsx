@@ -184,10 +184,12 @@ export function EditDataSourceView({
       <CloudInfoBox dataSource={dataSource} />
 
       <BasicSettings
+        dataSource={dataSource}
         dataSourceName={dataSource.name}
         isDefault={dataSource.isDefault}
         onDefaultChange={onDefaultChange}
         onNameChange={onNameChange}
+        onOptionsChange={onOptionsChange}
         disabled={readOnly || !hasWriteRights}
       />
 

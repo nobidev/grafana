@@ -1,20 +1,23 @@
 import { css } from '@emotion/css';
 import * as React from 'react';
 
-import { GrafanaTheme2 } from '@grafana/data';
+import { GrafanaTheme2, DataSourceSettings } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { t } from '@grafana/i18n';
-import { InlineField, InlineSwitch, Input, Badge, useStyles2 } from '@grafana/ui';
+import { InlineField, InlineSwitch, Input, Badge, useStyles2, TextArea } from '@grafana/ui';
+
 
 export interface Props {
+  dataSource: DataSourceSettings;
   dataSourceName: string;
   isDefault: boolean;
   onNameChange: (name: string) => void;
   onDefaultChange: (value: boolean) => void;
+  onOptionsChange: (dataSource: DataSourceSettings) => void;
   disabled?: boolean;
 }
 
-export function BasicSettings({ dataSourceName, isDefault, onDefaultChange, onNameChange, disabled }: Props) {
+export function BasicSettings({ onOptionsChange, dataSource, dataSourceName, isDefault, onDefaultChange, onNameChange, disabled }: Props) {
   return (
     <>
       <div
@@ -64,6 +67,26 @@ export function BasicSettings({ dataSourceName, isDefault, onDefaultChange, onNa
             />
           </InlineField>
         </div>
+
+      {/* Comments field */}
+      <div className="gf-form-inline">
+        {/* Name */}
+        <div className="gf-form max-width-30">
+          <InlineField
+            label={t('connections.data-source-comments-page.label-comments', 'Comments')}
+            grow
+            labelWidth={14}
+          >
+            <TextArea
+              id={`datasource-${dataSource.uid}-comments-inline`}
+              rows={4}
+              value={dataSource.comment || ''}
+              onChange={(e) => onOptionsChange({ ...dataSource, comment: e.currentTarget.value })}
+            />
+          </InlineField>
+        </div>
+      </div>
+
       </div>
     </>
   );

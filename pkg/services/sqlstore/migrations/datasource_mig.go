@@ -150,4 +150,9 @@ func addDataSourceMigration(mg *Migrator) {
 	mg.AddMigration("Update json_data column to MediumText", NewRawSQLMigration("").
 		Mysql("ALTER TABLE data_source MODIFY COLUMN json_data MEDIUMTEXT;"),
 	)
+
+	// Add a free-form comments column for data sources
+	mg.AddMigration("Add comment column to data_source", NewAddColumnMigration(tableV2, &Column{
+		Name: "comment", Type: DB_Text, Nullable: true,
+	}))
 }

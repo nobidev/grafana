@@ -689,6 +689,8 @@ export interface DataSourceSettings<T extends DataSourceJsonData = DataSourceJso
   access: string;
   url: string;
   user: string;
+  /** Optional free-form comments stored with the data source */
+  comment?: string;
   /**
    *  @deprecated -- use jsonData to store information related to database.
    *  This field should only be used by Elasticsearch and Influxdb.
@@ -716,6 +718,8 @@ export interface DataSourceInstanceSettings<T extends DataSourceJsonData = DataS
   uid: string;
   type: string;
   name: string;
+  /** Optional free-form comments stored with the data source */
+  comment?: string;
   apiVersion?: string;
   meta: DataSourcePluginMeta;
   cachingConfig?: PluginQueryCachingConfig;

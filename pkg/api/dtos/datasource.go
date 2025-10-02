@@ -27,6 +27,7 @@ type DataSource struct {
 	SecureJsonFields map[string]bool        `json:"secureJsonFields"`
 	Version          int                    `json:"version"`
 	ReadOnly         bool                   `json:"readOnly"`
+	Comment          string                 `json:"comment"`
 	AccessControl    accesscontrol.Metadata `json:"accessControl,omitempty"`
 	// swagger:ignore
 	APIVersion string `json:"apiVersion"`
