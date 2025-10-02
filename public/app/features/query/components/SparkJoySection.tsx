@@ -2,6 +2,7 @@
 import { css } from '@emotion/css';
 import { useEffect, useState, useRef } from 'react';
 
+import { createAssistantContextItem, openAssistant } from '@grafana/assistant';
 import {
   TimeRange,
   PanelData,
@@ -20,6 +21,165 @@ import { useQueryHistoryContext } from '../../explore/QueryHistory/QueryHistoryC
 import { useQueryLibraryContext } from '../../explore/QueryLibrary/QueryLibraryContext';
 
 import { useQueryPatterns } from './QueryPatternStarter';
+
+
+const AssistantCard = ({ datasource }: { datasource: DataSourceApi<DataQuery> }) => {
+  const theme = useTheme2();
+
+  const styles = {
+    card: {
+      cursor: 'pointer',
+      backgroundColor: theme.colors.background.secondary,
+      borderRadius: theme.shape.radius.default,
+      padding: theme.spacing(1),
+      marginBottom: 0,
+      position: 'relative' as const,
+      minHeight: '90px',
+      width: '100%',
+      maxWidth: '100%',
+      display: 'flex',
+      flexDirection: 'column' as const,
+      border: '1px solid transparent',
+      borderImage: 'linear-gradient(90deg, rgb(168, 85, 247), rgb(249, 115, 22)) 1',
+      transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
+        duration: theme.transitions.duration.short,
+      }),
+      // Responsive padding
+      '@media (max-width: 767px)': {
+        padding: theme.spacing(0.75),
+        minHeight: '80px',
+      },
+      '&:hover': {
+        backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
+        cursor: 'pointer',
+        zIndex: 1,
+      },
+      '&:focus': {
+        outline: `2px solid ${theme.colors.primary.main}`,
+        outlineOffset: '2px',
+      },
+    },
+    content: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: theme.spacing(1),
+      flex: 1,
+      justifyContent: 'space-between',
+    },
+    mainContent: {
+      display: 'flex',
+      flexDirection: 'column' as const,
+      gap: theme.spacing(1),
+      flex: 1,
+    },
+    assistantText: {
+      padding: theme.spacing(0.25, 0.75),
+    },
+    queryText: {
+      padding: theme.spacing(0.25, 0.5),
+      fontSize: theme.typography.body.fontSize,
+      fontFamily: theme.typography.fontFamilyMonospace,
+      overflow: 'auto',
+      backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.06),
+      border: `1px solid ${theme.colors.border.weak}`,
+      borderRadius: theme.shape.radius.default,
+      wordBreak: 'break-word' as const,
+      // Responsive font size
+      '@media (max-width: 767px)': {
+        fontSize: theme.typography.bodySmall.fontSize,
+        padding: theme.spacing(0.25),
+      },
+    },
+    previewRow: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: theme.spacing(1),
+      margin: theme.spacing(0, 1),
+      // Stack on mobile for better readability
+      '@media (max-width: 767px)': {
+        flexDirection: 'column' as const,
+        alignItems: 'flex-start',
+        gap: theme.spacing(0.5),
+        margin: theme.spacing(0, 0.5),
+      },
+    },
+    preview: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(0.5),
+      fontSize: theme.typography.bodySmall.fontSize,
+      color: theme.colors.text.secondary,
+      minHeight: '20px',
+      flex: 1,
+      // Wrap on mobile for better readability
+      '@media (max-width: 767px)': {
+        flexWrap: 'wrap' as const,
+        width: '100%',
+      },
+    },
+    badge: {
+      fontSize: theme.typography.bodySmall.fontSize,
+      borderRadius: '1em',
+      // Smaller badges on mobile
+      '@media (max-width: 767px)': {
+        fontSize: '0.75rem',
+      },
+    },
+  };
+
+  return (
+    <div
+      className={css(styles.card)}
+      onClick={() => {
+        openAssistant({
+          prompt: `Help me build a query. I would like to query @${datasource.name}. Please ask me what do you need to know about my use case.`,
+          autoSend: true,
+          origin: 'sparkjoy-section',
+
+          context: [
+            createAssistantContextItem('datasource', {
+              datasourceUid: datasource.uid,
+            }),
+            createAssistantContextItem('structured', {
+              hidden: true,
+              title: 'Page-specific instructions',
+              data: {
+                instructions: 'Help me build a query. Ask me immediately about my use case and everything you need to know to build a correct query.',
+              },
+            }), 
+          ],
+        });
+      }}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          
+        }
+      }}
+    >
+      <div className={css(styles.content)}>
+        <div className={css(styles.mainContent)}>
+          <div className={css(styles.assistantText)}>Get Assistant recommendation</div>
+          
+          <div className={css(styles.previewRow)}>
+            <div className={css(styles.preview)}>
+              <span>Describe your use case and get Assistant to recommend</span>
+              <span style={{ color: theme.colors.text.secondary, margin: theme.spacing(0, 0.25) }}>|</span>
+              <span style={{ color: theme.colors.text.secondary }}>Powered by AI</span>
+              <Badge 
+                text="🤖 Assistant" 
+                color="purple" 
+                className={css(styles.badge)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
 // Unified interface for query items used in the SparkJoy section
@@ -366,6 +526,11 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
       transition: theme.transitions.create(['background-color', 'box-shadow', 'border-color', 'color'], {
         duration: theme.transitions.duration.short,
       }),
+      // Responsive padding
+      '@media (max-width: 767px)': {
+        padding: theme.spacing(0.75),
+        minHeight: '80px',
+      },
       '&:hover': {
         backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.03),
         cursor: 'pointer',
@@ -404,6 +569,12 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
       backgroundColor: theme.colors.emphasize(theme.colors.background.secondary, 0.06),
       border: `1px solid ${theme.colors.border.weak}`,
       borderRadius: theme.shape.radius.default,
+      wordBreak: 'break-word' as const,
+      // Responsive font size
+      '@media (max-width: 767px)': {
+        fontSize: theme.typography.bodySmall.fontSize,
+        padding: theme.spacing(0.25),
+      },
     },
     previewRow: {
       display: 'flex',
@@ -411,6 +582,13 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
       justifyContent: 'space-between',
       gap: theme.spacing(1),
       margin: theme.spacing(0, 1),
+      // Stack on mobile for better readability
+      '@media (max-width: 767px)': {
+        flexDirection: 'column' as const,
+        alignItems: 'flex-start',
+        gap: theme.spacing(0.5),
+        margin: theme.spacing(0, 0.5),
+      },
     },
     preview: {
       display: 'flex',
@@ -420,6 +598,11 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
       color: theme.colors.text.secondary,
       minHeight: '20px',
       flex: 1,
+      // Wrap on mobile for better readability
+      '@media (max-width: 767px)': {
+        flexWrap: 'wrap' as const,
+        width: '100%',
+      },
     },
     previewIcon: {
       flexShrink: 0,
@@ -427,6 +610,10 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
     badge: {
       fontSize: theme.typography.bodySmall.fontSize,
       borderRadius: '1em',
+      // Smaller badges on mobile
+      '@media (max-width: 767px)': {
+        fontSize: '0.75rem',
+      },
     },
     userBadge: {
       fontSize: theme.typography.bodySmall.fontSize,
@@ -435,9 +622,19 @@ const QueryCard = ({ query, onClick, datasource, timeRange, isRecentQuery, times
       alignItems: 'center',
       gap: theme.spacing(0.75),
       borderRadius: theme.shape.radius.default,
+      // Adjust spacing on mobile
+      '@media (max-width: 767px)': {
+        fontSize: '0.75rem',
+        padding: `${theme.spacing(0.125)} ${theme.spacing(0.25)}`,
+        gap: theme.spacing(0.5),
+      },
     },
     badgeAvatar: {
       marginLeft: theme.spacing(0.5),
+      // Smaller avatars on mobile
+      '@media (max-width: 767px)': {
+        marginLeft: theme.spacing(0.25),
+      },
     },
   };
   const queryDisplayText = datasource?.getQueryDisplayText?.(query.query) ?? JSON.stringify(query.query);
@@ -629,6 +826,10 @@ export const SparkJoySection = <TQuery extends DataQuery>({
     container: {
       backgroundColor: theme.colors.background.primary,
       padding: theme.spacing(1),
+      // Responsive padding
+      '@media (max-width: 767px)': {
+        padding: theme.spacing(0.5),
+      },
     },
     header: {
       display: 'flex',
@@ -638,20 +839,40 @@ export const SparkJoySection = <TQuery extends DataQuery>({
     },
     columnsContainer: {
       display: 'grid',
-      gridTemplateColumns: 'auto auto',
       gap: theme.spacing(3),
-      justifyContent: 'start',
-      maxWidth: '1000px', // Limit the total width
+      width: '100%',
+      // Responsive grid: 2 columns on larger screens, 1 column on smaller screens
+      gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 500px), 1fr))',
+      // Alternative approach using media queries for more control
+      '@media (min-width: 1200px)': {
+        gridTemplateColumns: '1fr 1fr',
+        maxWidth: '1400px',
+      },
+      '@media (max-width: 1199px) and (min-width: 768px)': {
+        gridTemplateColumns: '1fr 1fr',
+        maxWidth: '100%',
+      },
+      '@media (max-width: 767px)': {
+        gridTemplateColumns: '1fr',
+        gap: theme.spacing(2),
+      },
     },
     column: {
       minHeight: '200px',
-      width: '600px', // Fixed width for each column
+      width: '100%',
+      maxWidth: '100%',
+      // Ensure columns don't overflow
+      minWidth: 0,
     },
     columnHeader: {
       display: 'flex',
       alignItems: 'center',
       gap: theme.spacing(1),
       marginBottom: theme.spacing(2),
+      // Responsive margin
+      '@media (max-width: 767px)': {
+        marginBottom: theme.spacing(1.5),
+      },
     },
     emptyState: {
       display: 'flex',
@@ -660,6 +881,8 @@ export const SparkJoySection = <TQuery extends DataQuery>({
       height: '100px',
       color: theme.colors.text.secondary,
       fontStyle: 'italic' as const,
+      textAlign: 'center' as const,
+      padding: theme.spacing(1),
     },
     loadingState: {
       display: 'flex',
@@ -668,6 +891,8 @@ export const SparkJoySection = <TQuery extends DataQuery>({
       gap: theme.spacing(1),
       height: '100px',
       color: theme.colors.text.secondary,
+      textAlign: 'center' as const,
+      padding: theme.spacing(1),
     },
   };
 
@@ -814,7 +1039,10 @@ export const SparkJoySection = <TQuery extends DataQuery>({
                     backgroundColor: theme.colors.background.primary, 
                     border: 'none', 
                     borderRadius: theme.shape.radius.default, 
-                    cursor: 'pointer' 
+                    cursor: 'pointer',
+                    padding: theme.spacing(0.75, 1),
+                    fontSize: theme.typography.bodySmall.fontSize,
+                    color: theme.colors.text.primary,
                   }}
                   onClick={() => {
                     if (queryHistoryEnabled && datasource) {
