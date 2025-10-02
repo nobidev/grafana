@@ -1,7 +1,9 @@
 import { css, cx } from '@emotion/css';
+import { useState } from 'react';
+import { useTimeoutFn } from 'react-use';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
-import { Card, TagList, useTheme2, Icon } from '@grafana/ui';
+import { Card, TagList, useTheme2, Icon, Tooltip } from '@grafana/ui';
 
 interface DataSourceCardProps {
   ds: DataSourceInstanceSettings;
@@ -23,8 +25,10 @@ export function DataSourceCard({
 }: DataSourceCardProps) {
   const theme = useTheme2();
   const styles = getStyles(theme, ds.meta.builtIn);
+  const [open, setOpen] = useState(false);
+  const [, , resetHoverTimer] = useTimeoutFn(() => setOpen(true), 500);
 
-  return (
+  const content = (
     <Card
       key={ds.uid}
       onClick={onClick}
@@ -55,6 +59,25 @@ export function DataSourceCard({
         <img src={ds.meta.info.logos.small} alt={`${ds.meta.name} Logo`} />
       </Card.Figure>
     </Card>
+  );
+
+  if (!ds.comment) {
+    return content;
+  }
+
+  return (
+    <div
+      onMouseEnter={() => {
+        resetHoverTimer();
+      }}
+      onMouseLeave={() => {
+        setOpen(false);
+      }}
+    >
+      <Tooltip content={ds.comment} placement="right" show={open}>
+        <div>{content}</div>
+      </Tooltip>
+    </div>
   );
 }
 

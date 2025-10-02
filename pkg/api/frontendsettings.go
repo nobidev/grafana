@@ -502,6 +502,7 @@ func (hs *HTTPServer) getFSDataSources(c *contextmodel.ReqContext, availablePlug
 			Access:     string(ds.Access),
 			ReadOnly:   ds.ReadOnly,
 			APIVersion: ds.APIVersion,
+			Comment:    ds.Comment,
 		}
 
 		ap, exists := availablePlugins.Get(plugins.TypeDataSource, ds.Type)
