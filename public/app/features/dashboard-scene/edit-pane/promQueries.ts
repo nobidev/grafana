@@ -311,7 +311,7 @@ export function getQueriesForMetric(metricName: string, metricsMetadata: PromMet
 
   return panels.map((panel) => ({
     ...panel,
-    name: `${metricName} - ${panel.name}`,
+    // name: `${metricName} - ${panel.name}`,
     targets: panel.targets.map((target) => ({
       ...target,
       expr: target.expr.replace(/\{\{metric_name\}\}/g, metricName),

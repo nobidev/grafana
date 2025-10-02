@@ -7,7 +7,7 @@ import { getDataSourceSrv } from '@grafana/runtime';
 import { sceneGraph, SceneQueryRunner, VizPanel } from '@grafana/scenes';
 import { Icon, useStyles2, clearButtonStyles, AxisPlacement, TooltipDisplayMode } from '@grafana/ui';
 
-import { getDashboardSceneFor, getQueryRunnerFor, SuggestedPanel } from '../utils/utils';
+import { getDashboardSceneFor, SuggestedPanel } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
@@ -43,16 +43,19 @@ export function DashboardAddPanelPane({ editPane }: Props) {
           },
         ],
       },
-      vizPanel: getVizPanel({
-        type: 'prometheus-query',
-        name: 'Up',
-        targets: [
-          {
-            refId: 'cidr-A',
-            expr: 'up',
-          },
-        ],
-      })!,
+      vizPanel: getVizPanel(
+        {
+          type: 'prometheus-query',
+          name: 'Up',
+          targets: [
+            {
+              refId: 'cidr-A',
+              expr: 'up',
+            },
+          ],
+        },
+        undefined
+      )!,
     },
   ]);
 
@@ -87,13 +90,15 @@ export function DashboardAddPanelPane({ editPane }: Props) {
             />
           </div>
 
-          <PromMetricSelector
-            selectedDatasource={currentDatasource}
-            setPanels={(panels) =>
-              setPanels(panels.map((p) => ({ suggestedPanel: p, vizPanel: getVizPanel(p, currentDatasource)! })))
-            }
-            timeRange={timeRange}
-          />
+          {!!currentDatasource && (
+            <PromMetricSelector
+              selectedDatasource={currentDatasource}
+              setPanels={(panels) =>
+                setPanels(panels.map((p) => ({ suggestedPanel: p, vizPanel: getVizPanel(p, currentDatasource)! })))
+              }
+              timeRange={timeRange}
+            />
+          )}
 
           <div className={styles.list}>
             {panels.map((p) => (

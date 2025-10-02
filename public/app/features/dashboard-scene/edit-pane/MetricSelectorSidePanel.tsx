@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Highlighter from 'react-highlight-words';
 
 import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
@@ -44,6 +44,9 @@ export function MetricSelectorSidePanel({
   const [filteredMetrics, setFilteredMetrics] = useState<string[]>([]);
   const [labelFilters, setLabelFilters] = useState<string[]>([]);
   const [metricSearchTerm, setMetricSearchTerm] = useState('');
+  
+  // Ref for the metric search input to focus on it when drawer opens
+  const metricSearchInputRef = useRef<HTMLInputElement>(null);
 
   const fetchMetrics = useCallback(
     async (promDs: PrometheusDatasource, filters: QueryBuilderLabelFilter[]) => {
@@ -117,6 +120,20 @@ export function MetricSelectorSidePanel({
       isCancelled = true;
     };
   }, [selectedDatasource?.uid, fetchMetrics, isOpen]);
+
+  // Focus on metric search input when drawer opens and input is enabled
+  useEffect(() => {
+    if (isOpen && isMetadataLoaded && metricSearchInputRef.current) {
+      // Use a small timeout to ensure the drawer animation is complete
+      const timeoutId = setTimeout(() => {
+        metricSearchInputRef.current?.focus();
+      }, 150);
+      
+      return () => clearTimeout(timeoutId);
+    }
+    
+    return undefined;
+  }, [isOpen, isMetadataLoaded]);
 
   // Parse label filter strings like "instance=my-instance" into QueryBuilderLabelFilter objects
   const parseLabelFilters = useCallback((filterStrings: string[]): QueryBuilderLabelFilter[] => {
@@ -242,6 +259,7 @@ export function MetricSelectorSidePanel({
             <Trans i18nKey="dashboard-scene.metric-selector-side-panel.metric-search">Metric Search</Trans>
           </div>
           <Input
+            ref={metricSearchInputRef}
             placeholder={
               isMetadataLoading
                 ? t('dashboard-scene.prom-metric-selector.loading-metrics', 'Loading metrics...')
