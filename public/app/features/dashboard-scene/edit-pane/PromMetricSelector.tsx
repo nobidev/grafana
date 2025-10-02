@@ -24,8 +24,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
     mixed: false,
     all: true,
     type: 'prometheus',
-    // FIXME only for development purposes. Don't commit
-    filter: (ds) => ds.uid === 'zxS5e5W4k',
+    filter: selectedDatasource ? (ds) => ds.uid === selectedDatasource.uid : undefined,
   });
 
   const effectiveDatasource = selectedDatasource || promDsInstances[0];
