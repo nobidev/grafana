@@ -7,6 +7,7 @@ import { isAssistantAvailable, OpenAssistantButton, createAssistantContextItem }
 import { GrafanaTheme2, PanelData, PanelModel, VisualizationSuggestion, FieldType } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { useStyles2 } from '@grafana/ui';
+import config from 'app/core/config';
 
 import { getAllSuggestions, getSmartSuggestions } from '../../state/getAllSuggestions';
 
@@ -35,6 +36,9 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
   const { value: suggestions } = useAsync(() => getAllSuggestions(data, panel), [data, panel]);
 
   const smartSuggestions = useMemo(() => {
+    if (!config.featureToggles.assistantForVizSuggestions) {
+      return [];
+    }
     return getSmartSuggestions(data);
   }, [data]);
 
