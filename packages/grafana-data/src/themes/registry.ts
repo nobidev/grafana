@@ -20,6 +20,21 @@ export function getThemeById(id: string): GrafanaTheme2 {
 
 /**
  * @internal
+ * Only for internal use, never use this from a plugin
+ **/
+export function registerTheme(id: string, theme: GrafanaTheme2) {
+  if (!themeRegistry.getIfExists(id)) {
+    themeRegistry.register({
+      id,
+      name: theme.name ?? '',
+      build: () => theme,
+      isExtra: true,
+    });
+  }
+}
+
+/**
+ * @internal
  * For internal use only
  */
 export function getBuiltInThemes(allowedExtras: string[]) {
@@ -45,7 +60,7 @@ export function getBuiltInThemes(allowedExtras: string[]) {
 /**
  * There is also a backend list at pkg/services/preference/themes.go
  */
-const themeRegistry = new Registry<ThemeRegistryItem>(() => {
+export const themeRegistry = new Registry<ThemeRegistryItem>(() => {
   return [
     { id: 'system', name: 'System preference', build: getSystemPreferenceTheme },
     { id: 'dark', name: 'Dark', build: () => createTheme({ colors: { mode: 'dark' } }) },
@@ -54,12 +69,7 @@ const themeRegistry = new Registry<ThemeRegistryItem>(() => {
 });
 
 for (const [id, theme] of Object.entries(extraThemes)) {
-  themeRegistry.register({
-    id,
-    name: theme.name ?? '',
-    build: () => createTheme(theme),
-    isExtra: true,
-  });
+  registerTheme(id, createTheme(theme));
 }
 
 function getSystemPreferenceTheme() {

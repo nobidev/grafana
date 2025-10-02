@@ -213,6 +213,7 @@ export interface GrafanaConfig {
   datasources: { [str: string]: DataSourceInstanceSettings };
   panels: { [key: string]: PanelPluginMeta };
   apps: Record<string, AppPluginConfig>;
+  themePlugins: string[];
   auth: AuthSettings;
   minRefreshInterval: string;
   appUrl: string;

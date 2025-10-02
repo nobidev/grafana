@@ -317,7 +317,7 @@ export { type MonacoLanguageRegistryItem, monacoLanguageRegistry } from './monac
 
 // Theme
 export { createTheme } from './themes/createTheme';
-export { getThemeById, getBuiltInThemes, type ThemeRegistryItem } from './themes/registry';
+export { getThemeById, getBuiltInThemes, registerTheme, type ThemeRegistryItem } from './themes/registry';
 export type { NewThemeOptions } from './themes/createTheme';
 export type { ThemeRichColor, GrafanaTheme2 } from './themes/types';
 export type { ThemeColors } from './themes/createColors';
@@ -514,7 +514,7 @@ export type {
 export type { TraceKeyValuePair, TraceLog, TraceSpanReference, TraceSpanRow } from './types/trace';
 export type { FlotDataPoint } from './types/flot';
 export { type UserOrgDTO, OrgRole } from './types/orgs';
-export { GrafanaThemeType, type GrafanaThemeCommons, type GrafanaTheme } from './types/theme';
+export { GrafanaThemeType, type GrafanaThemeCommons, type GrafanaTheme, ThemePlugin } from './types/theme';
 export { FieldColorModeId, type FieldColor, type FieldColorSeriesByMode, FALLBACK_COLOR } from './types/fieldColor';
 export {
   VariableRefresh,

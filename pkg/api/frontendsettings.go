@@ -122,6 +122,11 @@ func (hs *HTTPServer) getFrontendSettings(c *contextmodel.ReqContext) (*dtos.Fro
 		return nil, err
 	}
 
+	themePlugins := make([]string, 0)
+	for _, tp := range availablePlugins[plugins.TypeTheme] {
+		themePlugins = append(themePlugins, tp.Plugin.ID)
+	}
+
 	apps := make(map[string]*plugins.AppDTO, 0)
 	for _, ap := range availablePlugins[plugins.TypeApp] {
 		apps[ap.Plugin.ID] = hs.newAppDTO(
@@ -202,6 +207,7 @@ func (hs *HTTPServer) getFrontendSettings(c *contextmodel.ReqContext) (*dtos.Fro
 		MinRefreshInterval:                  hs.Cfg.MinRefreshInterval,
 		Panels:                              panels,
 		Apps:                                apps,
+		ThemePlugins:                        themePlugins,
 		AppUrl:                              hs.Cfg.AppURL,
 		AppSubUrl:                           hs.Cfg.AppSubURL,
 		AllowOrgCreate:                      (hs.Cfg.AllowUserOrgCreate && c.IsSignedIn) || c.IsGrafanaAdmin,
@@ -749,6 +755,17 @@ func (hs *HTTPServer) availablePlugins(ctx context.Context, orgID int64) (Availa
 		}
 	}
 	ap[plugins.TypePanel] = panels
+
+	themes := make(map[string]*availablePluginDTO)
+	for _, p := range hs.pluginStore.Plugins(ctx, plugins.TypeTheme) {
+		if s, exists := pluginSettingMap[p.ID]; exists {
+			themes[p.ID] = &availablePluginDTO{
+				Plugin:   p,
+				Settings: *s,
+			}
+		}
+	}
+	ap[plugins.TypeTheme] = themes
 
 	return ap, nil
 }

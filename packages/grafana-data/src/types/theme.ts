@@ -1,4 +1,8 @@
 import { ThemeVisualizationColors } from '../themes/createVisualizationColors';
+import { registerTheme } from '../themes/registry';
+import { GrafanaTheme2 } from '../themes/types';
+
+import { GrafanaPlugin, PluginMeta } from './plugin';
 
 export enum GrafanaThemeType {
   Light = 'light',
@@ -242,4 +246,16 @@ export interface GrafanaTheme extends GrafanaThemeCommons {
     listItem: string;
   };
   visualization: ThemeVisualizationColors;
+}
+
+export class ThemePlugin extends GrafanaPlugin {
+  /**
+   * Called after the module has loaded, and before the app is used.
+   * This function may be called multiple times on the same instance.
+   * The first time, `this.meta` will be undefined
+   */
+  init(meta: PluginMeta, theme: GrafanaTheme2) {
+    this.meta = meta;
+    registerTheme(meta.id, theme);
+  }
 }

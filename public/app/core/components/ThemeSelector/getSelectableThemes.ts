@@ -12,5 +12,13 @@ export function getSelectableThemes() {
     allowedExtraThemes.push('gloom');
   }
 
+  if (config.themePlugins) {
+    for (const themePlugin of config.themePlugins) {
+      if (!allowedExtraThemes.includes(themePlugin)) {
+        allowedExtraThemes.push(themePlugin);
+      }
+    }
+  }
+
   return getBuiltInThemes(allowedExtraThemes);
 }

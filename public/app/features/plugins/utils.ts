@@ -2,7 +2,7 @@ import { GrafanaPlugin, NavModel, NavModelItem, PanelPluginMeta, PluginType } fr
 import { createMonitoringLogger } from '@grafana/runtime';
 
 import { importPanelPluginFromMeta } from './importPanelPlugin';
-import { importAppPlugin, importDataSourcePlugin } from './pluginLoader';
+import { importAppPlugin, importDataSourcePlugin, importThemePlugin } from './pluginLoader';
 import { getPluginSettings } from './pluginSettings';
 
 export async function loadPlugin(pluginId: string): Promise<GrafanaPlugin> {
@@ -21,6 +21,9 @@ export async function loadPlugin(pluginId: string): Promise<GrafanaPlugin> {
   }
   if (info.type === PluginType.renderer) {
     result = { meta: info } as GrafanaPlugin;
+  }
+  if (info.type === PluginType.theme) {
+    result = await importThemePlugin(info);
   }
 
   if (!result) {

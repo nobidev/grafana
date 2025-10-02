@@ -4,8 +4,10 @@ import {
   DataSourceJsonData,
   DataSourcePlugin,
   DataSourcePluginMeta,
+  GrafanaTheme2,
   PluginLoadingStrategy,
   PluginMeta,
+  ThemePlugin,
   throwIfAngular,
 } from '@grafana/data';
 import { config } from '@grafana/runtime';
@@ -161,6 +163,22 @@ async function doImportAppPlugin(meta: PluginMeta): Promise<AppPlugin> {
     pluginId: meta.id,
     configs: plugin.addedFunctionConfigs || [],
   });
+
+  return plugin;
+}
+
+export async function importThemePlugin(meta: PluginMeta): Promise<ThemePlugin> {
+  const pluginExports = await importPluginModule({
+    path: meta.module,
+    version: meta.info?.version,
+    pluginId: meta.id,
+    loadingStrategy: meta.loadingStrategy ?? PluginLoadingStrategy.fetch,
+    moduleHash: meta.moduleHash,
+  });
+
+  const theme: GrafanaTheme2 = pluginExports.default;
+  const plugin = new ThemePlugin();
+  plugin.init(meta, theme);
 
   return plugin;
 }

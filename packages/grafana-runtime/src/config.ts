@@ -87,6 +87,7 @@ export class GrafanaBootConfig {
   datasources: { [str: string]: DataSourceInstanceSettings } = {};
   panels: { [key: string]: PanelPluginMeta } = {};
   apps: Record<string, AppPluginConfigGrafanaData> = {};
+  themePlugins: string[] = [];
   auth: AuthSettings = {};
   minRefreshInterval = '';
   appUrl = '';
