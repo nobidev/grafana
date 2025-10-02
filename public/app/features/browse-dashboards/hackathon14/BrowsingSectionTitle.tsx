@@ -18,7 +18,7 @@ export const BrowsingSectionTitle = ({ title, subtitle, icon, actions }: { title
           </Text>
         </div>
       </Stack>
-              {actions}
+              {actions && actions}
               </div>
     )
 }

@@ -1,11 +1,19 @@
 import { css } from '@emotion/css';
+import { bufferCountOrTime } from 'ix/asynciterable/operators';
+import { useEffect, useState } from 'react';
 
 import { GrafanaTheme2, IconName } from '@grafana/data';
+import { PromAlertingRuleState } from 'app/types/unified-alerting-dto';
 import { Trans, t } from '@grafana/i18n';
 import { Badge, Card, Icon, LinkButton, Stack, Text, useStyles2 } from '@grafana/ui';
 import { BrowsingSectionTitle } from 'app/features/browse-dashboards/hackathon14/BrowsingSectionTitle';
 import { ExpandedContent, HackathonTable, TableColumn } from 'app/features/browse-dashboards/hackathon14/HackathonTable';
 import { useGetPopularAlerts, useGetRecentAlerts } from 'app/features/dashboard/api/popularResourcesApi';
+
+
+import { useRulesFilter } from '../../hooks/useFilteredRules';
+import { RuleWithOrigin, useFilteredRulesIteratorProvider } from '../hooks/useFilteredRulesIterator';
+import { getApiGroupPageSize } from '../paginationLimits';
 
 import { AlertSearchSuggestion } from './AlertSearchSuggestion';
 
@@ -15,10 +23,22 @@ interface AlertSearchViewProps {
     firing: boolean;
     ownedByMe: boolean;
   };
+  showAllOnly?: boolean;
 }
 
-export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
+export const AlertSearchView = ({ query, filters, showAllOnly }: AlertSearchViewProps) => {
   const styles = useStyles2(getStyles);
+  const { filterState } = useRulesFilter();
+  const getFilteredRulesIterator = useFilteredRulesIteratorProvider();
+  type AlertRow = {
+    uid: string;
+    title: string;
+    state: string;
+    folder: string;
+    createdBy: string;
+  };
+  const [allRows, setAllRows] = useState<AlertRow[] | null>(null);
+  const [loadingAll, setLoadingAll] = useState(false);
 
   // Fetch real alert data from API
   const { data: popularAlerts, isLoading: popularLoading } = useGetPopularAlerts({ limit: 50, period: '30d' });
@@ -44,7 +64,7 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
   }));
 
   // Keep original mock for fallback
-  const fallbackMockResults = [
+  const fallbackMockResults: AlertRow[] = [
     {
       uid: '1',
       title: t('alerting.hackathon.mock.high-cpu', 'High CPU Usage Alert'),
@@ -54,66 +74,66 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
     },
     {
       uid: '2',
-      title: 'Disk Space Warning',
+      title: t('alerting.hackathon.mock.disk-space', 'Disk Space Warning'),
       state: 'normal',
-      folder: 'Infrastructure',
-      createdBy: 'admin',
+      folder: t('alerting.hackathon.mock.infrastructure', 'Infrastructure'),
+      createdBy: t('alerting.hackathon.mock.admin', 'admin'),
     },
     {
       uid: '3',
-      title: 'API Response Time',
+      title: t('alerting.hackathon.mock.api-response', 'API Response Time'),
       state: 'firing',
-      folder: 'APIs',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.apis', 'APIs'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
     {
       uid: '4',
-      title: 'Memory Usage Critical',
+      title: t('alerting.hackathon.mock.memory-critical', 'Memory Usage Critical'),
       state: 'firing',
-      folder: 'Production',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.production', 'Production'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
     {
       uid: '5',
-      title: 'Database Connection Pool',
+      title: t('alerting.hackathon.mock.db-connection', 'Database Connection Pool'),
       state: 'normal',
-      folder: 'Database',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.database', 'Database'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
     {
       uid: '6',
-      title: 'Network Latency Alert',
+      title: t('alerting.hackathon.mock.network-latency', 'Network Latency Alert'),
       state: 'normal',
-      folder: 'Infrastructure',
-      createdBy: 'admin',
+      folder: t('alerting.hackathon.mock.infrastructure', 'Infrastructure'),
+      createdBy: t('alerting.hackathon.mock.admin', 'admin'),
     },
     {
       uid: '7',
-      title: 'Error Rate Threshold',
+      title: t('alerting.hackathon.mock.error-rate', 'Error Rate Threshold'),
       state: 'firing',
-      folder: 'APIs',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.apis', 'APIs'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
     {
       uid: '8',
-      title: 'SSL Certificate Expiring',
+      title: t('alerting.hackathon.mock.ssl-expiring', 'SSL Certificate Expiring'),
       state: 'normal',
-      folder: 'Security',
-      createdBy: 'admin',
+      folder: t('alerting.hackathon.mock.security', 'Security'),
+      createdBy: t('alerting.hackathon.mock.admin', 'admin'),
     },
     {
       uid: '9',
-      title: 'Load Balancer Health',
+      title: t('alerting.hackathon.mock.lb-health', 'Load Balancer Health'),
       state: 'normal',
-      folder: 'Infrastructure',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.infrastructure', 'Infrastructure'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
     {
       uid: '10',
-      title: 'Cache Hit Rate Low',
+      title: t('alerting.hackathon.mock.cache-low', 'Cache Hit Rate Low'),
       state: 'normal',
-      folder: 'Performance',
-      createdBy: 'me',
+      folder: t('alerting.hackathon.mock.performance', 'Performance'),
+      createdBy: t('alerting.hackathon.mock.me', 'me'),
     },
   ];
 
@@ -156,15 +176,15 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
   };
 
   // Get state badge configuration
-  const getStateBadgeConfig = (state: string) => {
+  const getStateBadgeConfig = (state: string): { text: string; color: 'red' | 'orange' | 'green'; icon: IconName } => {
     const stateUpper = state.toUpperCase();
     switch (stateUpper) {
       case 'FIRING':
-        return { text: 'Firing', color: 'red' as const, icon: 'fire' as IconName };
+        return { text: t('alerting.hackathon.state.firing', 'Firing'), color: 'red', icon: 'fire' };
       case 'PENDING':
-        return { text: 'Pending', color: 'orange' as const, icon: 'exclamation-triangle' as IconName };
+        return { text: t('alerting.hackathon.state.pending', 'Pending'), color: 'orange', icon: 'exclamation-triangle' };
       default:
-        return { text: 'Normal', color: 'green' as const, icon: 'check-circle' as IconName };
+        return { text: t('alerting.hackathon.state.normal', 'Normal'), color: 'green', icon: 'check-circle' };
     }
   };
 
@@ -206,6 +226,27 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
     },
   ];
 
+  function mapRuleWithOriginToRow(ruleWithOrigin: RuleWithOrigin, activeFilters?: { firing: boolean; ownedByMe: boolean }): AlertRow {
+    if (ruleWithOrigin.origin === 'grafana') {
+      const r = ruleWithOrigin.rule;
+      return {
+        uid: r.uid ?? '',
+        title: r.name ?? '',
+        state: ('state' in r && r.state ? String(r.state).toLowerCase() : 'normal') || 'normal',
+        folder: ruleWithOrigin.namespaceName ?? '',
+        createdBy: '',
+      };
+    }
+    const r = ruleWithOrigin.rule;
+    return {
+      uid: r.name ?? '',
+      title: r.name ?? '',
+      state: ('state' in r && r.state ? String(r.state).toLowerCase() : 'normal') || 'normal',
+      folder: ruleWithOrigin.groupIdentifier.namespace.name ?? '',
+      createdBy: '',
+    };
+  }
+
   // Expanded content configuration
   const expandedContent: ExpandedContent = {
     render: (item) => (
@@ -221,13 +262,13 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
             <Text variant="bodySmall" weight="medium" color="secondary">
               <Trans i18nKey="alerting.hackathon.search.folder">Folder:</Trans>
             </Text>
-            <Text variant="bodySmall"> {item.folder || 'N/A'}</Text>
+            <Text variant="bodySmall"> {item.folder || t('alerting.hackathon.search.na', 'N/A')}</Text>
           </div>
           <div>
             <Text variant="bodySmall" weight="medium" color="secondary">
               <Trans i18nKey="alerting.hackathon.search.created-by">Created by:</Trans>
             </Text>
-            <Text variant="bodySmall"> {item.createdBy || 'N/A'}</Text>
+            <Text variant="bodySmall"> {item.createdBy || t('alerting.hackathon.search.na', 'N/A')}</Text>
           </div>
         </Stack>
         <div>
@@ -244,6 +285,85 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
     ),
   };
 
+  useEffect(() => {
+    if (!showAllOnly || allRows !== null) {
+      return;
+    }
+    let cancelled = false;
+    const loadAll = async () => {
+      setLoadingAll(true);
+      try {
+        const effectiveFilter = filters.firing ? { ...filterState, ruleState: PromAlertingRuleState.Firing } : filterState;
+        const { iterable, abortController } = getFilteredRulesIterator(effectiveFilter, getApiGroupPageSize(true));
+        const rows: AlertRow[] = [];
+        const batched = iterable.pipe(bufferCountOrTime(50, 1000));
+        for await (const batch of batched) {
+          if (cancelled) {
+            break;
+          }
+          for (const item of batch) {
+            const row = mapRuleWithOriginToRow(item, filters);
+            rows.push(row);
+          }
+          setAllRows([...rows]);
+          setLoadingAll(false);
+          if (rows.length >= 1000) {
+            break;
+          }
+        }
+        abortController.abort();
+        if (!cancelled) {
+          setAllRows(rows);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingAll(false);
+        }
+      }
+    };
+    void loadAll();
+    return () => {
+      cancelled = true;
+    };
+  }, [showAllOnly, allRows, getFilteredRulesIterator, filterState, filters]);
+
+  if (showAllOnly) {
+    return (
+      <div className={styles.container}>
+        <Stack direction="column" gap={2}>
+          {loadingAll ? (
+            <Card noMargin className={styles.emptyCard}>
+              <Stack direction="column" gap={2} alignItems="center">
+                <Icon name="fa fa-spinner" size="xxl" className={styles.emptyIcon} />
+                <Text variant="h5">
+                  <Trans i18nKey="alerting.hackathon.search.loading">Loading alert rules...</Trans>
+                </Text>
+              </Stack>
+            </Card>
+          ) : (
+            <div>
+              <BrowsingSectionTitle
+                title={t('alerting.hackathon.view-all.title', 'All Alerts ({{count}})', {
+                  count: (filters.firing ? (allRows ?? []).filter((r) => (r.state || '').toLowerCase() === 'firing') : allRows)?.length ?? 0,
+                })}
+                icon="bell"
+                subtitle=""
+              />
+              <HackathonTable
+                columns={columns}
+                data={filters.firing ? (allRows ?? []).filter((r) => (r.state || '').toLowerCase() === 'firing') : allRows ?? []}
+                expandable={true}
+                expandedContent={expandedContent}
+                onRowClick={(item) => (window.location.href = `/alerting/grafana/${item.uid}/view`)}
+                emptyMessage={t('alerting.hackathon.search.no-alerts', 'No alert rules found')}
+              />
+            </div>
+          )}
+        </Stack>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.container}>
       <Stack direction="column" gap={2}>
@@ -254,44 +374,51 @@ export const AlertSearchView = ({ query, filters }: AlertSearchViewProps) => {
         </div>
 
         <AlertSearchSuggestion query={query} filters={filters} />
-
-        {isLoading ? (
-          <Card noMargin className={styles.emptyCard}>
-            <Stack direction="column" gap={2} alignItems="center">
-              <Icon name="fa fa-spinner" size="xxl" className={styles.emptyIcon} />
-              <Text variant="h5">
-                <Trans i18nKey="alerting.hackathon.search.loading">Loading alert rules...</Trans>
-              </Text>
-            </Stack>
-          </Card>
-        ) : filteredResults.length === 0 ? (
-          <Card noMargin className={styles.emptyCard}>
-            <Stack direction="column" gap={2} alignItems="center">
-              <Icon name="search" size="xxl" className={styles.emptyIcon} />
-              <Text variant="h5">
-                <Trans i18nKey="alerting.hackathon.search.no-matches">No matches found</Trans>
-              </Text>
-            </Stack>
-          </Card>
-        ) : (
-          <div>
-            <BrowsingSectionTitle
-              title={t('alerting.hackathon.search.matched', 'Matched Alerts ({{count}})', {
-                count: filteredResults.length,
-              })}
-              icon="bell"
-              subtitle=""
-            />
-            <HackathonTable
-              columns={columns}
-              data={filteredResults}
-              expandable={true}
-              expandedContent={expandedContent}
-              onRowClick={(item) => (window.location.href = `/alerting/grafana/${item.uid}/view`)}
-              emptyMessage={t('alerting.hackathon.search.no-alerts', 'No alert rules found')}
-            />
-          </div>
-        )}
+        {(() => {
+          if (isLoading) {
+            return (
+              <Card noMargin className={styles.emptyCard}>
+                <Stack direction="column" gap={2} alignItems="center">
+                  <Icon name="fa fa-spinner" size="xxl" className={styles.emptyIcon} />
+                  <Text variant="h5">
+                    <Trans i18nKey="alerting.hackathon.search.loading">Loading alert rules...</Trans>
+                  </Text>
+                </Stack>
+              </Card>
+            );
+          }
+          if (filteredResults.length === 0) {
+            return (
+              <Card noMargin className={styles.emptyCard}>
+                <Stack direction="column" gap={2} alignItems="center">
+                  <Icon name="search" size="xxl" className={styles.emptyIcon} />
+                  <Text variant="h5">
+                    <Trans i18nKey="alerting.hackathon.search.no-matches">No matches found</Trans>
+                  </Text>
+                </Stack>
+              </Card>
+            );
+          }
+          return (
+            <div>
+              <BrowsingSectionTitle
+                title={t('alerting.hackathon.search.matched', 'Matched Alerts ({{count}})', {
+                  count: filteredResults.length,
+                })}
+                icon="bell"
+                subtitle=""
+              />
+              <HackathonTable
+                columns={columns}
+                data={filteredResults}
+                expandable={true}
+                expandedContent={expandedContent}
+                onRowClick={(item) => (window.location.href = `/alerting/grafana/${item.uid}/view`)}
+                emptyMessage={t('alerting.hackathon.search.no-alerts', 'No alert rules found')}
+              />
+            </div>
+          );
+        })()}
       </Stack>
     </div>
   );

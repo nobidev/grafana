@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
-import { useStyles2 } from '@grafana/ui';
+import { LinkButton, useStyles2 } from '@grafana/ui';
 import { AppChromeUpdate } from 'app/core/components/AppChrome/AppChromeUpdate';
 import SparkJoyToggle from 'app/core/components/SparkJoyToggle';
 
@@ -25,6 +25,7 @@ export const HackathonRuleListPage = ({ onToggleSparkJoy }: { onToggleSparkJoy: 
   });
   const { hasActiveFilters } = useRulesFilter();
   const [showAllBelow, setShowAllBelow] = useState(false);
+  const [seeAll, setSeeAll] = useState(false);
 
   const renderCenteredTitle = () => (
     <div className={styles.centeredTitle}>
@@ -64,11 +65,22 @@ export const HackathonRuleListPage = ({ onToggleSparkJoy }: { onToggleSparkJoy: 
     >
       <div className={styles.contentContainer}>
         <HackathonAlertSearchInput onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-        {isSearching ? (
-          <AlertSearchView query={searchQuery} filters={searchFilters} />
-        ) : (
-          <RecentVisited showAll={showAllBelow} />
+        {!isSearching && !seeAll && (
+          <div style={{ marginTop: 8, marginBottom: 8, display: 'flex', justifyContent: 'flex-start' }}>
+            <LinkButton variant="secondary" icon="list-ul" onClick={() => setSeeAll(true)}>
+              <Trans i18nKey="alerting.hackathon.see-all">See all alerts</Trans>
+            </LinkButton>
+          </div>
         )}
+        {(() => {
+          if (isSearching) {
+            return <AlertSearchView query={searchQuery} filters={searchFilters} />;
+          }
+          if (seeAll) {
+            return <AlertSearchView query={''} filters={{ firing: false, ownedByMe: false }} showAllOnly />;
+          }
+          return <RecentVisited showAll={showAllBelow} onViewAll={() => setShowAllBelow(true)} />;
+        })()}
       </div>
     </AlertingPageWrapper>
   );

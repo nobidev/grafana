@@ -61,6 +61,10 @@ export function ContactPointSelector({ alertManager }: ContactPointSelectorProps
               <Stack>
                 <GrafanaManagedContactPointSelector
                   isClearable={false}
+                  placeholder={t(
+                    'alerting.contact-point-selector.placeholder-please-select',
+                    'Please select'
+                  )}
                   onChange={(contactPoint) => onChange(contactPoint.spec.title)}
                   width={50}
                   value={contactPointInForm}

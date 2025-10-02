@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useToggle } from 'react-use';
-import { useLocation } from 'react-router-dom-v5-compat';
+// import { useLocation } from 'react-router-dom-v5-compat';
 
 import { Trans, t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
@@ -135,7 +135,7 @@ const RuleListPageCurrent = ({ onToggleSparkJoy }: { onToggleSparkJoy: () => voi
 
 export default function RuleListPage() {
   const [sparkJoy, setSparkJoy] = useState<boolean>(() => getSparkJoyEnabled(true));
-  const location = useLocation();
+  // const location = useLocation();
 
   const handleToggleSparkJoy = () => {
     setSparkJoy((current) => {

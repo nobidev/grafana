@@ -2,12 +2,12 @@ import { css } from '@emotion/css';
 import { useState } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { Box, Grid, Stack, Text, useStyles2, ButtonGroup, ToolbarButton, TextLink, Badge } from '@grafana/ui';
+import { Trans, t } from '@grafana/i18n';
+import { Badge, Box, ButtonGroup, Grid, Stack, Text, TextLink, ToolbarButton, useStyles2 } from '@grafana/ui';
 import { BrowsingSectionTitle } from 'app/features/browse-dashboards/hackathon14/BrowsingSectionTitle';
+import { ExpandedContent, HackathonTable, TableColumn } from 'app/features/browse-dashboards/hackathon14/HackathonTable';
 import { RecentVisitCard } from 'app/features/browse-dashboards/hackathon14/RecentVisitCard';
-import { HackathonTable, TableColumn, ExpandedContent } from 'app/features/browse-dashboards/hackathon14/HackathonTable';
 import { useGetPopularAlerts } from 'app/features/dashboard/api/popularResourcesApi';
-import { AllAlertsPreview } from './AllAlertsPreview';
 
 type ViewMode = 'card' | 'list';
 
@@ -23,20 +23,20 @@ export const PopularAlerts = () => {
   const getStateBadgeConfig = (state?: string) => {
     switch (state) {
       case 'firing':
-        return { color: 'red' as const, text: 'Firing' };
+        return { color: 'red' as const, text: t('alerting.hackathon.popular.firing', 'Firing') };
       case 'pending':
-        return { color: 'orange' as const, text: 'Pending' };
+        return { color: 'orange' as const, text: t('alerting.hackathon.popular.pending', 'Pending') };
       case 'inactive':
-        return { color: 'blue' as const, text: 'Normal' };
+        return { color: 'blue' as const, text: t('alerting.hackathon.popular.normal', 'Normal') };
       default:
-        return { color: 'purple' as const, text: 'Normal' };
+        return { color: 'purple' as const, text: t('alerting.hackathon.popular.normal', 'Normal') };
     }
   };
 
   const columns: TableColumn[] = [
     {
       key: 'name',
-      header: 'Name',
+      header: t('alerting.hackathon.popular.name', 'Name'),
       width: '2fr',
       render: (resource) => (
         <div>
@@ -48,17 +48,17 @@ export const PopularAlerts = () => {
     },
     {
       key: 'group',
-      header: 'Group',
+      header: t('alerting.hackathon.popular.group', 'Group'),
       width: '1.5fr',
       render: (resource) => (
         <Text variant="bodySmall" color="secondary">
-          {resource.folderTitle || 'Default'}
+          {resource.folderTitle || t('alerting.hackathon.popular.default', 'Default')}
         </Text>
       ),
     },
     {
       key: 'views',
-      header: 'Views',
+      header: t('alerting.hackathon.popular.views', 'Views'),
       width: '120px',
       render: (resource) => (
         <Text variant="bodySmall" color="secondary">
@@ -68,7 +68,7 @@ export const PopularAlerts = () => {
     },
     {
       key: 'activity',
-      header: 'State',
+      header: t('alerting.hackathon.popular.state', 'State'),
       width: '120px',
       render: (resource) => {
         const config = getStateBadgeConfig(resource.state);
@@ -82,20 +82,20 @@ export const PopularAlerts = () => {
       <Stack direction="column" gap={1}>
         <div>
           <Text variant="bodySmall" weight="medium" color="secondary">
-            UID:
+            <Trans i18nKey="alerting.hackathon.popular.uid">UID:</Trans>
           </Text>
           <Text variant="bodySmall"> {resource.uid}</Text>
         </div>
         <div>
           <Text variant="bodySmall" weight="medium" color="secondary">
-            Folder:
+            <Trans i18nKey="alerting.hackathon.popular.folder">Folder:</Trans>
           </Text>
-          <Text variant="bodySmall"> {resource.folderTitle || 'Default'}</Text>
+          <Text variant="bodySmall"> {resource.folderTitle || t('alerting.hackathon.popular.default', 'Default')}</Text>
         </div>
         {resource.lastVisited && (
           <div>
             <Text variant="bodySmall" weight="medium" color="secondary">
-              Last viewed:
+              <Trans i18nKey="alerting.hackathon.popular.last-viewed">Last viewed:</Trans>
             </Text>
             <Text variant="bodySmall"> {new Date(resource.lastVisited).toLocaleString()}</Text>
           </div>
@@ -111,8 +111,8 @@ export const PopularAlerts = () => {
   return (
     <Box marginTop={4}>
       <BrowsingSectionTitle
-        title="Popular Alerts"
-        subtitle="Most visited alerts"
+        title={t('alerting.hackathon.popular.title', 'Popular Alerts')}
+        subtitle={t('alerting.hackathon.popular.subtitle', 'Most visited alerts')}
         icon="history"
         actions={
           <Stack direction="row" gap={2} alignItems="center">
@@ -122,7 +122,7 @@ export const PopularAlerts = () => {
                   icon="apps"
                   variant="default"
                   onClick={() => setViewMode('card')}
-                  tooltip="Card view"
+                  tooltip={t('alerting.hackathon.popular.card-view', 'Card view')}
                 />
               </div>
               <div className={viewMode === 'list' ? styles.activeToggle : ''}>
@@ -130,12 +130,12 @@ export const PopularAlerts = () => {
                   icon="list-ul"
                   variant="default"
                   onClick={() => setViewMode('list')}
-                  tooltip="List view"
+                  tooltip={t('alerting.hackathon.popular.list-view', 'List view')}
                 />
               </div>
             </ButtonGroup>
             <TextLink color="secondary" href="/alerting/list/hackathon14/view-all-alerts" className={styles.viewAllLink}>
-              View All
+              <Trans i18nKey="alerting.hackathon.popular.view-all">View All</Trans>
             </TextLink>
           </Stack>
         }
@@ -150,7 +150,7 @@ export const PopularAlerts = () => {
                     key={resource.uid}
                     type="alert"
                     title={resource.title}
-                    subtitle={`${resource.visitCount} views`}
+                    subtitle={`${resource.visitCount} ${t('alerting.hackathon.popular.views-suffix', 'views')}`}
                     onClick={() => handleResourceClick(resource.uid)}
                   />
                 ))}

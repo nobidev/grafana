@@ -1,12 +1,13 @@
 import { Trans, t } from '@grafana/i18n';
-import { Grid, Stack } from '@grafana/ui';
+import { Grid, LinkButton, Stack } from '@grafana/ui';
 import { BrowsingSectionTitle } from 'app/features/browse-dashboards/hackathon14/BrowsingSectionTitle';
 import { RecentVisitCard } from 'app/features/browse-dashboards/hackathon14/RecentVisitCard';
 import { getRelativeTime } from 'app/features/browse-dashboards/hackathon14/RecentVisited';
 import { useGetRecentAlerts } from 'app/features/dashboard/api/popularResourcesApi';
+
 import { QuickStart } from './QuickStart';
 
-export const RecentVisited = ({ showAll = false }: { showAll?: boolean }) => {
+export const RecentVisited = ({ showAll = false, onViewAll }: { showAll?: boolean; onViewAll?: () => void }) => {
   const { data } = useGetRecentAlerts({ limit: showAll ? 100 : 4 });
 
   const handleResourceClick = (uid: string) => {
@@ -24,6 +25,13 @@ const items = data?.resources ?? [];
         title={t('alerting.hackathon.recently-viewed.title', 'Recently Viewed')}
         subtitle={t('alerting.hackathon.recently-viewed-subtitle', "Alerts you've explored")}
         icon="history"
+        actions={
+          !showAll ? (
+            <LinkButton variant="secondary" onClick={onViewAll} icon="list-ul">
+              <Trans i18nKey="alerting.hackathon.view-all">View all</Trans>
+            </LinkButton>
+          ) : undefined
+        }
       />
       <div>
         {showAll ? (
