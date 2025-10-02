@@ -1,12 +1,13 @@
 import { css } from '@emotion/css';
 import { useState } from 'react';
 
-import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
+import { DataSourceInstanceSettings, getDataSourceRef, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
-import { sceneGraph } from '@grafana/scenes';
-import { Icon, useStyles2, clearButtonStyles } from '@grafana/ui';
+import { getDataSourceSrv } from '@grafana/runtime';
+import { sceneGraph, SceneQueryRunner, VizPanel } from '@grafana/scenes';
+import { Icon, useStyles2, clearButtonStyles, AxisPlacement, TooltipDisplayMode } from '@grafana/ui';
 
-import { getDashboardSceneFor, SuggestedPanel } from '../utils/utils';
+import { getDashboardSceneFor, getQueryRunnerFor, SuggestedPanel } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
 import { DataSourceButton } from './DataSourceButton';
@@ -17,6 +18,11 @@ interface Props {
   editPane: DashboardEditPane;
 }
 
+interface Panel {
+  suggestedPanel: SuggestedPanel;
+  vizPanel: VizPanel;
+}
+
 export function DashboardAddPanelPane({ editPane }: Props) {
   // This should probably be the same if this pane is opened again. Also store in dashboard state?
   const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
@@ -25,16 +31,28 @@ export function DashboardAddPanelPane({ editPane }: Props) {
   const dashboard = getDashboardSceneFor(editPane);
   const { value: timeRange } = sceneGraph.getTimeRange(dashboard).useState();
 
-  const [panels, setPanels] = useState<SuggestedPanel[]>([
+  const [panels, setPanels] = useState<Panel[]>([
     {
-      type: 'prometheus-query',
-      name: 'Up',
-      targets: [
-        {
-          refId: 'cidr-A',
-          expr: 'up',
-        },
-      ],
+      suggestedPanel: {
+        type: 'prometheus-query',
+        name: 'Up',
+        targets: [
+          {
+            refId: 'cidr-A',
+            expr: 'up',
+          },
+        ],
+      },
+      vizPanel: getVizPanel({
+        type: 'prometheus-query',
+        name: 'Up',
+        targets: [
+          {
+            refId: 'cidr-A',
+            expr: 'up',
+          },
+        ],
+      })!,
     },
   ]);
 
@@ -69,32 +87,30 @@ export function DashboardAddPanelPane({ editPane }: Props) {
             />
           </div>
 
-          <PromMetricSelector selectedDatasource={currentDatasource} setPanels={setPanels} timeRange={timeRange} />
+          <PromMetricSelector
+            selectedDatasource={currentDatasource}
+            setPanels={(panels) =>
+              setPanels(panels.map((p) => ({ suggestedPanel: p, vizPanel: getVizPanel(p, currentDatasource)! })))
+            }
+            timeRange={timeRange}
+          />
 
           <div className={styles.list}>
             {panels.map((p) => (
-              <button
-                key={p.name}
-                type="button"
-                className={styles.listItem}
-                draggable
+              <div
+                key={p.suggestedPanel.name}
+                style={{ width: '100%' }}
+                draggable={true}
                 onDragStart={(e) => {
-                  p.datasourceUid = currentDatasource?.uid;
+                  p.suggestedPanel.datasourceUid = currentDatasource?.uid;
                   e.dataTransfer.effectAllowed = 'copy';
-                  e.dataTransfer.setData('application/x-grafana-query', JSON.stringify(p));
+                  e.dataTransfer.setData('application/x-grafana-query', JSON.stringify(p.suggestedPanel));
                 }}
-                aria-label={t('dashboard.add-panel-pane.drag-query', 'Drag to dashboard')}
               >
-                <span className={styles.logoWrap}>
-                  <Icon name="search" />
-                </span>
-                <span className={styles.itemText}>
-                  <span className={styles.itemName}>{p.name}</span>
-                  <span className={styles.itemMeta}>
-                    <Icon name="info-circle" /> {t('dashboard.add-panel-pane.query-language', 'PromQL')}
-                  </span>
-                </span>
-              </button>
+                <div style={{ height: '100px' }}>
+                  <p.vizPanel.Component model={p.vizPanel} />
+                </div>
+              </div>
             ))}
           </div>
         </>
@@ -112,6 +128,46 @@ export function DashboardAddPanelPane({ editPane }: Props) {
       )}
     </div>
   );
+}
+
+function getVizPanel(panel: SuggestedPanel, currentDatasource: DataSourceInstanceSettings | undefined) {
+  const p = new VizPanel({});
+  p.setState({
+    title: panel.name,
+    pluginId: 'timeseries',
+    options: {
+      legend: {
+        showLegend: false,
+        displayMode: 'list',
+        placement: 'bottom',
+        calcs: [],
+      },
+      tooltip: {
+        mode: TooltipDisplayMode.None,
+      },
+    },
+    fieldConfig: {
+      defaults: {
+        custom: {
+          axisPlacement: AxisPlacement.Hidden,
+        },
+      },
+      overrides: [],
+    },
+  });
+
+  const dsSettings = currentDatasource
+    ? getDataSourceSrv().getInstanceSettings(currentDatasource)
+    : getDataSourceSrv().getInstanceSettings(null);
+  if (!dsSettings) {
+    return null;
+  }
+  const dsRef = getDataSourceRef(dsSettings);
+  const runner = new SceneQueryRunner({ queries: panel.targets, datasource: dsRef });
+  p.setState({ $data: runner });
+  p.activate();
+
+  return p;
 }
 
 function getStyles(theme: GrafanaTheme2) {
