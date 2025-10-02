@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t } from '@grafana/i18n';
-import { useStyles2, ToolbarButton, ButtonGroup } from '@grafana/ui';
+import { useStyles2, ToolbarButton, ButtonGroup, Field } from '@grafana/ui';
 import { dataSourceLabel } from 'app/features/datasources/components/picker/utils';
 
 type Props = {
@@ -24,24 +24,26 @@ export function DataSourceButton(props: Props) {
 
   return (
     <div className={styles.wrapper}>
-      <ButtonGroup>
-        <ToolbarButton
-          className={styles.dsButton}
-          tooltip={t('dashboard.data-source-button.tooltip', 'Click to change data source')}
-          imgSrc={imgSrc}
-          isOpen={isOpen}
-          onClick={() => {
-            setIsOpen(true);
-            // Notify parent to open inline pane
-            props.onOpen?.();
-          }}
-          aria-label={props.ariaLabel || t('dashboard.data-source-button.aria-label', 'Change data source')}
-          variant="canvas"
-          fullWidth
-        >
-          {label}
-        </ToolbarButton>
-      </ButtonGroup>
+      <Field label={t('dashboard.datasource-button.aria-label', 'Data source')} noMargin>
+        <ButtonGroup>
+          <ToolbarButton
+            className={styles.dsButton}
+            tooltip={t('dashboard.data-source-button.tooltip', 'Click to change data source')}
+            imgSrc={imgSrc}
+            isOpen={isOpen}
+            onClick={() => {
+              setIsOpen(true);
+              // Notify parent to open inline pane
+              props.onOpen?.();
+            }}
+            aria-label={props.ariaLabel || t('dashboard.data-source-button.aria-label', 'Change data source')}
+            variant="canvas"
+            fullWidth
+          >
+            {label}
+          </ToolbarButton>
+        </ButtonGroup>
+      </Field>
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { GrafanaTheme2, TimeRange } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { PrometheusDatasource } from '@grafana/prometheus';
-import { Button, useStyles2 } from '@grafana/ui';
+import { Button, Field, useStyles2 } from '@grafana/ui';
 
 import { SuggestedPanel } from '../utils/utils';
 
@@ -37,15 +37,17 @@ export function PromMetricSelector({ datasourceInstance, setPanels, timeRange }:
   return (
     <div className={styles.container}>
       <div className={styles.selectorButton}>
-        <Button
-          variant="secondary"
-          fill="outline"
-          size="md"
-          onClick={handleOpenSidePanel}
-          className={styles.metricSelectorButton}
-        >
-          {selectedMetric || t('dashboard-scene.prom-metric-selector.select-metric', 'Select metric')}
-        </Button>
+        <Field label={t('dashboard.metric-select-button.aria-label', 'Metric')} noMargin>
+          <Button
+            variant="secondary"
+            fill="outline"
+            size="md"
+            onClick={handleOpenSidePanel}
+            className={styles.metricSelectorButton}
+          >
+            {selectedMetric || t('dashboard-scene.prom-metric-selector.select-metric', 'Select metric')}
+          </Button>
+        </Field>
       </div>
 
       <MetricSelectorSidePanel
@@ -66,7 +68,8 @@ function getStyles(theme: GrafanaTheme2) {
       display: 'flex',
       flexDirection: 'column',
       gap: theme.spacing(2),
-      margin: theme.spacing(1),
+      padding: theme.spacing(2),
+      paddingTop: 0,
     }),
     selectorButton: css({
       display: 'flex',
