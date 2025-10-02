@@ -274,13 +274,31 @@ function findMetadataForMetric(
   metricName: string,
   metricsMetadata: PromMetricsMetadata
 ): PromMetricsMetadataItem | undefined {
-  // First try exact match
+  // For histogram/summary suffixes, prioritize finding the base metric first
+  // This ensures that metrics like 'http_request_duration_bucket' return 'histogram' type
+  // instead of the synthetic 'counter' type created for the suffixed metrics
+  const histogramSummarySuffixes = ['_bucket', '_count', '_sum'];
+  for (const suffix of histogramSummarySuffixes) {
+    if (metricName.endsWith(suffix)) {
+      const baseMetricName = metricName.slice(0, -suffix.length);
+      if (metricsMetadata[baseMetricName]) {
+        const baseMetadata = metricsMetadata[baseMetricName];
+        // Only return base metadata if it's actually a histogram or summary
+        if (baseMetadata.type === 'histogram' || baseMetadata.type === 'summary') {
+          return baseMetadata;
+        }
+      }
+    }
+  }
+
+  // Try exact match for non-histogram/summary metrics or when base metric isn't found
   if (metricsMetadata[metricName]) {
     return metricsMetadata[metricName];
   }
 
-  // Try removing common Prometheus suffixes to find the base metric
-  for (const suffix of PROMETHEUS_SUFFIXES) {
+  // Try removing other common Prometheus suffixes to find the base metric
+  const otherSuffixes = PROMETHEUS_SUFFIXES.filter(s => !histogramSummarySuffixes.includes(s));
+  for (const suffix of otherSuffixes) {
     if (metricName.endsWith(suffix)) {
       const baseMetricName = metricName.slice(0, -suffix.length);
       if (metricsMetadata[baseMetricName]) {
@@ -309,12 +327,24 @@ export function getQueriesForMetric(metricName: string, metricsMetadata: PromMet
     return [];
   }
 
+  // For histogram/summary metrics with suffixes, use the base metric name in queries
+  // since the query templates expect the base name (e.g., 'http_request_duration' not 'http_request_duration_bucket')
+  let queryMetricName = metricName;
+  if (metadata.type === 'histogram' || metadata.type === 'summary') {
+    const histogramSummarySuffixes = ['_bucket', '_count', '_sum'];
+    for (const suffix of histogramSummarySuffixes) {
+      if (metricName.endsWith(suffix)) {
+        queryMetricName = metricName.slice(0, -suffix.length);
+        break;
+      }
+    }
+  }
+
   return panels.map((panel) => ({
     ...panel,
-    // name: `${metricName} - ${panel.name}`,
     targets: panel.targets.map((target) => ({
       ...target,
-      expr: target.expr.replace(/\{\{metric_name\}\}/g, metricName),
+      expr: target.expr.replace(/\{\{metric_name\}\}/g, queryMetricName),
     })),
   }));
 }
