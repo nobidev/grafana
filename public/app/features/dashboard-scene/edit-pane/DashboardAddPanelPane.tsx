@@ -1,12 +1,14 @@
 import { css } from '@emotion/css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { DataSourceInstanceSettings, getDataSourceRef, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
+import { PrometheusDatasource } from '@grafana/prometheus';
 import { getDataSourceSrv } from '@grafana/runtime';
 import { sceneGraph, SceneQueryRunner, VizPanel } from '@grafana/scenes';
 import { Icon, useStyles2, clearButtonStyles, AxisPlacement, TooltipDisplayMode } from '@grafana/ui';
 
+// import { useDatasources } from '../../datasources/hooks';
 import { getDashboardSceneFor, SuggestedPanel } from '../utils/utils';
 
 import { DashboardEditPane } from './DashboardEditPane';
@@ -25,7 +27,43 @@ interface Panel {
 
 export function DashboardAddPanelPane({ editPane }: Props) {
   // This should probably be the same if this pane is opened again. Also store in dashboard state?
-  const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>(undefined);
+  const [currentDatasource, setCurrentDatasource] = useState<DataSourceInstanceSettings | undefined>();
+  const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
+
+  // Initialize datasource instance when currentDatasource changes
+  useEffect(() => {
+    if (!currentDatasource?.uid) {
+      setDatasourceInstance(null);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const initializeDatasource = async () => {
+      try {
+        const ds = await getDataSourceSrv().get(currentDatasource.uid);
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        const promDs = ds as PrometheusDatasource;
+
+        if (isCancelled) {
+          return;
+        }
+
+        setDatasourceInstance(promDs);
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to get datasource instance:', error);
+          setDatasourceInstance(null);
+        }
+      }
+    };
+
+    initializeDatasource();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentDatasource?.uid]);
 
   // Get dashboard timerange
   const dashboard = getDashboardSceneFor(editPane);
@@ -90,9 +128,9 @@ export function DashboardAddPanelPane({ editPane }: Props) {
             />
           </div>
 
-          {!!currentDatasource && (
+          {!!datasourceInstance && (
             <PromMetricSelector
-              selectedDatasource={currentDatasource}
+              datasourceInstance={datasourceInstance}
               setPanels={(panels) =>
                 setPanels(panels.map((p) => ({ suggestedPanel: p, vizPanel: getVizPanel(p, currentDatasource)! })))
               }

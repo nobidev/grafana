@@ -1,33 +1,23 @@
 import { css } from '@emotion/css';
 import { useState } from 'react';
 
-import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
+import { GrafanaTheme2, TimeRange } from '@grafana/data';
 import { t } from '@grafana/i18n';
+import { PrometheusDatasource } from '@grafana/prometheus';
 import { Button, useStyles2 } from '@grafana/ui';
 
-import { useDatasources } from '../../datasources/hooks';
 import { SuggestedPanel } from '../utils/utils';
 
 import { MetricSelectorSidePanel } from './MetricSelectorSidePanel';
 
 type Props = {
-  selectedDatasource?: DataSourceInstanceSettings | undefined;
+  datasourceInstance: PrometheusDatasource;
   setPanels: (panels: SuggestedPanel[]) => void;
   timeRange: TimeRange;
 };
 
-export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }: Props) {
+export function PromMetricSelector({ datasourceInstance, setPanels, timeRange }: Props) {
   const styles = useStyles2(getStyles);
-
-  const promDsInstances = useDatasources({
-    dashboard: false,
-    mixed: false,
-    all: true,
-    type: 'prometheus',
-    filter: selectedDatasource ? (ds) => ds.uid === selectedDatasource.uid : undefined,
-  });
-
-  const effectiveDatasource = selectedDatasource || promDsInstances[0];
 
   const [selectedMetric, setSelectedMetric] = useState<string>('');
   const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
@@ -61,7 +51,7 @@ export function PromMetricSelector({ selectedDatasource, setPanels, timeRange }:
       <MetricSelectorSidePanel
         isOpen={isSidePanelOpen}
         onClose={handleCloseSidePanel}
-        selectedDatasource={effectiveDatasource}
+        datasourceInstance={datasourceInstance}
         setPanels={setPanels}
         timeRange={timeRange}
         onMetricSelected={handleMetricSelected}

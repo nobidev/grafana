@@ -2,14 +2,13 @@ import { css } from '@emotion/css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Highlighter from 'react-highlight-words';
 
-import { DataSourceInstanceSettings, GrafanaTheme2, TimeRange } from '@grafana/data';
+import { GrafanaTheme2, TimeRange } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
 import { PrometheusDatasource } from '@grafana/prometheus';
 import { METRIC_LABEL } from '@grafana/prometheus/src/constants';
 import { formatPrometheusLabelFilters } from '@grafana/prometheus/src/querybuilder/components/formatter';
 import { regexifyLabelValuesQueryString } from '@grafana/prometheus/src/querybuilder/parsingUtils';
 import { QueryBuilderLabelFilter } from '@grafana/prometheus/src/querybuilder/shared/types';
-import { getDataSourceSrv } from '@grafana/runtime';
 import { Card, Drawer, Input, ScrollContainer, TagsInput, useStyles2 } from '@grafana/ui';
 
 import { SuggestedPanel } from '../utils/utils';
@@ -19,7 +18,7 @@ import { findMetadataForMetric, getQueriesForMetric } from './promQueries';
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  selectedDatasource?: DataSourceInstanceSettings | undefined;
+  datasourceInstance: PrometheusDatasource;
   setPanels: (panels: SuggestedPanel[]) => void;
   timeRange: TimeRange;
   onMetricSelected: (metric: string) => void;
@@ -28,7 +27,7 @@ type Props = {
 export function MetricSelectorSidePanel({
   isOpen,
   onClose,
-  selectedDatasource,
+  datasourceInstance,
   setPanels,
   timeRange,
   onMetricSelected,
@@ -36,7 +35,6 @@ export function MetricSelectorSidePanel({
   const styles = useStyles2(getStyles);
 
   const [selectedMetric, setSelectedMetric] = useState<string>('');
-  const [datasourceInstance, setDatasourceInstance] = useState<PrometheusDatasource | null>(null);
   const [isMetadataLoading, setIsMetadataLoading] = useState(false);
   const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
@@ -68,32 +66,21 @@ export function MetricSelectorSidePanel({
     [timeRange]
   );
 
-  // Initialize datasource instance when component mounts or effective datasource changes
+  // Load metadata when component opens
   useEffect(() => {
-    if (!selectedDatasource?.uid || !isOpen) {
+    if (!isOpen) {
       return;
     }
 
     let isCancelled = false;
 
-    const initializeDatasource = async () => {
+    const loadMetadata = async () => {
       setIsMetadataLoading(true);
       setIsMetadataLoaded(false);
-      setDatasourceInstance(null);
 
       try {
-        const ds = await getDataSourceSrv().get(selectedDatasource.uid);
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        const promDs = ds as PrometheusDatasource;
-
-        if (isCancelled) {
-          return;
-        }
-
-        setDatasourceInstance(promDs);
-
-        // Fetch metadata immediately after setting datasource instance
-        await promDs.languageProvider.queryMetricsMetadata(100000);
+        // Fetch metadata immediately
+        await datasourceInstance.languageProvider.queryMetricsMetadata(100000);
 
         if (isCancelled) {
           return;
@@ -103,23 +90,22 @@ export function MetricSelectorSidePanel({
         setIsMetadataLoading(false);
 
         // Fetch initial metrics after metadata is loaded
-        fetchMetrics(promDs, []);
+        fetchMetrics(datasourceInstance, []);
       } catch (error) {
         if (!isCancelled) {
-          console.error('Failed to get datasource instance or metadata:', error);
-          setDatasourceInstance(null);
+          console.error('Failed to load metadata:', error);
           setIsMetadataLoading(false);
           setIsMetadataLoaded(false);
         }
       }
     };
 
-    initializeDatasource();
+    loadMetadata();
 
     return () => {
       isCancelled = true;
     };
-  }, [selectedDatasource?.uid, fetchMetrics, isOpen]);
+  }, [datasourceInstance, fetchMetrics, isOpen]);
 
   // Focus on metric search input when drawer opens and input is enabled
   useEffect(() => {
@@ -173,7 +159,7 @@ export function MetricSelectorSidePanel({
 
   // Refetch metrics when label filters change
   useEffect(() => {
-    if (datasourceInstance && isMetadataLoaded) {
+    if (isMetadataLoaded) {
       const filters = parseLabelFilters(labelFilters);
       fetchMetrics(datasourceInstance, filters);
     }
@@ -184,7 +170,7 @@ export function MetricSelectorSidePanel({
       setSelectedMetric(metric);
       onMetricSelected(metric);
 
-      if (metric && datasourceInstance) {
+      if (metric) {
         const metricMetadata = datasourceInstance.languageProvider.retrieveMetricsMetadata();
         const suggestedPanels = getQueriesForMetric(metric, metricMetadata);
         setPanels(suggestedPanels);
@@ -208,10 +194,6 @@ export function MetricSelectorSidePanel({
 
   const formatMetricDescription = useCallback(
     (metric: string) => {
-      if (!datasourceInstance) {
-        return '';
-      }
-
       const metadata = findMetadataForMetric(metric, datasourceInstance.languageProvider.retrieveMetricsMetadata());
       if (!metadata) {
         return '';
@@ -232,7 +214,7 @@ export function MetricSelectorSidePanel({
   return (
     <Drawer
       title={t('dashboard-scene.metric-selector-side-panel.title', 'Select Metric')}
-      subtitle={selectedDatasource?.name}
+      subtitle={datasourceInstance.name}
       onClose={onClose}
       size="md"
       scrollableContent={false}
