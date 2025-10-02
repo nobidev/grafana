@@ -5,6 +5,8 @@ import { useTimeoutFn } from 'react-use';
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { Card, TagList, useTheme2, Icon, Tooltip } from '@grafana/ui';
 
+import { DataSourceCommentTooltip } from './DataSourceCommentTooltip';
+
 interface DataSourceCardProps {
   ds: DataSourceInstanceSettings;
   onClick: () => void;
@@ -74,7 +76,7 @@ export function DataSourceCard({
         setOpen(false);
       }}
     >
-      <Tooltip content={ds.comment} placement="right" show={open}>
+      <Tooltip content={<DataSourceCommentTooltip text={ds.comment} />} placement="right" show={open}>
         <div>{content}</div>
       </Tooltip>
     </div>
