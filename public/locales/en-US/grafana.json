@@ -10740,7 +10740,9 @@
     },
     "visualization-suggestions": {
       "based-on-current-data": "Based on current data",
-      "no-results-matched-your-query": "No results matched your query"
+      "no-results-matched-your-query": "No results matched your query",
+      "smart-suggestions": "Smart suggestions (AI-powered)",
+      "title-analyze-suggestions": "Analyze suggestions"
     },
     "viz-type-picker": {
       "could-anything-matching-query": "Could not find anything matching your query"
@@ -12542,6 +12544,28 @@
       "alert-name": "Alert name",
       "state": "State"
     }
+  },
+  "smart-suggestions": {
+    "analysis-description": "I can analyze your data characteristics and explain why these specific visualization suggestions were chosen.",
+    "bar-chart": "Bar Chart",
+    "bar-chart-description": "Excellent for comparing values across categories",
+    "context-name": "Smart Panel Suggestions Context",
+    "geomap": "Geomap",
+    "geomap-description": "Best for location-based data visualization",
+    "heatmap": "Heatmap",
+    "heatmap-description": "Great for showing patterns in time-series data",
+    "logs": "Logs",
+    "logs-description": "Perfect for displaying text-based log data",
+    "pie-chart": "Pie Chart",
+    "pie-chart-description": "Perfect for showing proportions and percentages",
+    "stat-panel": "Stat Panel",
+    "stat-panel-description": "Perfect for displaying single metric values",
+    "stat-panel-numerical": "Stat Panel",
+    "stat-panel-numerical-description": "Ideal for displaying numerical values",
+    "table": "Table",
+    "table-description": "Comprehensive view of all your data",
+    "time-series": "Time Series",
+    "time-series-description": "Ideal for visualizing data over time"
   },
   "snapshot": {
     "empty-state": {

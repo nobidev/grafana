@@ -1,13 +1,14 @@
 import { css } from '@emotion/css';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useAsync } from 'react-use';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
-import { GrafanaTheme2, PanelData, PanelModel, VisualizationSuggestion } from '@grafana/data';
-import { Trans } from '@grafana/i18n';
+import { isAssistantAvailable, OpenAssistantButton, createAssistantContextItem } from '@grafana/assistant';
+import { GrafanaTheme2, PanelData, PanelModel, VisualizationSuggestion, FieldType } from '@grafana/data';
+import { Trans, t } from '@grafana/i18n';
 import { useStyles2 } from '@grafana/ui';
 
-import { getAllSuggestions } from '../../state/getAllSuggestions';
+import { getAllSuggestions, getSmartSuggestions } from '../../state/getAllSuggestions';
 
 import { VisualizationSuggestionCard } from './VisualizationSuggestionCard';
 import { VizTypeChangeDetails } from './types';
@@ -22,7 +23,21 @@ export interface Props {
 
 export function VisualizationSuggestions({ searchQuery, onChange, data, panel, trackSearch }: Props) {
   const styles = useStyles2(getStyles);
+  const [assistantEnabled, setAssistantEnabled] = useState(false);
+
+  useEffect(() => {
+    const subscription = isAssistantAvailable().subscribe((available) => {
+      setAssistantEnabled(available);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   const { value: suggestions } = useAsync(() => getAllSuggestions(data, panel), [data, panel]);
+
+  const smartSuggestions = useMemo(() => {
+    return getSmartSuggestions(data);
+  }, [data]);
+
   const filteredSuggestions = useMemo(() => {
     const result = filterSuggestionsBySearch(searchQuery, suggestions);
     if (trackSearch) {
@@ -47,6 +62,73 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
 
           return (
             <div>
+              {/* Smart suggestions */}
+              {data &&
+                data.series &&
+                data.series.length > 0 &&
+                panel?.datasource?.type &&
+                smartSuggestions.length > 0 && (
+                  <div className={styles.smartSuggestionsContainer}>
+                    <div className={styles.filterRow}>
+                      <div className={styles.infoText}>
+                        <Trans i18nKey="panel.visualization-suggestions.smart-suggestions">
+                          Smart suggestions (AI-powered)
+                        </Trans>
+                      </div>
+                      {assistantEnabled && (
+                        <OpenAssistantButton
+                          origin="grafana/smart-panel-suggestions"
+                          prompt="Analyze suggestions"
+                          context={[
+                            createAssistantContextItem('datasource', { datasourceUid: panel?.datasource?.uid || '' }),
+                            createAssistantContextItem('structured', {
+                              data: {
+                                name: t('smart-suggestions.context-name', 'Smart Panel Suggestions Context'),
+                                pageType: 'panel-suggestions',
+                                dashboardTitle: panel?.title || 'New dashboard',
+                                dataCharacteristics: {
+                                  seriesCount: data.series?.length || 0,
+                                  fieldTypes:
+                                    data.series
+                                      ?.map((s) => s.fields.map((f) => `${f.name}:${f.type}`).join(', '))
+                                      .join('; ') || 'No fields detected',
+                                  hasTimeField:
+                                    data.series?.some((s) => s.fields.some((f) => f.type === FieldType.time)) || false,
+                                  hasData: data.series && data.series.length > 0,
+                                },
+                                currentSuggestions: smartSuggestions.map((s) => ({
+                                  name: s.name,
+                                  pluginId: s.pluginId,
+                                  description: s.description,
+                                })),
+                                suggestion: t(
+                                  'smart-suggestions.analysis-description',
+                                  'I can analyze your data characteristics and explain why these specific visualization suggestions were chosen.'
+                                ),
+                              },
+                            }),
+                          ]}
+                          title={t('panel.visualization-suggestions.title-analyze-suggestions', 'Analyze suggestions')}
+                        />
+                      )}
+                    </div>
+                    <div
+                      className={styles.grid}
+                      style={{ gridTemplateColumns: `repeat(auto-fill, ${previewWidth}px)` }}
+                    >
+                      {smartSuggestions.map((suggestion, index) => (
+                        <VisualizationSuggestionCard
+                          key={`smart-${index}`}
+                          data={data!}
+                          suggestion={suggestion}
+                          onChange={onChange}
+                          width={previewWidth - 1}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               <div className={styles.filterRow}>
                 <div className={styles.infoText}>
                   <Trans i18nKey="panel.visualization-suggestions.based-on-current-data">Based on current data</Trans>
@@ -97,10 +179,15 @@ const getStyles = (theme: GrafanaTheme2) => {
       ...theme.typography.h5,
       margin: theme.spacing(0, 0.5, 1),
     }),
+    smartSuggestionsContainer: css({
+      marginBottom: theme.spacing(3),
+      paddingBottom: theme.spacing(2),
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+    }),
     filterRow: css({
       display: 'flex',
       flexDirection: 'row',
-      justifyContent: 'space-around',
+      justifyContent: 'space-between',
       alignItems: 'center',
       paddingBottom: '8px',
     }),
