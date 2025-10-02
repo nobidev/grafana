@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
 import { sceneGraph } from '@grafana/scenes';
-import { Icon, useStyles2 } from '@grafana/ui';
+import { Icon, useStyles2, clearButtonStyles } from '@grafana/ui';
 
 import { getDashboardSceneFor, SuggestedPanel } from '../utils/utils';
 
@@ -43,10 +43,19 @@ export function DashboardAddPanelPane({ editPane }: Props) {
   const [isDsPickerOpen, setIsDsPickerOpen] = useState(false);
 
   const styles = useStyles2(getStyles);
+  const clearButton = useStyles2(clearButtonStyles);
 
   return (
     <div>
       <div className={styles.title}>
+        <button
+          type="button"
+          className={clearButton}
+          onClick={() => editPane.setState({ isAdding: false })}
+          aria-label={t('dashboard.add-panel-pane.close', 'Close add panel')}
+        >
+          <Icon name="arrow-left" size="xl" className={styles.iconMuted} />
+        </button>
         <Trans i18nKey="dashboard-scene.dashboard-add-panel-pane.add-data-to-dashboard">Add data to dashboard</Trans>
       </div>
 
@@ -108,7 +117,12 @@ export function DashboardAddPanelPane({ editPane }: Props) {
 function getStyles(theme: GrafanaTheme2) {
   return {
     title: css({
-      padding: theme.spacing(2),
+      padding: theme.spacing(1, 2),
+      display: 'flex',
+      alignItems: 'center',
+      gap: theme.spacing(1),
+      borderBottom: `1px solid ${theme.colors.border.weak}`,
+      marginBottom: theme.spacing(1),
     }),
     list: css({
       display: 'flex',
@@ -157,6 +171,9 @@ function getStyles(theme: GrafanaTheme2) {
       display: 'flex',
       alignItems: 'center',
       gap: theme.spacing(0.5),
+    }),
+    iconMuted: css({
+      color: theme.colors.text.secondary,
     }),
   };
 }
