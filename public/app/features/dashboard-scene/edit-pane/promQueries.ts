@@ -142,7 +142,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
           {
             refId: 'A',
             expr: 'histogram_quantile(0.95, rate({{metric_name}}_bucket[5m]))',
-            format: 'time_series',
+            format: 'heatmap',
           },
         ],
       },
@@ -153,7 +153,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
           {
             refId: 'B',
             expr: 'histogram_quantile(0.50, rate({{metric_name}}_bucket[5m]))',
-            format: 'time_series',
+            format: 'heatmap',
           },
         ],
       },
@@ -186,7 +186,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
           {
             refId: 'E',
             expr: 'histogram_quantile(0.99, rate({{metric_name}}_bucket[5m]))',
-            format: 'time_series',
+            format: 'heatmap',
           },
         ],
       },
