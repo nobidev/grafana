@@ -108,6 +108,11 @@ func (q *Queue[T]) Next(ctx context.Context) (T, error) {
 
 	first := q.elements[0]
 	q.elements = q.elements[1:]
+	if len(q.elements) == 0 {
+		// Start a new slice next time to avoid keeping reference to possibly large underlying array.
+		// This only works if the queue gets empty eventually.
+		q.elements = nil
+	}
 	return first, nil
 }
 
