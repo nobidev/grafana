@@ -1,6 +1,6 @@
 import { css, cx } from '@emotion/css';
-import { useState } from 'react';
-import { useTimeoutFn } from 'react-use';
+import { marked } from 'marked';
+import { useRef, useState } from 'react';
 
 import { DataSourceInstanceSettings, GrafanaTheme2 } from '@grafana/data';
 import { Card, TagList, useTheme2, Icon, Tooltip } from '@grafana/ui';
@@ -28,19 +28,24 @@ export function DataSourceCard({
   const theme = useTheme2();
   const styles = getStyles(theme, ds.meta.builtIn);
   const [open, setOpen] = useState(false);
-  const [, , resetHoverTimer] = useTimeoutFn(() => setOpen(true), 1000);
+  const hoverTimer = useRef<number | null>(null);
+  const firstSentence = ds.comment ? getFirstSentenceFromMarkdown(ds.comment) : '';
 
   const content = (
     <Card
       key={ds.uid}
       onClick={onClick}
       className={cx(styles.card, selected ? styles.selected : undefined)}
+      noMargin
       {...htmlProps}
     >
       <Card.Heading className={styles.heading}>
         <div className={styles.headingContent}>
           <span className={styles.name}>
-            {ds.name} {ds.isDefault ? <TagList tags={['default']} /> : null}
+            <span className={styles.titleRow}>
+              {ds.name} {ds.isDefault ? <TagList tags={['default']} /> : null}
+            </span>
+            {firstSentence && <span className={styles.subtext}>{firstSentence}</span>}
           </span>
           <div className={styles.rightSection}>
             <small className={styles.type}>{description || ds.meta.name}</small>
@@ -70,9 +75,16 @@ export function DataSourceCard({
   return (
     <div
       onMouseEnter={() => {
-        resetHoverTimer();
+        if (hoverTimer.current) {
+          window.clearTimeout(hoverTimer.current);
+        }
+        hoverTimer.current = window.setTimeout(() => setOpen(true), 1000);
       }}
       onMouseLeave={() => {
+        if (hoverTimer.current) {
+          window.clearTimeout(hoverTimer.current);
+          hoverTimer.current = null;
+        }
         setOpen(false);
       }}
     >
@@ -144,7 +156,25 @@ function getStyles(theme: GrafanaTheme2, builtIn = false) {
     name: css({
       color: theme.colors.text.primary,
       display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-start',
+      gap: theme.spacing(0.5),
+      minWidth: 0,
+    }),
+    titleRow: css({
+      display: 'flex',
+      alignItems: 'center',
       gap: theme.spacing(2),
+      minWidth: 0,
+    }),
+    subtext: css({
+      color: theme.colors.text.secondary,
+      fontSize: theme.typography.size.sm,
+      lineHeight: theme.typography.bodySmall.lineHeight,
+      maxWidth: '100%',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
     }),
     type: css({
       overflow: 'hidden',
@@ -186,4 +216,12 @@ function getStyles(theme: GrafanaTheme2, builtIn = false) {
       textOverflow: 'ellipsis',
     }),
   };
+}
+
+function getFirstSentenceFromMarkdown(md: string): string {
+  const blocks = marked.lexer(md || '');
+  if (blocks && blocks[0] && ['heading', 'paragraph', 'text'].includes(blocks[0].type)) {
+    return ('text' in blocks[0] && blocks[0].text || '').trim();
+  }
+  return '';
 }

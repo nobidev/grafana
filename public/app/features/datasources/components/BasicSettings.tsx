@@ -73,7 +73,7 @@ export function BasicSettings({ onOptionsChange, dataSource, dataSourceName, isD
         {/* Name */}
         <div className="gf-form max-width-30">
           <InlineField
-            label={t('connections.data-source-comments-page.label-comments', 'Comments')}
+            label={t('connections.data-source-comments-page.label-description', 'Description')}
             grow
             labelWidth={14}
           >
