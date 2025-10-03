@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import type { DragEvent as ReactDragEvent } from 'react';
+import { useEffect, type DragEvent as ReactDragEvent } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -62,6 +62,16 @@ const DashboardEmpty = ({ dashboard, canCreate }: Props) => {
   };
 
   const isProvisioned = dashboard instanceof DashboardScene && dashboard.isManagedRepository();
+
+  // Automatically open the add panel pane when DashboardEmpty is rendered for DashboardScene
+  useEffect(() => {
+    if (dashboard instanceof DashboardScene && canCreate && !isReadOnlyRepo) {
+      // Only open if not already adding and dashboard is editable
+      if (!dashboard.state.editPane.state.isAdding && dashboard.state.editable) {
+        dashboard.state.editPane.setState({ isAdding: true });
+      }
+    }
+  }, [dashboard, canCreate, isReadOnlyRepo]);
 
   const onDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
     if (!(dashboard instanceof DashboardScene)) {

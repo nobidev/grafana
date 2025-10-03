@@ -97,9 +97,15 @@ export function DashboardAddPanelPane({ editPane }: Props) {
     },
   ]);
 
-  // This defaults to open, but should probably not be open if there is a current datasource.
-  // FIXME [HACK] it was set as false for fast development purposes
-  const [isDsPickerOpen, setIsDsPickerOpen] = useState(false);
+  // Open datasource picker if no datasource is selected
+  const [isDsPickerOpen, setIsDsPickerOpen] = useState(!currentDatasource);
+
+  // Update datasource picker state when currentDatasource changes
+  useEffect(() => {
+    if (!currentDatasource && !isDsPickerOpen) {
+      setIsDsPickerOpen(true);
+    }
+  }, [currentDatasource, isDsPickerOpen]);
 
   const styles = useStyles2(getStyles);
   const clearButton = useStyles2(clearButtonStyles);
