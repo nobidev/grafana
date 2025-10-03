@@ -26,6 +26,88 @@ export const panelsToCheckFirst = [
   'nodeGraph',
 ];
 
+// --- Panel Configuration Presets ---
+const PANEL_CONFIGS = {
+  stat: {
+    options: {
+      reduceOptions: { values: false, calcs: ['lastNotNull'], fields: '' },
+      orientation: 'auto',
+      textMode: 'auto',
+      colorMode: 'value',
+      graphMode: 'area',
+      justifyMode: 'auto',
+    },
+  },
+  timeseries: {
+    options: {
+      legend: { displayMode: 'list', placement: 'bottom' },
+      tooltip: { mode: 'single', sort: 'none' },
+    },
+  },
+  heatmap: {
+    options: {
+      legend: { displayMode: 'list', placement: 'bottom' },
+      tooltip: { mode: 'single', sort: 'none' },
+    },
+  },
+  geomap: {
+    options: {
+      basemap: { type: 'default' },
+      controls: {
+        showZoom: true,
+        showAttribution: true,
+        showScale: false,
+        showMeasure: false,
+        showDebug: false,
+      },
+      layers: [],
+      view: { id: 'zero', lat: 0, lon: 0, zoom: 1 },
+    },
+  },
+  barchart: {
+    options: {
+      orientation: 'auto',
+      legend: { displayMode: 'list', placement: 'bottom' },
+      tooltip: { mode: 'single', sort: 'none' },
+    },
+  },
+  piechart: {
+    options: {
+      legend: { displayMode: 'list', placement: 'right', showLegend: true, values: ['percent'] },
+      tooltip: { mode: 'single', sort: 'none' },
+      pieType: 'pie',
+      reduceOptions: { calcs: ['mean'], fields: '', values: false },
+      showLegend: true,
+      strokeWidth: 1,
+    },
+  },
+  table: {
+    options: {
+      showHeader: true,
+      sortBy: [],
+    },
+  },
+  logs: {
+    options: {
+      showTime: false,
+      showLabels: false,
+      showCommonLabels: false,
+      wrapLogMessage: false,
+      prettifyLogMessage: false,
+      enableLogDetails: true,
+      dedupStrategy: 'none',
+    },
+  },
+  gauge: {
+    options: {
+      orientation: 'auto',
+      reduceOptions: { values: false, calcs: ['lastNotNull'], fields: '' },
+      showThresholdLabels: false,
+      showThresholdMarkers: true,
+    },
+  },
+} as const;
+
 function hasLocationFields(data: PanelData): boolean {
   if (!data || !data.series || data.series.length === 0) {
     return false;
@@ -61,14 +143,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
       const statList = builder.getListAppender<{}, {}>({
         name: t('smart-suggestions.stat-panel', 'Stat Panel'),
         pluginId: 'stat',
-        options: {
-          reduceOptions: { values: false, calcs: ['lastNotNull'], fields: '' },
-          orientation: 'auto',
-          textMode: 'auto',
-          colorMode: 'value',
-          graphMode: 'area',
-          justifyMode: 'auto',
-        },
+        options: PANEL_CONFIGS.stat.options,
         fieldConfig: {
           defaults: { color: { mode: 'palette-classic' }, custom: {} },
           overrides: [],
@@ -82,10 +157,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const timeSeriesList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.time-series', 'Time Series'),
       pluginId: 'timeseries',
-      options: {
-        legend: { displayMode: 'list', placement: 'bottom' },
-        tooltip: { mode: 'single', sort: 'none' },
-      },
+      options: PANEL_CONFIGS.timeseries.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -99,10 +171,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const heatmapList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.heatmap', 'Heatmap'),
       pluginId: 'heatmap',
-      options: {
-        legend: { displayMode: 'list', placement: 'bottom' },
-        tooltip: { mode: 'single', sort: 'none' },
-      },
+      options: PANEL_CONFIGS.heatmap.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -118,18 +187,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const geomapList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.geomap', 'Geomap'),
       pluginId: 'geomap',
-      options: {
-        basemap: { type: 'default' },
-        controls: {
-          showZoom: true,
-          showAttribution: true,
-          showScale: false,
-          showMeasure: false,
-          showDebug: false,
-        },
-        layers: [],
-        view: { id: 'zero', lat: 0, lon: 0, zoom: 1 },
-      },
+      options: PANEL_CONFIGS.geomap.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -144,11 +202,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const barChartList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.bar-chart', 'Bar Chart'),
       pluginId: 'barchart',
-      options: {
-        orientation: 'auto',
-        legend: { displayMode: 'list', placement: 'bottom' },
-        tooltip: { mode: 'single', sort: 'none' },
-      },
+      options: PANEL_CONFIGS.barchart.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -162,12 +216,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const pieChartList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.pie-chart', 'Pie Chart'),
       pluginId: 'piechart',
-      options: {
-        legend: { displayMode: 'list', placement: 'bar' },
-        tooltip: { mode: 'single', sort: 'none' },
-        pieType: 'pie',
-        displayLabels: ['name', 'value'],
-      },
+      options: PANEL_CONFIGS.piechart.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -183,14 +232,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const statNumericalList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.stat-panel-numerical', 'Stat Panel'),
       pluginId: 'stat',
-      options: {
-        reduceOptions: { values: false, calcs: ['lastNotNull'], fields: '' },
-        orientation: 'auto',
-        textMode: 'auto',
-        colorMode: 'value',
-        graphMode: 'area',
-        justifyMode: 'auto',
-      },
+      options: PANEL_CONFIGS.stat.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -206,10 +248,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const tableList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.table', 'Table'),
       pluginId: 'table',
-      options: {
-        showHeader: true,
-        sortBy: [],
-      },
+      options: PANEL_CONFIGS.table.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
@@ -225,15 +264,7 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
     const logsList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.logs', 'Logs'),
       pluginId: 'logs',
-      options: {
-        showTime: false,
-        showLabels: false,
-        showCommonLabels: false,
-        wrapLogMessage: false,
-        prettifyLogMessage: false,
-        enableLogDetails: true,
-        dedupStrategy: 'none',
-      },
+      options: PANEL_CONFIGS.logs.options,
       fieldConfig: {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],

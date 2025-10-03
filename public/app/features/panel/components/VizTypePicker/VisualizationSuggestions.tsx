@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { useAsync } from 'react-use';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
@@ -35,12 +35,31 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
 
   const { value: suggestions } = useAsync(() => getAllSuggestions(data, panel), [data, panel]);
 
-  const smartSuggestions = useMemo(() => {
+  const [smartSuggestions, setSmartSuggestions] = useState<VisualizationSuggestion[]>([]);
+
+  const generateSmartSuggestions = useCallback(() => {
     if (!config.featureToggles.assistantForVizSuggestions) {
-      return [];
+      setSmartSuggestions([]);
+      return;
     }
-    return getSmartSuggestions(data);
+
+    if (!data || !data.series || data.series.length === 0) {
+      setSmartSuggestions([]);
+      return;
+    }
+
+    try {
+      const suggestions = getSmartSuggestions(data);
+      setSmartSuggestions(suggestions.slice(0, 4));
+    } catch (error) {
+      console.error('Error generating smart suggestions:', error);
+      setSmartSuggestions([]);
+    }
   }, [data]);
+
+  useEffect(() => {
+    generateSmartSuggestions();
+  }, [generateSmartSuggestions]);
 
   const filteredSuggestions = useMemo(() => {
     const result = filterSuggestionsBySearch(searchQuery, suggestions);
@@ -67,7 +86,8 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
           return (
             <div>
               {/* Smart suggestions */}
-              {data &&
+              {config.featureToggles.assistantForVizSuggestions &&
+                data &&
                 data.series &&
                 data.series.length > 0 &&
                 panel?.datasource?.type &&
