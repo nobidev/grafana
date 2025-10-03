@@ -28,7 +28,7 @@ export function DataSourceCard({
   const theme = useTheme2();
   const styles = getStyles(theme, ds.meta.builtIn);
   const [open, setOpen] = useState(false);
-  const [, , resetHoverTimer] = useTimeoutFn(() => setOpen(true), 500);
+  const [, , resetHoverTimer] = useTimeoutFn(() => setOpen(true), 1000);
 
   const content = (
     <Card

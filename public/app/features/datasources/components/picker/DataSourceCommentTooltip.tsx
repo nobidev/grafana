@@ -16,8 +16,8 @@ export function DataSourceCommentTooltip({ text }: Props) {
 function getStyles(theme: GrafanaTheme2) {
   return {
     container: css({
-      padding: theme.spacing(1),
-      whiteSpace: 'pre-wrap',
+      padding: theme.spacing(3),
+      // whiteSpace: 'pre-wrap',
       wordBreak: 'break-word',
       maxWidth: 360,
     }),
