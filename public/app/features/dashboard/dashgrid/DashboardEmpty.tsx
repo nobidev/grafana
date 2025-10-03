@@ -1,4 +1,5 @@
 import { css } from '@emotion/css';
+import type { DragEvent as ReactDragEvent } from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -13,7 +14,9 @@ import {
 } from 'app/features/dashboard/utils/dashboard';
 import { buildPanelEditScene } from 'app/features/dashboard-scene/panel-edit/PanelEditor';
 import { DashboardScene } from 'app/features/dashboard-scene/scene/DashboardScene';
+import { AutoGridLayoutManager } from 'app/features/dashboard-scene/scene/layout-auto-grid/AutoGridLayoutManager';
 import { DashboardInteractions } from 'app/features/dashboard-scene/utils/interactions';
+import { buildVizPanelForPromDrop, SuggestedPanel } from 'app/features/dashboard-scene/utils/utils';
 import { useGetResourceRepositoryView } from 'app/features/provisioning/hooks/useGetResourceRepositoryView';
 import { useDispatch, useSelector } from 'app/types/store';
 
@@ -31,7 +34,7 @@ const DashboardEmpty = ({ dashboard, canCreate }: Props) => {
 
   // Get repository information to check if it's read-only
   const { isReadOnlyRepo } = useGetResourceRepositoryView({
-    folderName: dashboard instanceof DashboardScene ? dashboard.state.meta.folderUid : dashboard.meta.folderUid,
+    folderName: dashboard instanceof DashboardScene ? dashboard.state.meta?.folderUid : dashboard.meta?.folderUid,
   });
 
   const onAddVisualization = () => {
@@ -59,9 +62,60 @@ const DashboardEmpty = ({ dashboard, canCreate }: Props) => {
   };
 
   const isProvisioned = dashboard instanceof DashboardScene && dashboard.isManagedRepository();
+
+  const onDragOver = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!(dashboard instanceof DashboardScene)) {
+      return;
+    }
+    if (e.dataTransfer.types.includes('application/x-grafana-query')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  };
+
+  const onDrop = (e: ReactDragEvent<HTMLDivElement>) => {
+    if (!(dashboard instanceof DashboardScene)) {
+      return;
+    }
+
+    const raw = e.dataTransfer.getData('application/x-grafana-query');
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const payload: SuggestedPanel = JSON.parse(raw);
+
+      if (payload.type !== 'prometheus-query') {
+        return;
+      }
+
+      const vizPanel = buildVizPanelForPromDrop(payload);
+      if (!vizPanel) {
+        return;
+      }
+
+      // Create AutoGridLayoutManager
+      const autoGridLayoutManager = new AutoGridLayoutManager({});
+
+      // Change the dashboard's layout manager first
+      dashboard.setState({ body: autoGridLayoutManager });
+
+      // Enter edit mode if not already editing
+      if (!dashboard.state.isEditing) {
+        dashboard.onEnterEditMode();
+      }
+
+      // Now add the panel using the layout manager's addPanel method
+      autoGridLayoutManager.addPanel(vizPanel);
+    } catch (err) {
+      return;
+    }
+  };
+
   return (
     <Stack alignItems="center" justifyContent="center">
-      <div className={styles.wrapper}>
+      <div className={styles.wrapper} onDragOver={onDragOver} onDrop={onDrop}>
         <Stack alignItems="stretch" justifyContent="center" gap={4} direction="column">
           <Box borderColor="strong" borderStyle="dashed" padding={4}>
             <Stack direction="column" alignItems="center" gap={2}>
