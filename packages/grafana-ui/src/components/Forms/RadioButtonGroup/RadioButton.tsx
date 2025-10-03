@@ -95,7 +95,9 @@ const getRadioButtonStyles = (theme: GrafanaTheme2, size: RadioButtonSize, fullW
       justifyContent: 'space-between',
       position: 'relative',
       flex: fullWidth ? `1 0 0` : 'none',
+      flexShrink: 1,
       textAlign: 'center',
+      minWidth: 0,
     }),
     radio: css({
       position: 'absolute',
@@ -127,7 +129,6 @@ const getRadioButtonStyles = (theme: GrafanaTheme2, size: RadioButtonSize, fullW
       justifyContent: 'center',
       fontSize,
       height: `${labelHeight}px`,
-      // Deduct border from line-height for perfect vertical centering on windows and linux
       lineHeight: `${labelHeight}px`,
       color: textColor,
       padding: theme.spacing(0, padding),
@@ -137,6 +138,7 @@ const getRadioButtonStyles = (theme: GrafanaTheme2, size: RadioButtonSize, fullW
       userSelect: 'none',
       whiteSpace: 'nowrap',
       flexGrow: 1,
+      overflow: 'hidden',
 
       '&:hover': {
         color: textColorHover,

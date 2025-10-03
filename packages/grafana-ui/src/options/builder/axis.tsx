@@ -150,6 +150,7 @@ export const ScaleDistributionEditor = ({ value, onChange }: StandardEditorProps
   return (
     <Stack direction="column" gap={2}>
       <RadioButtonGroup
+        fullWidth
         value={type}
         options={DISTRIBUTION_OPTIONS}
         onChange={(v) => {

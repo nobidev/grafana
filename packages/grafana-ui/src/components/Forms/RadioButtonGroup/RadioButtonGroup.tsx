@@ -118,6 +118,7 @@ const getStyles = (theme: GrafanaTheme2) => {
       flexWrap: 'nowrap',
       border: `1px solid ${theme.components.input.borderColor}`,
       borderRadius: theme.shape.radius.default,
+      maxWidth: '100%',
       padding: RADIO_GROUP_PADDING,
       '&:hover': {
         borderColor: theme.components.input.borderHover,
