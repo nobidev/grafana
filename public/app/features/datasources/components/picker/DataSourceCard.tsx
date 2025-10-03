@@ -98,6 +98,7 @@ function getStyles(theme: GrafanaTheme2, builtIn = false) {
       },
     }),
     heading: css({
+      label: 'heading',
       width: '100%',
       overflow: 'hidden',
       // This is needed to enable ellipsis when text overlfows
@@ -106,6 +107,7 @@ function getStyles(theme: GrafanaTheme2, builtIn = false) {
       },
     }),
     headingContent: css({
+      label: 'headingContent',
       color: theme.colors.text.secondary,
       width: '100%',
       overflow: 'hidden',
@@ -116,6 +118,7 @@ function getStyles(theme: GrafanaTheme2, builtIn = false) {
       alignItems: 'center',
     }),
     rightSection: css({
+      label: 'rightSection',
       display: 'flex',
       alignItems: 'center',
       gap: theme.spacing(1),
