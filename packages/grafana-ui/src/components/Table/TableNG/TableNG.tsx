@@ -24,7 +24,6 @@ import {
   FieldType,
   getDisplayProcessor,
 } from '@grafana/data';
-import { selectors } from '@grafana/e2e-selectors';
 import { Trans } from '@grafana/i18n';
 import { FieldColorModeId, TableCellTooltipPlacement, TableFooterOptions } from '@grafana/schema';
 
@@ -518,7 +517,6 @@ export function TableNG(props: TableNGProps) {
             <Cell
               key={key}
               {...props}
-              data-testid={selectors.components.Panels.Visualization.TableNG.Cell}
               className={clsx(
                 props.className,
                 cellParentStyles,

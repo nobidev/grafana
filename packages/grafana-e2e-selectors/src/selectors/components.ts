@@ -486,9 +486,6 @@ export const versionedComponents = {
       },
       TableNG: {
         ColumnHeader: { '12.3.0': 'data-testid tableng column header' },
-        Cell: {
-          '12.3.0': 'data-testid tableng cell row',
-        },
         Filters: {
           HeaderButton: {
             '12.1.0': 'data-testid tableng header filter',
