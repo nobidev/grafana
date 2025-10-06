@@ -275,8 +275,23 @@ export type SuggestedPanel = {
   type: string;
   name: string;
   targets: PromQuery[];
+  metricName: string;
   datasourceUid?: string;
 };
+
+function getUnitFromMetricName(metricName: string): string | undefined {
+  const lowerName = metricName.toLowerCase();
+
+  if (lowerName.includes('seconds') || lowerName.includes('duration') || lowerName.includes('latency')) {
+    return 's'; // seconds
+  }
+
+  if (lowerName.includes('bytes') || lowerName.includes('memory') || lowerName.includes('size')) {
+    return 'bytes'; // bytes (IEC)
+  }
+
+  return undefined;
+}
 
 /**
  * Create a VizPanel pre-wired with a datasource and a single PromQL query from a drag-and-drop payload.
@@ -284,7 +299,32 @@ export type SuggestedPanel = {
  */
 export function buildVizPanelForPromDrop(payload: SuggestedPanel): VizPanel | null {
   const panel = getDefaultVizPanel();
-  panel.setState({ title: payload.name, pluginId: 'timeseries' });
+  const unit = getUnitFromMetricName(payload.metricName);
+  const isHeatmap = payload.targets.some((t) => t.format === 'heatmap');
+
+  if (isHeatmap) {
+    panel.setState({
+      title: `${payload.metricName} - ${payload.name}`,
+      pluginId: 'heatmap',
+      options: {
+        calculate: true,
+        yAxis: {
+          unit: unit,
+        },
+      },
+    });
+  } else {
+    panel.setState({
+      title: `${payload.metricName} - ${payload.name}`,
+      pluginId: 'timeseries',
+      fieldConfig: {
+        defaults: {
+          unit: unit,
+        },
+        overrides: [],
+      },
+    });
+  }
 
   const dsSettings = payload.datasourceUid
     ? getDataSourceSrv().getInstanceSettings(payload.datasourceUid)

@@ -74,6 +74,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
       suggestedPanel: {
         type: 'prometheus-query',
         name: 'Up',
+        metricName: 'up',
         targets: [
           {
             refId: 'cidr-A',
@@ -85,6 +86,7 @@ export function DashboardAddPanelPane({ editPane }: Props) {
         {
           type: 'prometheus-query',
           name: 'Up',
+          metricName: 'up',
           targets: [
             {
               refId: 'cidr-A',
@@ -179,31 +181,75 @@ export function DashboardAddPanelPane({ editPane }: Props) {
   );
 }
 
+function getUnitFromMetricName(metricName: string): string | undefined {
+  const lowerName = metricName.toLowerCase();
+
+  if (lowerName.includes('seconds') || lowerName.includes('duration') || lowerName.includes('latency')) {
+    return 's'; // seconds
+  }
+
+  if (lowerName.includes('bytes') || lowerName.includes('memory') || lowerName.includes('size')) {
+    return 'bytes'; // bytes (IEC)
+  }
+
+  return undefined;
+}
+
 function getVizPanel(panel: SuggestedPanel, currentDatasource: DataSourceInstanceSettings | undefined) {
   const p = new VizPanel({});
-  p.setState({
-    title: panel.name,
-    pluginId: 'timeseries',
-    options: {
-      legend: {
-        showLegend: false,
-        displayMode: 'list',
-        placement: 'bottom',
-        calcs: [],
-      },
-      tooltip: {
-        mode: TooltipDisplayMode.None,
-      },
-    },
-    fieldConfig: {
-      defaults: {
-        custom: {
+  const unit = getUnitFromMetricName(panel.name);
+
+  if (panel.targets.some((t) => t.format === 'heatmap')) {
+    p.setState({
+      title: panel.name,
+      pluginId: 'heatmap',
+      options: {
+        calculate: true,
+        yAxis: {
           axisPlacement: AxisPlacement.Hidden,
+          unit: unit,
         },
       },
-      overrides: [],
-    },
-  });
+    });
+  } else {
+    p.setState({
+      title: panel.name,
+      pluginId: 'timeseries',
+      options: {
+        legend: {
+          showLegend: false,
+          displayMode: 'list',
+          placement: 'bottom',
+          calcs: [],
+        },
+        tooltip: {
+          mode: TooltipDisplayMode.None,
+        },
+      },
+      fieldConfig: {
+        defaults: {
+          custom: {
+            axisPlacement: AxisPlacement.Hidden,
+          },
+          unit: unit,
+        },
+        overrides: [
+          {
+            matcher: {
+              id: 'byType',
+              options: 'time',
+            },
+            properties: [
+              {
+                id: 'custom.axisPlacement',
+                value: AxisPlacement.Auto,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  }
 
   const dsSettings = currentDatasource
     ? getDataSourceSrv().getInstanceSettings(currentDatasource)

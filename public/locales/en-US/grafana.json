@@ -4393,6 +4393,7 @@
   },
   "dashboard": {
     "actions": {
+      "add-panel": "Add",
       "open-settings": "Settings"
     },
     "add-library-panel-widget": {
@@ -4404,6 +4405,9 @@
       "paste-panel": "Paste panel",
       "row": "Row",
       "visualization": "Visualization"
+    },
+    "add-panel-pane": {
+      "close": "Close add panel"
     },
     "alert-rules-drawer": {
       "redirect-link": "List in Grafana Alerting",
@@ -4607,6 +4611,18 @@
       "title-dashboard-failed-schema-validation": "Dashboard failed schema validation",
       "title-error-checking-dashboard-validity": "Error checking dashboard validity"
     },
+    "data-source-button": {
+      "aria-label": "Change data source",
+      "select": "Select data source",
+      "tooltip": "Click to change data source"
+    },
+    "data-source-select-pane": {
+      "close": "Close",
+      "search": "Search data sources..."
+    },
+    "datasource-button": {
+      "aria-label": "Data source"
+    },
     "default-layout": {
       "description": "Position and size each panel individually",
       "item-options": {
@@ -4766,6 +4782,11 @@
       "add-visualization-body": "Select a data source and then query and visualize your data with charts, stats and tables or create lists, markdowns and other widgets.",
       "add-visualization-button": "Add visualization",
       "add-visualization-header": "Start your new dashboard by adding a visualization",
+      "cantfindyourdata": "Can't find your data?",
+      "cantfindyourdata-body": "Add a new data source to get started.",
+      "cantfindyourdata-button": "Configure a data source",
+      "drag-and-drop-data-from-the-sidebar-to-create-your-first-panel": "Drag and drop data from the sidebar to create your first panel",
+      "drag-data-here-to-start-your-dashboard": "Drag data here to start your dashboard",
       "import-a-dashboard-body": "Import dashboards from files or <2>grafana.com</2>.",
       "import-a-dashboard-header": "Import a dashboard",
       "import-dashboard-button": "Import dashboard"
@@ -5002,6 +5023,9 @@
     "make-editable": {
       "dashboard-not-editable": "Dashboard not editable",
       "make-editable": "Make editable"
+    },
+    "metric-select-button": {
+      "aria-label": "Metric"
     },
     "minimalistic-pagination": {
       "page-count": "{{currentPage}} of {{numberOfPages}}",
@@ -5659,6 +5683,9 @@
       "name-values-separated-comma": "Values separated by comma",
       "selection-options": "Selection options"
     },
+    "dashboard-add-panel-pane": {
+      "add-data-to-dashboard": "Add data to dashboard"
+    },
     "dashboard-edit-pane-renderer": {
       "outline": "Outline"
     },
@@ -5902,6 +5929,12 @@
       "usage-count_one": "Used on {{count}} dashboards",
       "usage-count_other": "Used on {{count}} dashboards"
     },
+    "metric-selector-side-panel": {
+      "available-metrics": "Available Metrics",
+      "label-filters": "Label Filters",
+      "metric-search": "Metric Search",
+      "title": "Select Metric"
+    },
     "move-provisioned-dashboard-form": {
       "api-error": "Failed to move dashboard",
       "cancel-action": "Cancel",
@@ -5998,6 +6031,14 @@
         }
       },
       "title-close": "Close"
+    },
+    "prom-metric-selector": {
+      "loading-metrics": "Loading metrics...",
+      "no-metrics-available": "No metrics available",
+      "no-metrics-found-matching-criteria": "No metrics found matching your criteria",
+      "placeholder-add-label-filters-eg-instancemyinstance": "Add label filters (e.g., instance=my-instance)",
+      "search-metrics": "Search metrics...",
+      "select-metric": "Select metric"
     },
     "provisioned-delete-modal": {
       "cannot-be-deleted": "This dashboard is managed by Grafana provisioning and cannot be deleted. Remove the dashboard from the config file to delete it.",

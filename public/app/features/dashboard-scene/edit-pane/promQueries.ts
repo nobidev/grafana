@@ -18,6 +18,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Rate per second',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'A',
@@ -29,6 +30,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Increase over 1h',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'B',
@@ -40,6 +42,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Total rate',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'C',
@@ -51,6 +54,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Rate by instance',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'D',
@@ -62,6 +66,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Instantaneous rate',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'E',
@@ -78,6 +83,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Current value',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'A',
@@ -89,6 +95,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Average',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'B',
@@ -100,6 +107,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Maximum',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'C',
@@ -111,6 +119,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Minimum',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'D',
@@ -122,6 +131,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: '5m average',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'E',
@@ -138,6 +148,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: '95th percentile',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'A',
@@ -149,6 +160,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: '50th percentile (median)',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'B',
@@ -160,6 +172,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Average',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'C',
@@ -171,6 +184,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Request rate',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'D',
@@ -182,6 +196,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: '99th percentile',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'E',
@@ -198,6 +213,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Average',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'A',
@@ -209,6 +225,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Rate',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'B',
@@ -220,6 +237,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Total sum',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'C',
@@ -231,6 +249,7 @@ const queryMap = new Map<string, SuggestedPanel[]>([
       {
         type: 'prometheus-query',
         name: 'Total count',
+        metricName: '{{metric_name}}',
         targets: [
           {
             refId: 'D',
@@ -297,7 +316,7 @@ function findMetadataForMetric(
   }
 
   // Try removing other common Prometheus suffixes to find the base metric
-  const otherSuffixes = PROMETHEUS_SUFFIXES.filter(s => !histogramSummarySuffixes.includes(s));
+  const otherSuffixes = PROMETHEUS_SUFFIXES.filter((s) => !histogramSummarySuffixes.includes(s));
   for (const suffix of otherSuffixes) {
     if (metricName.endsWith(suffix)) {
       const baseMetricName = metricName.slice(0, -suffix.length);
@@ -342,6 +361,7 @@ export function getQueriesForMetric(metricName: string, metricsMetadata: PromMet
 
   return panels.map((panel) => ({
     ...panel,
+    metricName: panel.metricName.replace(/\{\{metric_name\}\}/g, queryMetricName),
     targets: panel.targets.map((target) => ({
       ...target,
       expr: target.expr.replace(/\{\{metric_name\}\}/g, queryMetricName),
