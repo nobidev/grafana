@@ -1,4 +1,11 @@
-import { CoreApp, DataSourceApi, getNextRefId, hasQueryExportSupport, hasQueryImportSupport } from '@grafana/data';
+import {
+  CoreApp,
+  DataSourceApi,
+  getNextRefId,
+  hasQueryExportSupport,
+  hasQueryImportSupport,
+  matchPluginId,
+} from '@grafana/data';
 import { getTemplateSrv, isExpressionReference } from '@grafana/runtime';
 import { DataQuery } from '@grafana/schema';
 
@@ -13,7 +20,7 @@ export async function updateQueries(
   const DEFAULT_QUERY = { ...nextDS?.getDefaultQuery?.(CoreApp.PanelEditor), datasource, refId: 'A' };
 
   // we are changing data source type
-  if (currentDS?.meta.id !== nextDS.meta.id) {
+  if (!matchPluginId(currentDS?.meta.id || '', nextDS.meta)) {
     // If changing to mixed do nothing
     if (nextDS.meta.mixed) {
       return queries;
