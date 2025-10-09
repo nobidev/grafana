@@ -9,6 +9,8 @@ import {
   TransformerRegistryItem,
   TransformerUIProps,
   TransformerCategory,
+  ReducerID,
+  isReducerID,
 } from '@grafana/data';
 import {
   createOrderFieldsComparer,
@@ -32,6 +34,7 @@ import {
   InlineField,
   InlineFieldRow,
   RadioButtonGroup,
+  StatsPicker,
 } from '@grafana/ui';
 
 import { createFieldsOrdererAuto } from '../../../../../packages/grafana-data/src/transformations/transformers/order';
@@ -53,7 +56,7 @@ function move(arr: unknown[], from: number, to: number) {
 }
 
 const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeFieldsTransformerEditorProps) => {
-  const { indexByName, excludeByName, renameByName, includeByName, orderBy, orderByMode } = options;
+  const { indexByName, excludeByName, renameByName, includeByName, orderBy, orderByMode, calculation } = options;
 
   const fieldNames = useAllFieldNamesFromDataFrames(input);
   const orderedFieldNames = useMemo(() => {
@@ -268,8 +271,15 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
                 value: OrderByMode.Manual,
               },
               {
-                label: t('transformers.organize-fields-transformer-editor.field-order-auto', 'Auto'),
+                label: t('transformers.organize-fields-transformer-editor.field-order-auto', 'Auto by Name/Label'),
                 value: OrderByMode.Auto,
+              },
+              {
+                label: t(
+                  'transformers.organize-fields-transformer-editor.field-order-auto-calc',
+                  'Auto by Calculation'
+                ),
+                value: OrderByMode.AutoCalc,
               },
             ]}
             value={options.orderByMode ?? OrderByMode.Manual}
@@ -277,57 +287,74 @@ const OrganizeFieldsTransformerEditor = ({ options, input, onChange }: OrganizeF
           />
         </InlineField>
       </InlineFieldRow>
-      <DragDropContext onDragEnd={onDragEndLabels}>
-        {options.orderByMode === OrderByMode.Auto && (
-          <Droppable droppableId="sortable-labels-transformer" direction="vertical">
-            {(provided) => {
-              return (
-                <>
-                  <div ref={provided.innerRef} className={styles.labelsDraggable} {...provided.droppableProps}>
-                    {uiOrderByItems.map((item, idx) => (
-                      <DraggableUIOrderByItem
-                        item={item}
-                        index={idx}
-                        onChangeSort={onChangeSort}
-                        key={`${item.name}-${item.type}`}
+      {options.orderByMode !== OrderByMode.AutoCalc && (
+        <>
+          <DragDropContext onDragEnd={onDragEndLabels}>
+            {options.orderByMode === OrderByMode.Auto && (
+              <Droppable droppableId="sortable-labels-transformer" direction="vertical">
+                {(provided) => {
+                  return (
+                    <>
+                      <div ref={provided.innerRef} className={styles.labelsDraggable} {...provided.droppableProps}>
+                        {uiOrderByItems.map((item, idx) => (
+                          <DraggableUIOrderByItem
+                            item={item}
+                            index={idx}
+                            onChangeSort={onChangeSort}
+                            key={`${item.name}-${item.type}`}
+                          />
+                        ))}
+                      </div>
+                      {provided.placeholder}
+                    </>
+                  );
+                }}
+              </Droppable>
+            )}
+          </DragDropContext>
+          <DragDropContext onDragEnd={onDragEndFields}>
+            <Droppable droppableId="sortable-fields-transformer" direction="vertical">
+              {(provided) => (
+                <div ref={provided.innerRef} {...provided.droppableProps}>
+                  {orderedFieldNames.map((fieldName, index) => {
+                    const isIncludeFilter =
+                      includeByName && fieldName in includeByName ? includeByName[fieldName] : false;
+                    const isVisible = filterType === 'include' ? isIncludeFilter : !excludeByName[fieldName];
+                    const onToggleFunction = filterType === 'include' ? onToggleVisibilityInclude : onToggleVisibility;
+
+                    return (
+                      <DraggableFieldName
+                        fieldName={fieldName}
+                        renamedFieldName={renameByName[fieldName]}
+                        index={index}
+                        onToggleVisibility={onToggleFunction}
+                        onRenameField={onRenameField}
+                        visible={isVisible}
+                        key={fieldName}
+                        isDragDisabled={options.orderByMode === OrderByMode.Auto}
                       />
-                    ))}
-                  </div>
+                    );
+                  })}
                   {provided.placeholder}
-                </>
-              );
-            }}
-          </Droppable>
-        )}
-      </DragDropContext>
-
-      <DragDropContext onDragEnd={onDragEndFields}>
-        <Droppable droppableId="sortable-fields-transformer" direction="vertical">
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps}>
-              {orderedFieldNames.map((fieldName, index) => {
-                const isIncludeFilter = includeByName && fieldName in includeByName ? includeByName[fieldName] : false;
-                const isVisible = filterType === 'include' ? isIncludeFilter : !excludeByName[fieldName];
-                const onToggleFunction = filterType === 'include' ? onToggleVisibilityInclude : onToggleVisibility;
-
-                return (
-                  <DraggableFieldName
-                    fieldName={fieldName}
-                    renamedFieldName={renameByName[fieldName]}
-                    index={index}
-                    onToggleVisibility={onToggleFunction}
-                    onRenameField={onRenameField}
-                    visible={isVisible}
-                    key={fieldName}
-                    isDragDisabled={options.orderByMode === OrderByMode.Auto}
-                  />
-                );
-              })}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </>
+      )}
+      {options.orderByMode === OrderByMode.AutoCalc && (
+        <StatsPicker
+          stats={calculation !== undefined && isReducerID(calculation) ? [calculation] : []}
+          onChange={(stats) => {
+            if (isReducerID(stats[0])) {
+              onChange({ ...options, calculation: stats[0] });
+            }
+          }}
+          allowMultiple={false}
+          defaultStat={ReducerID.lastNotNull}
+          inputId={'transform-calc'}
+        />
+      )}
     </>
   );
 };

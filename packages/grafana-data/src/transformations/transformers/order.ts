@@ -4,12 +4,14 @@ import { map } from 'rxjs/operators';
 import { cacheFieldDisplayNames, getFieldDisplayName } from '../../field/fieldState';
 import { DataFrame, Field, FieldType } from '../../types/dataFrame';
 import { DataTransformerInfo } from '../../types/transformations';
+import { ReducerID } from '../fieldReducer';
 
 import { DataTransformerID } from './ids';
 
 export enum OrderByMode {
   Manual = 'manual',
   Auto = 'auto',
+  AutoCalc = 'autoCalc',
 }
 
 export enum Order {
@@ -33,6 +35,7 @@ export interface OrderFieldsTransformerOptions {
   indexByName?: Record<string, number>;
   orderByMode?: OrderByMode;
   orderBy?: OrderByItem[];
+  calculation?: ReducerID;
 }
 
 export const orderFieldsTransformer: DataTransformerInfo<OrderFieldsTransformerOptions> = {
@@ -48,7 +51,7 @@ export const orderFieldsTransformer: DataTransformerInfo<OrderFieldsTransformerO
    * be applied, just return the input series
    */
   operator:
-    ({ indexByName, orderByMode = OrderByMode.Manual, orderBy = [] }) =>
+    ({ indexByName, orderByMode = OrderByMode.Manual, orderBy = [], calculation }) =>
     (source) =>
       source.pipe(
         map((data) => {
@@ -57,7 +60,9 @@ export const orderFieldsTransformer: DataTransformerInfo<OrderFieldsTransformerO
           const orderer =
             orderByMode === OrderByMode.Manual
               ? createFieldsOrdererManual(indexByName!)
-              : createFieldsOrdererAuto(orderBy);
+              : OrderByMode.Auto
+                ? createFieldsOrdererAuto(orderBy)
+                : createFieldsOrdererAutoCalc(calculation);
 
           return data.map((frame) => ({
             ...frame,
@@ -112,4 +117,12 @@ export const createFieldsOrdererAuto = (orderBy: OrderByItem[]) => (fields: Fiel
     }
     return 0;
   });
+};
+
+export const createFieldsOrdererAutoCalc = (reducer?: ReducerID) => (fields: Field[]) => {
+  if (reducer !== undefined) {
+    return fields;
+  } else {
+    return fields;
+  }
 };

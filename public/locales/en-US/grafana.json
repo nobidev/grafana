@@ -13639,7 +13639,8 @@
         "reorder-hide-or-rename-fields": "Re-order, hide, or rename fields."
       },
       "field-order": "Field order",
-      "field-order-auto": "Auto",
+      "field-order-auto": "Auto by Name/Label",
+      "field-order-auto-calc": "Auto by Calculation",
       "field-order-manual": "Manual",
       "first-frame-warning": "Organize fields only works with a single frame. Consider applying a join transformation or filtering the input first.",
       "name": {

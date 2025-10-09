@@ -1,5 +1,6 @@
 import { DataFrame } from '../../types/dataFrame';
 import { DataTransformerInfo, TransformationApplicabilityLevels } from '../../types/transformations';
+import { ReducerID } from '../fieldReducer';
 
 import { filterFieldsByNameTransformer } from './filterByName';
 import { DataTransformerID } from './ids';
@@ -11,6 +12,7 @@ export interface OrganizeFieldsTransformerOptions
     RenameFieldsTransformerOptions {
   excludeByName: Record<string, boolean>;
   includeByName?: Record<string, boolean>;
+  calculation?: ReducerID;
 }
 
 export const organizeFieldsTransformer: DataTransformerInfo<OrganizeFieldsTransformerOptions> = {
