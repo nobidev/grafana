@@ -12,13 +12,18 @@ import (
 	"github.com/grafana/grafana-app-sdk/logging"
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/middleware"
+	"github.com/grafana/grafana/pkg/services/contexthandler"
+	"github.com/grafana/grafana/pkg/services/hooks"
+	"github.com/grafana/grafana/pkg/services/licensing"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
 type IndexProvider struct {
-	log   logging.Logger
-	index *template.Template
-	data  IndexViewData
+	log          logging.Logger
+	index        *template.Template
+	data         IndexViewData
+	hooksService hooks.HooksService
+	buildInfo    dtos.FrontendSettingsBuildInfoDTO
 }
 
 type IndexViewData struct {
@@ -51,7 +56,7 @@ var (
 	htmlTemplates = template.Must(template.New("html").Delims("[[", "]]").ParseFS(templatesFS, `*.html`))
 )
 
-func NewIndexProvider(cfg *setting.Cfg, assetsManifest dtos.EntryPointAssets) (*IndexProvider, error) {
+func NewIndexProvider(cfg *setting.Cfg, assetsManifest dtos.EntryPointAssets, hooksService *hooks.HooksService, license licensing.Licensing) (*IndexProvider, error) {
 	t := htmlTemplates.Lookup("index.html")
 	if t == nil {
 		return nil, fmt.Errorf("missing index template")
@@ -89,11 +94,29 @@ func NewIndexProvider(cfg *setting.Cfg, assetsManifest dtos.EntryPointAssets) (*
 		VerifyEmailEnabled:                  cfg.VerifyEmailEnabled,
 	}
 
+	version := setting.BuildVersion
+	commit := setting.BuildCommit
+	commitShort := getShortCommitHash(setting.BuildCommit, 10)
+	buildstamp := setting.BuildStamp
+	versionString := fmt.Sprintf(`%s v%s (%s)`, setting.ApplicationName, version, commitShort)
+
+	buildInfo := dtos.FrontendSettingsBuildInfoDTO{
+		Version:       version,
+		VersionString: versionString,
+		Commit:        commit,
+		CommitShort:   commitShort,
+		Buildstamp:    buildstamp,
+		Edition:       license.Edition(),
+		Env:           cfg.Env,
+	}
+
 	defaultUser := dtos.CurrentUser{}
 
 	return &IndexProvider{
-		log:   logging.DefaultLogger.With("logger", "index-provider"),
-		index: t,
+		log:          logging.DefaultLogger.With("logger", "index-provider"),
+		index:        t,
+		hooksService: *hooksService,
+		buildInfo:    buildInfo,
 		data: IndexViewData{
 			AppTitle:     "Grafana",
 			AppSubUrl:    cfg.AppSubURL, // Based on the request?
@@ -115,7 +138,7 @@ func NewIndexProvider(cfg *setting.Cfg, assetsManifest dtos.EntryPointAssets) (*
 }
 
 func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.Request) {
-	_, span := tracer.Start(request.Context(), "frontend.index.HandleRequest")
+	ctx, span := tracer.Start(request.Context(), "frontend.index.HandleRequest")
 	defer span.End()
 
 	if request.Method != "GET" {
@@ -142,6 +165,17 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 		writer.Header().Set("Content-Security-Policy-Report-Only", policy)
 	}
 
+	legacyViewData := dtos.IndexViewData{
+		Settings: &dtos.FrontendSettingsDTO{
+			BuildInfo: p.buildInfo,
+		},
+	}
+	reqCtx := contexthandler.FromContext(ctx)
+	fmt.Println("josh calling index view data hooks")
+	p.hooksService.RunIndexDataHooks(&legacyViewData, reqCtx)
+	fmt.Println("josh called index view data hooks")
+	p.log.Info("josh legacy index view data", "version_string", legacyViewData.Settings.BuildInfo.VersionString, "data", legacyViewData)
+
 	writer.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	writer.WriteHeader(200)
 	if err := p.index.Execute(writer, &data); err != nil {
@@ -150,4 +184,11 @@ func (p *IndexProvider) HandleRequest(writer http.ResponseWriter, request *http.
 		}
 		panic(fmt.Sprintf("Error rendering index\n %s", err.Error()))
 	}
+}
+
+func getShortCommitHash(commitHash string, maxLength int) string {
+	if len(commitHash) > maxLength {
+		return commitHash[:maxLength]
+	}
+	return commitHash
 }

@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # Script called from makefile to auto down the tilt environment on ctrl + c.
 # Paths are relative to the makefile
 
@@ -11,6 +13,7 @@ function tilt_down()
 # when it attempts to mount them into the docker containers
 touch devenv/frontend-service/configs/grafana-api.local.ini
 touch devenv/frontend-service/configs/frontend-service.local.ini
+touch devenv/frontend-service/configs/license.jwt
 
 if [[ "${AUTO_DOWN}" != "false" ]]; then
   trap tilt_down SIGINT

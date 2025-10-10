@@ -174,7 +174,6 @@ var wireExtsBaseCLISet = wire.NewSet(
 	metrics.WireSet,
 	featuremgmt.ProvideManagerService,
 	featuremgmt.ProvideToggles,
-	hooks.ProvideService,
 	setting.ProvideProvider, wire.Bind(new(setting.Provider), new(*setting.OSSImpl)),
 	licensing.ProvideService, wire.Bind(new(licensing.Licensing), new(*licensing.OSSLicensingService)),
 	configProviderExtras,
@@ -193,6 +192,7 @@ var wireExtsModuleServerSet = wire.NewSet(
 	resource.ProvideIndexMetrics,
 	// Overriden by enterprise
 	ProvideNoopModuleRegisterer,
+	hooks.ProvideService,
 )
 
 var wireExtsStandaloneAPIServerSet = wire.NewSet(
