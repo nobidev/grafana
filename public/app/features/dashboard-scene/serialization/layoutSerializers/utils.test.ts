@@ -1,3 +1,4 @@
+import { SceneObject } from '@grafana/scenes';
 import { defaultDataQueryKind, PanelQueryKind, PanelKind } from '@grafana/schema/dist/esm/schema/dashboard/v2';
 
 import { CustomTimeRangeCompare } from '../../scene/CustomTimeRangeCompare';
@@ -91,11 +92,7 @@ describe('buildVizPanel', () => {
 
       expect(vizPanel.state.headerActions).toBeDefined();
       expect(vizPanel.state.headerActions).toHaveLength(1);
-      expect(CustomTimeRangeCompare).toHaveBeenCalledWith({
-        key: 'time-compare',
-        compareWith: undefined,
-        compareOptions: [],
-      });
+      expect((vizPanel.state.headerActions as SceneObject[])[0]).toBeInstanceOf(CustomTimeRangeCompare);
     });
 
     it('should not include headerActions when timeComparison feature toggle is disabled', () => {

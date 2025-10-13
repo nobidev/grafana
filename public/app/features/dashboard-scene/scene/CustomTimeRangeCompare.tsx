@@ -1,77 +1,105 @@
+import { Unsubscribable } from 'rxjs';
+
 import { reportInteraction } from '@grafana/runtime';
-import { SceneTimeRangeCompare, SceneComponentProps, VizPanel, sceneGraph } from '@grafana/scenes';
+import {
+  SceneTimeRangeCompare,
+  SceneComponentProps,
+  VizPanel,
+  sceneGraph,
+  SceneObjectBase,
+  SceneObjectState,
+} from '@grafana/scenes';
 import { TimeCompareOptions } from '@grafana/schema';
 
-function hasTimeCompare(options: unknown): options is TimeCompareOptions {
-  return options != null && typeof options === 'object' && 'timeCompare' in options;
+interface CustomTimeRangeCompareState extends SceneObjectState {
+  timeRangeCompare: SceneTimeRangeCompare | undefined;
 }
 
-export class CustomTimeRangeCompare extends SceneTimeRangeCompare {
-  private readonly parentOnCompareWithChanged: (compareWith: string) => void;
+export class CustomTimeRangeCompare extends SceneObjectBase<CustomTimeRangeCompareState> {
+  public get vizPanel(): VizPanel {
+    return sceneGraph.getAncestor(this, VizPanel);
+  }
 
-  constructor(state: Partial<SceneTimeRangeCompare['state']> = {}) {
-    super({
-      ...state,
-      compareWith: undefined,
-      compareOptions: [],
-      hideCheckbox: true,
-    });
+  private _changedSub: Unsubscribable | undefined;
 
-    this.parentOnCompareWithChanged = this.onCompareWithChanged.bind(this);
-
-    this.onCompareWithChanged = (compareWith: string) => {
-      const vizPanel = sceneGraph.getAncestor(this, VizPanel);
-
-      reportInteraction('panel_time_comparison', {
-        viz_type: vizPanel?.getPlugin()?.meta.id || 'unknown',
-        select_type: 'option_selected',
-        option_type: compareWith,
-      });
-
-      this.parentOnCompareWithChanged(compareWith);
-    };
+  constructor() {
+    super({ timeRangeCompare: undefined });
 
     this.addActivationHandler(() => this._activationHandler());
   }
 
+  private _hasTimeCompare(options: VizPanel['state']['options']): options is TimeCompareOptions {
+    return !!options && typeof options === 'object' && 'timeCompare' in options;
+  }
+
+  private _getTimeCompareValue(): boolean {
+    const { options } = this.vizPanel.state;
+
+    if (!this._hasTimeCompare(options)) {
+      return false;
+    }
+
+    return !!options.timeCompare;
+  }
+
+  private _setTimeRangeCompare() {
+    this._changedSub?.unsubscribe();
+
+    const timeRangeCompare = new SceneTimeRangeCompare({});
+
+    this._changedSub = timeRangeCompare.subscribeToState((newState, oldState) => {
+      if (newState.compareWith !== oldState.compareWith) {
+        reportInteraction('panel_time_comparison', {
+          viz_type: this.vizPanel?.getPlugin()?.meta.id || 'unknown',
+          select_type: 'option_selected',
+          option_type: newState.compareWith,
+        });
+      }
+    });
+
+    this.setState({ timeRangeCompare });
+  }
+
+  private _unsetTimeRangeCompare() {
+    this._changedSub?.unsubscribe();
+    this._changedSub = undefined;
+    this.setState({ timeRangeCompare: undefined });
+  }
+
   private _activationHandler() {
-    // Subscribe to parent panel's options changes
-    const vizPanel = sceneGraph.getAncestor(this, VizPanel);
+    // Create the time range compare if it is enabled
+    // Useful when loading a saved dashboard
+    if (this._getTimeCompareValue()) {
+      this._setTimeRangeCompare();
+    }
 
+    // Create or unset the time range compare when the panel options are updated
     this._subs.add(
-      vizPanel.subscribeToState((newState, prevState) => {
-        const newTimeCompareEnabled = hasTimeCompare(newState.options) && newState.options.timeCompare;
-        const prevTimeCompareEnabled = hasTimeCompare(prevState.options) && prevState.options.timeCompare;
+      this.vizPanel.subscribeToState(() => {
+        const isEnabled = this._getTimeCompareValue();
 
-        // Only act when transitioning from enabled to disabled
-        if (prevTimeCompareEnabled && !newTimeCompareEnabled) {
-          this._handleDisable();
+        if (!isEnabled && this.state.timeRangeCompare) {
+          this._unsetTimeRangeCompare();
+        }
+
+        if (isEnabled && !this.state.timeRangeCompare) {
+          this._setTimeRangeCompare();
         }
       })
     );
+
+    return () => {
+      this._changedSub?.unsubscribe();
+    };
   }
 
-  private _handleDisable() {
-    // Only clear state if there's actually a comparison active
-    if (this.state.compareWith) {
-      this.setState({
-        compareWith: undefined,
-      });
-    }
-  }
+  static Component = ({ model }: SceneComponentProps<CustomTimeRangeCompare>) => {
+    const { timeRangeCompare } = model.useState();
 
-  static Component = function CustomTimeRangeCompareRenderer({ model }: SceneComponentProps<SceneTimeRangeCompare>) {
-    // Get the parent VizPanel to check timeCompare option
-    const vizPanel = sceneGraph.getAncestor(model, VizPanel);
-    const { options } = vizPanel.useState();
-
-    // Check if timeCompare is enabled
-    const isTimeCompareEnabled = hasTimeCompare(options) && options.timeCompare;
-
-    if (!isTimeCompareEnabled) {
-      return <></>;
+    if (!timeRangeCompare) {
+      return null;
     }
 
-    return <SceneTimeRangeCompare.Component model={model} />;
+    return <timeRangeCompare.Component model={timeRangeCompare} />;
   };
 }
