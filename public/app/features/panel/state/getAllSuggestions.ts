@@ -26,7 +26,8 @@ export const panelsToCheckFirst = [
   'nodeGraph',
 ];
 
-// --- Panel Configuration Presets ---
+// @TODO: revisit + options
+// --- Panel configs ---
 const PANEL_CONFIGS = {
   stat: {
     options: {
@@ -108,7 +109,7 @@ const PANEL_CONFIGS = {
   },
 } as const;
 
-function hasLocationFields(data: PanelData): boolean {
+const hasLocationFields = (data: PanelData): boolean => {
   if (!data || !data.series || data.series.length === 0) {
     return false;
   }
@@ -132,28 +133,120 @@ function hasLocationFields(data: PanelData): boolean {
   return data.series.some((series) =>
     series.fields.some((field) => locationKeywords.some((keyword) => field.name.toLowerCase().includes(keyword)))
   );
+};
+
+const hasGeographicalContextData = (data: PanelData): boolean => {
+  if (!data || !data.series || data.series.length === 0) {
+    return false;
+  }
+
+  const geographicalKeywords = ['lat', 'lon', 'latitude', 'longitude', 'country', 'city', 'region', 'state'];
+
+  return data.series.some((series) => {
+    const hasCoordinates = series.fields.some(
+      (field) =>
+        field.name.toLowerCase().includes('lat') ||
+        field.name.toLowerCase().includes('lon') ||
+        field.name.toLowerCase().includes('latitude') ||
+        field.name.toLowerCase().includes('longitude')
+    );
+    const hasGeographicalNames = series.fields.some((field) =>
+      geographicalKeywords.some((keyword) => field.name.toLowerCase().includes(keyword))
+    );
+
+    return hasCoordinates || hasGeographicalNames;
+  });
+};
+
+interface DataProfile {
+  fieldCount: number;
+  hasHighCardinality: boolean;
+  hasLowCardinality: boolean;
+  hasNullValues: boolean;
+  fieldTypes: string[];
+  fieldNames: string[];
+  seriesCount: number;
 }
+
+const analyzeDataCharacteristics = (data?: PanelData): DataProfile => {
+  if (!data || !data.series || data.series.length === 0) {
+    return {
+      fieldCount: 0,
+      hasHighCardinality: false,
+      hasLowCardinality: false,
+      hasNullValues: false,
+      fieldTypes: [],
+      fieldNames: [],
+      seriesCount: 0,
+    };
+  }
+
+  const series = data.series[0];
+  const fields = series.fields || [];
+
+  let hasHighCardinality = false;
+  let hasLowCardinality = false;
+  let hasNullValues = false;
+
+  fields.forEach((field) => {
+    if (field.values && field.values.length > 0) {
+      const uniqueValues = new Set(field.values.toArray()).size;
+      const totalValues = field.values.length;
+
+      if (field.values.toArray().some((v) => v == null)) {
+        hasNullValues = true;
+      }
+
+      // cardinality
+      const uniqueRatio = uniqueValues / totalValues;
+      if (uniqueRatio > 0.8) {
+        hasHighCardinality = true;
+      } else if (uniqueRatio < 0.1) {
+        hasLowCardinality = true;
+      }
+    }
+  });
+
+  return {
+    fieldCount: fields.length,
+    hasHighCardinality,
+    hasLowCardinality,
+    hasNullValues,
+    fieldTypes: fields.map((f) => f.type.toString()),
+    fieldNames: fields.map((f) => f.name),
+    seriesCount: data.series.length,
+  };
+};
 
 function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
   const { dataSummary: ds } = builder;
   const hasLocationData = builder.data ? hasLocationFields(builder.data) : false;
 
-  if (ds.hasTimeField && ds.hasNumberField) {
-    if (ds.frameCount === 1 && ds.fieldCount === 2) {
-      const statList = builder.getListAppender<{}, {}>({
-        name: t('smart-suggestions.stat-panel', 'Stat Panel'),
-        pluginId: 'stat',
-        options: PANEL_CONFIGS.stat.options,
+  const dataProfile = analyzeDataCharacteristics(builder.data);
+
+  if (hasLocationData && ds.hasNumberField && !ds.hasTimeField && builder.data) {
+    const hasGeographicalContext = hasGeographicalContextData(builder.data);
+    if (hasGeographicalContext) {
+      const geomapList = builder.getListAppender<{}, {}>({
+        name: t('smart-suggestions.geomap', 'Geomap'),
+        pluginId: 'geomap',
+        options: PANEL_CONFIGS.geomap.options,
         fieldConfig: {
           defaults: { color: { mode: 'palette-classic' }, custom: {} },
           overrides: [],
         },
+        score: VisualizationSuggestionScore.Best,
       });
-      statList.append({
-        description: t('smart-suggestions.stat-panel-description', 'Perfect for displaying single metric values'),
+      geomapList.append({
+        description: t(
+          'smart-suggestions.geomap-description',
+          'Perfect for visualizing geographical data and location-based metrics'
+        ),
       });
     }
+  }
 
+  if (ds.hasTimeField && ds.hasNumberField) {
     const timeSeriesList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.time-series', 'Time Series'),
       pluginId: 'timeseries',
@@ -164,9 +257,31 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
       },
       score: VisualizationSuggestionScore.Best,
     });
+
+    const timeDescription =
+      dataProfile.fieldCount > 3
+        ? t('smart-suggestions.time-series-multi-description', 'Excellent for tracking multiple metrics over time')
+        : t('smart-suggestions.time-series-description', 'Ideal for visualizing trends and patterns over time');
+
     timeSeriesList.append({
-      description: t('smart-suggestions.time-series-description', 'Ideal for visualizing data over time'),
+      description: timeDescription,
     });
+
+    if (ds.frameCount === 1 && ds.fieldCount >= 2) {
+      const statList = builder.getListAppender<{}, {}>({
+        name: t('smart-suggestions.stat-panel', 'Current Values'),
+        pluginId: 'stat',
+        options: PANEL_CONFIGS.stat.options,
+        fieldConfig: {
+          defaults: { color: { mode: 'palette-classic' }, custom: {} },
+          overrides: [],
+        },
+        score: VisualizationSuggestionScore.Good,
+      });
+      statList.append({
+        description: t('smart-suggestions.stat-panel-description', 'Display the latest values from your time series'),
+      });
+    }
 
     const heatmapList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.heatmap', 'Heatmap'),
@@ -179,26 +294,11 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
       score: VisualizationSuggestionScore.OK,
     });
     heatmapList.append({
-      description: t('smart-suggestions.heatmap-description', 'Great for showing patterns in time-series data'),
+      description: t('smart-suggestions.heatmap-description', 'Discover patterns and correlations in time-based data'),
     });
   }
 
-  if (hasLocationData && ds.hasNumberField) {
-    const geomapList = builder.getListAppender<{}, {}>({
-      name: t('smart-suggestions.geomap', 'Geomap'),
-      pluginId: 'geomap',
-      options: PANEL_CONFIGS.geomap.options,
-      fieldConfig: {
-        defaults: { color: { mode: 'palette-classic' }, custom: {} },
-        overrides: [],
-      },
-    });
-    geomapList.append({
-      description: t('smart-suggestions.geomap-description', 'Best for location-based data visualization'),
-    });
-  }
-
-  if (ds.hasStringField && ds.hasNumberField) {
+  if (ds.hasStringField && ds.hasNumberField && !ds.hasTimeField) {
     const barChartList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.bar-chart', 'Bar Chart'),
       pluginId: 'barchart',
@@ -209,9 +309,22 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
       },
       score: VisualizationSuggestionScore.Best,
     });
+
+    const barDescription = dataProfile.hasLowCardinality
+      ? t(
+          'smart-suggestions.bar-chart-low-cardinality-description',
+          'Perfect for comparing values across your categories'
+        )
+      : t('smart-suggestions.bar-chart-description', 'Excellent for comparing values across categories');
+
     barChartList.append({
-      description: t('smart-suggestions.bar-chart-description', 'Excellent for comparing values across categories'),
+      description: barDescription,
     });
+
+    const pieScore =
+      dataProfile.hasLowCardinality && dataProfile.fieldCount <= 6
+        ? VisualizationSuggestionScore.Good
+        : VisualizationSuggestionScore.OK;
 
     const pieChartList = builder.getListAppender<{}, {}>({
       name: t('smart-suggestions.pie-chart', 'Pie Chart'),
@@ -221,16 +334,21 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
       },
-      score: VisualizationSuggestionScore.OK,
+      score: pieScore,
     });
+
+    const pieDescription = dataProfile.hasLowCardinality
+      ? t('smart-suggestions.pie-chart-description', 'Perfect for showing proportions and percentages')
+      : t('smart-suggestions.pie-chart-fallback-description', 'Show data distribution as proportions');
+
     pieChartList.append({
-      description: t('smart-suggestions.pie-chart-description', 'Perfect for showing proportions and percentages'),
+      description: pieDescription,
     });
   }
 
-  if (ds.hasNumberField && !ds.hasTimeField) {
+  if (ds.hasNumberField && !ds.hasTimeField && !ds.hasStringField) {
     const statNumericalList = builder.getListAppender<{}, {}>({
-      name: t('smart-suggestions.stat-panel-numerical', 'Stat Panel'),
+      name: t('smart-suggestions.stat-panel-numerical', 'Key Metrics'),
       pluginId: 'stat',
       options: PANEL_CONFIGS.stat.options,
       fieldConfig: {
@@ -239,26 +357,59 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
       },
       score: VisualizationSuggestionScore.Best,
     });
+
+    const statDescription =
+      dataProfile.fieldCount === 1
+        ? t('smart-suggestions.stat-single-description', 'Perfect for highlighting your key metric')
+        : t('smart-suggestions.stat-panel-numerical-description', 'Display your most important numerical values');
+
     statNumericalList.append({
-      description: t('smart-suggestions.stat-panel-numerical-description', 'Ideal for displaying numerical values'),
+      description: statDescription,
     });
+
+    if (dataProfile.fieldCount === 1) {
+      const gaugeList = builder.getListAppender<{}, {}>({
+        name: t('smart-suggestions.gauge', 'Gauge'),
+        pluginId: 'gauge',
+        options: PANEL_CONFIGS.gauge.options,
+        fieldConfig: {
+          defaults: { color: { mode: 'palette-classic' }, custom: {} },
+          overrides: [],
+        },
+        score: VisualizationSuggestionScore.Good,
+      });
+      gaugeList.append({
+        description: t('smart-suggestions.gauge-description', 'Show progress towards goals with visual thresholds'),
+      });
+    }
   }
 
-  if (ds.hasStringField || ds.hasNumberField) {
-    const tableList = builder.getListAppender<{}, {}>({
-      name: t('smart-suggestions.table', 'Table'),
-      pluginId: 'table',
-      options: PANEL_CONFIGS.table.options,
-      fieldConfig: {
-        defaults: { color: { mode: 'palette-classic' }, custom: {} },
-        overrides: [],
-      },
-      score: VisualizationSuggestionScore.OK,
-    });
-    tableList.append({
-      description: t('smart-suggestions.table-description', 'Comprehensive view of all your data'),
-    });
-  }
+  const tableScore =
+    dataProfile.hasHighCardinality || dataProfile.fieldCount > 5
+      ? VisualizationSuggestionScore.Best
+      : VisualizationSuggestionScore.Good;
+
+  const tableList = builder.getListAppender<{}, {}>({
+    name: t('smart-suggestions.table', 'Table'),
+    pluginId: 'table',
+    options: PANEL_CONFIGS.table.options,
+    fieldConfig: {
+      defaults: { color: { mode: 'palette-classic' }, custom: {} },
+      overrides: [],
+    },
+    score: tableScore,
+  });
+
+  const tableDescription = dataProfile.hasHighCardinality
+    ? t(
+        'smart-suggestions.table-high-cardinality-description',
+        'Best for exploring detailed data with many unique values'
+      )
+    : t('smart-suggestions.table-description', 'Comprehensive view with sorting and filtering capabilities');
+
+  tableList.append({
+    description: tableDescription,
+  });
 
   if (ds.hasStringField && !ds.hasNumberField && !ds.hasTimeField) {
     const logsList = builder.getListAppender<{}, {}>({
@@ -269,9 +420,13 @@ function addSmartSuggestions(builder: VisualizationSuggestionsBuilder) {
         defaults: { color: { mode: 'palette-classic' }, custom: {} },
         overrides: [],
       },
+      score: VisualizationSuggestionScore.Good,
     });
     logsList.append({
-      description: t('smart-suggestions.logs-description', 'Perfect for displaying text-based log data'),
+      description: t(
+        'smart-suggestions.logs-description',
+        'Ideal for displaying and searching through text-based log entries'
+      ),
     });
   }
 }
@@ -320,12 +475,13 @@ export async function getAllSuggestions(data?: PanelData, panel?: PanelModel): P
   });
 }
 
-export function getSmartSuggestions(data?: PanelData): VisualizationSuggestion[] {
+export const getSmartSuggestions = (data?: PanelData): VisualizationSuggestion[] => {
   if (!data || !data.series || data.series.length === 0) {
     return [];
   }
 
   const builder = new VisualizationSuggestionsBuilder(data);
   addSmartSuggestions(builder);
-  return builder.getList().slice(0, 4);
-}
+
+  return builder.getList();
+};

@@ -95,8 +95,8 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
                   <div className={styles.smartSuggestionsContainer}>
                     <div className={styles.filterRow}>
                       <div className={styles.infoText}>
-                        <Trans i18nKey="panel.visualization-suggestions.smart-suggestions">
-                          Smart suggestions (AI-powered)
+                        <Trans i18nKey="panel.visualization-suggestions.enhanced-suggestions">
+                          Enhanced suggestions
                         </Trans>
                       </div>
                       {assistantEnabled && (
@@ -107,27 +107,55 @@ export function VisualizationSuggestions({ searchQuery, onChange, data, panel, t
                             createAssistantContextItem('datasource', { datasourceUid: panel?.datasource?.uid || '' }),
                             createAssistantContextItem('structured', {
                               data: {
-                                name: t('smart-suggestions.context-name', 'Smart Panel Suggestions Context'),
-                                pageType: 'panel-suggestions',
+                                series: data.series,
+                                timeRange: data.timeRange,
+                                query: '',
+                                datasourceType: panel?.datasource?.type || '',
+                              },
+                            }),
+                            createAssistantContextItem('structured', {
+                              title: t('smart-suggestions.context-title', 'Panel suggestions analysis'),
+                              data: {
+                                pageType: 'panel-suggestions-analysis',
                                 dashboardTitle: panel?.title || 'New dashboard',
                                 dataCharacteristics: {
                                   seriesCount: data.series?.length || 0,
-                                  fieldTypes:
-                                    data.series
-                                      ?.map((s) => s.fields.map((f) => `${f.name}:${f.type}`).join(', '))
-                                      .join('; ') || 'No fields detected',
+                                  fieldCount: data.series?.[0]?.fields?.length || 0,
+                                  fieldTypes: data.series?.[0]?.fields?.map((f) => `${f.name}:${f.type}`) || [],
                                   hasTimeField:
                                     data.series?.some((s) => s.fields.some((f) => f.type === FieldType.time)) || false,
-                                  hasData: data.series && data.series.length > 0,
+                                  hasNumberField:
+                                    data.series?.some((s) => s.fields.some((f) => f.type === FieldType.number)) ||
+                                    false,
+                                  hasStringField:
+                                    data.series?.some((s) => s.fields.some((f) => f.type === FieldType.string)) ||
+                                    false,
+                                  hasLocationData:
+                                    data.series?.some((s) =>
+                                      s.fields.some((f) =>
+                                        [
+                                          'lat',
+                                          'lng',
+                                          'latitude',
+                                          'longitude',
+                                          'country',
+                                          'city',
+                                          'location',
+                                          'coordinates',
+                                        ].some((geo) => f.name.toLowerCase().includes(geo))
+                                      )
+                                    ) || false,
+                                  dataSize: data.series?.[0]?.length || 0,
                                 },
-                                currentSuggestions: smartSuggestions.map((s) => ({
+                                generatedSuggestions: smartSuggestions.map((s) => ({
                                   name: s.name,
                                   pluginId: s.pluginId,
                                   description: s.description,
+                                  score: s.score,
                                 })),
-                                suggestion: t(
+                                analysisRequest: t(
                                   'smart-suggestions.analysis-description',
-                                  'I can analyze your data characteristics and explain why these specific visualization suggestions were chosen.'
+                                  'Analyze these visualization suggestions and explain which one would be best for this data. Consider the data characteristics, field types, and use cases for each visualization type.'
                                 ),
                               },
                             }),
