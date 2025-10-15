@@ -1,226 +1,50 @@
 import { css } from '@emotion/css';
-import React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
 import { Badge, Button, Card, Icon, Stack, Text, useStyles2 } from '@grafana/ui';
 
-// Data for the charts
-const fatigueTrendData = {
-  current: [
-    { week: 1, value: 8500 },
-    { week: 2, value: 9200 },
-    { week: 3, value: 10100 },
-    { week: 4, value: 10800 },
-    { week: 5, value: 11300 },
-    { week: 6, value: 11100 },
-    { week: 7, value: 11645 },
-  ],
-  projected: [
-    { week: 7, value: 11645 },
-    { week: 8, value: 5200 },
-    { week: 9, value: 3600 },
-    { week: 10, value: 2500 },
-    { week: 11, value: 1900 },
-    { week: 12, value: 1750 },
-  ],
-  metrics: {
-    currentWeeklyAlerts: 11645,
-    projectedWeeklyAlerts: 1750,
-    potentialReduction: 85,
-  },
-};
-
-const timeline24hData = {
-  timeline: [
-    { hour: '00:00', infrastructure: 42, application: 18, database: 12, network: 8 },
-    { hour: '03:00', infrastructure: 45, application: 20, database: 14, network: 9 },
-    { hour: '06:00', infrastructure: 48, application: 22, database: 15, network: 10 },
-    { hour: '09:00', infrastructure: 85, application: 42, database: 28, network: 18 },
-    { hour: '12:00', infrastructure: 102, application: 58, database: 42, network: 32 },
-    { hour: '15:00', infrastructure: 95, application: 52, database: 38, network: 28 },
-    { hour: '18:00', infrastructure: 78, application: 38, database: 30, network: 20 },
-    { hour: '21:00', infrastructure: 55, application: 25, database: 18, network: 12 },
-  ],
-  peak: {
-    time: '12:00',
-    count: 234,
-  },
-};
-
-const alertsToFixData = {
-  alerts: [
-    {
-      id: 1,
-      name: 'cpu_usage_higher_than_90',
-      action: 'Refine',
-      actionColor: 'blue',
-      description: 'Adjust threshold to 95% and add 5-min sustained period',
-      firesPerWeek: 8314,
-      fatigueReduction: 85,
-    },
-    {
-      id: 2,
-      name: 'Golden IRM Demo - 963',
-      action: 'Delete',
-      actionColor: 'red',
-      description: 'Demo environment alert no longer needed',
-      firesPerWeek: 1452,
-      fatigueReduction: 72,
-    },
-    {
-      id: 3,
-      name: '[success-rate] frontend',
-      action: 'Dedupe',
-      actionColor: 'orange',
-      description: 'Merge with [latency] frontend-prod into single SLO alert',
-      firesPerWeek: 209,
-      fatigueReduction: 45,
-    },
-    {
-      id: 4,
-      name: '[latency] frontend-prod',
-      action: 'Dedupe',
-      actionColor: 'orange',
-      description: 'Consolidate with success-rate alert',
-      firesPerWeek: 92,
-      fatigueReduction: 38,
-    },
-    {
-      id: 5,
-      name: 'Ops Cluster Error log rate',
-      action: 'Refine',
-      actionColor: 'blue',
-      description: 'Filter out known benign errors from counting',
-      firesPerWeek: 76,
-      fatigueReduction: 65,
-    },
-  ],
-  totalReduction: 85,
-};
-
-const topNoiseSourcesData = {
-  sources: [
-    {
-      id: 1,
-      name: 'cpu_usage_higher_than_90',
-      displayName: 'cpu_us...',
-      currentFires: 8314,
-      reduction: 85,
-      trend: [180, 175, 185, 190, 195, 185, 180, 165, 150, 135, 120, 95],
-    },
-    {
-      id: 2,
-      name: 'Golden IRM Demo - 963',
-      displayName: 'Golden...',
-      currentFires: 1452,
-      reduction: 72,
-      trend: [35, 32, 38, 40, 42, 38, 35, 28, 22, 18, 12, 8],
-    },
-    {
-      id: 3,
-      name: '[success-rate] frontend',
-      displayName: '[succe...',
-      currentFires: 209,
-      reduction: 45,
-      trend: [8, 7, 9, 10, 11, 10, 9, 7, 6, 5, 4, 3],
-    },
-    {
-      id: 4,
-      name: '[latency] frontend-prod',
-      displayName: '[latenc...',
-      currentFires: 92,
-      reduction: 38,
-      trend: [4, 3, 5, 5, 6, 5, 4, 3, 3, 2, 2, 1],
-    },
-    {
-      id: 5,
-      name: 'Ops Cluster Error log rate',
-      displayName: 'Ops Cl...',
-      currentFires: 76,
-      reduction: 65,
-      trend: [3, 2, 3, 4, 4, 3, 3, 2, 2, 2, 1, 1],
-    },
-    {
-      id: 6,
-      name: 'webinar_pipeline_failure',
-      displayName: 'webina...',
-      currentFires: 62,
-      reduction: 55,
-      trend: [2, 2, 3, 3, 3, 2, 2, 2, 1, 1, 1, 1],
-    },
-    {
-      id: 7,
-      name: 'disk_usage_critical',
-      displayName: 'disk_u...',
-      currentFires: 58,
-      reduction: 48,
-      trend: [2, 2, 2, 3, 3, 2, 2, 2, 1, 1, 1, 1],
-    },
-    {
-      id: 8,
-      name: 'memory_leak_detection',
-      displayName: 'memor...',
-      currentFires: 47,
-      reduction: 52,
-      trend: [2, 1, 2, 2, 3, 2, 2, 1, 1, 1, 1, 0],
-    },
-    {
-      id: 9,
-      name: 'network_packet_loss',
-      displayName: 'networ...',
-      currentFires: 39,
-      reduction: 41,
-      trend: [1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 0, 0],
-    },
-    {
-      id: 10,
-      name: 'database_connection_pool',
-      displayName: 'databa...',
-      currentFires: 31,
-      reduction: 36,
-      trend: [1, 1, 1, 2, 2, 1, 1, 1, 1, 0, 0, 0],
-    },
-  ],
-};
-
-const alertsByCategoryData = {
-  categories: [
-    {
-      name: 'Infrastructure',
-      count: 3421,
-      percentage: 45,
-      color: '#FF6B6B',
-    },
-    {
-      name: 'Application',
-      count: 2156,
-      percentage: 28,
-      color: '#4ECDC4',
-    },
-    {
-      name: 'Database',
-      count: 1234,
-      percentage: 16,
-      color: '#9B59B6',
-    },
-    {
-      name: 'Network',
-      count: 834,
-      percentage: 11,
-      color: '#45B7D1',
-    },
-  ],
-  total: 7645,
-};
+// Import JSON data files
+import alertsByCategoryData from './noise-data/alerts-by-category.json';
+import alertsToFixData from './noise-data/alerts-to-fix.json';
+import fatigueTrendData from './noise-data/fatigue-trend.json';
+import timeline24hData from './noise-data/timeline-24h.json';
+import topNoiseSourcesData from './noise-data/top-noise-sources.json';
 
 export default function AlertNoise() {
   const styles = useStyles2(getStyles);
 
   return (
     <Stack direction="column" gap={3}>
+      {/* Alerts to Fix */}
+      <Card className={styles.chartCard} noMargin>
+        <Card.Heading>
+          <Stack direction="row" gap={1} alignItems="center" justifyContent="space-between">
+            <Stack direction="row" gap={1} alignItems="center">
+              <Icon name="wrench" />
+              <Text variant="h5">
+                <Trans i18nKey="alerting.alert-noise.alerts-to-fix.title">
+                  Alerts to Fix (Stack-Ranked by Impact)
+                </Trans>
+              </Text>
+            </Stack>
+            <Badge
+              text={t(
+                'alerting.alert-noise.alerts-to-fix.badge',
+                'Potential {{reduction}}% fatigue reduction',
+                { reduction: alertsToFixData.totalReduction }
+              )}
+              color="blue"
+            />
+          </Stack>
+        </Card.Heading>
+        <Card.Description className={styles.alertsToFixList}>
+        <AlertsToFixList data={alertsToFixData} />
+        </Card.Description>
+      </Card>
+
       {/* Alert Fatigue Trend Chart */}
-      <Card className={styles.chartCard}>
+      <Card className={styles.chartCard} noMargin>
         <Card.Heading>
           <Stack direction="row" gap={1} alignItems="center">
             <Icon name="chart-line" />
@@ -229,7 +53,9 @@ export default function AlertNoise() {
             </Text>
           </Stack>
         </Card.Heading>
+        <Card.Description>
         <FatigueTrendChart data={fatigueTrendData} />
+        </Card.Description>
       </Card>
 
       {/* Metrics Cards */}
@@ -255,47 +81,24 @@ export default function AlertNoise() {
       </Stack>
 
       {/* Timeline Chart */}
-      <Card className={styles.chartCard}>
+      <Card className={styles.chartCard} noMargin>
         <Card.Heading>
           <Stack direction="row" gap={1} alignItems="center">
             <Icon name="clock-nine" />
             <Text variant="h5">
               <Trans i18nKey="alerting.alert-noise.timeline.title">Timeline of When Alerts Fired (Last 24h)</Trans>
-        </Text>
+            </Text>
           </Stack>
         </Card.Heading>
+        <Card.Description>
         <TimelineChart data={timeline24hData} />
-      </Card>
-
-      {/* Alerts to Fix */}
-      <Card className={styles.chartCard}>
-        <Card.Heading>
-          <Stack direction="row" gap={1} alignItems="center" justifyContent="space-between">
-            <Stack direction="row" gap={1} alignItems="center">
-              <Icon name="wrench" />
-              <Text variant="h5">
-                <Trans i18nKey="alerting.alert-noise.alerts-to-fix.title">
-                  Alerts to Fix (Stack-Ranked by Impact)
-          </Trans>
-        </Text>
-            </Stack>
-            <Badge
-              text={t(
-                'alerting.alert-noise.alerts-to-fix.badge',
-                'Potential {{reduction}}% fatigue reduction',
-                { reduction: alertsToFixData.totalReduction }
-              )}
-              color="blue"
-            />
-          </Stack>
-        </Card.Heading>
-        <AlertsToFixList data={alertsToFixData} />
+        </Card.Description>
       </Card>
 
       {/* Bottom Row: Top Sources and Category Breakdown */}
       <Stack direction="row" gap={2}>
         <div className={styles.halfWidth}>
-          <Card className={styles.chartCard}>
+          <Card className={styles.chartCard} noMargin>
             <Card.Heading>
               <Stack direction="row" gap={1} alignItems="center">
                 <Icon name="fire" />
@@ -308,7 +111,7 @@ export default function AlertNoise() {
           </Card>
                 </div>
         <div className={styles.halfWidth}>
-          <Card className={styles.chartCard}>
+          <Card className={styles.chartCard} noMargin>
             <Card.Heading>
               <Stack direction="row" gap={1} alignItems="center">
                 <Icon name="info-circle" />
@@ -317,13 +120,15 @@ export default function AlertNoise() {
                 </Text>
               </Stack>
             </Card.Heading>
+            <Card.Description>
             <AlertsByCategoryChart data={alertsByCategoryData} />
+            </Card.Description>
           </Card>
         </div>
       </Stack>
 
       {/* Bottom Timeline */}
-      <Card className={styles.chartCard}>
+      <Card className={styles.chartCard} noMargin>
         <Card.Heading>
           <Stack direction="row" gap={1} alignItems="center">
             <Icon name="clock-nine" />
@@ -332,7 +137,9 @@ export default function AlertNoise() {
             </Text>
           </Stack>
         </Card.Heading>
+        <Card.Description>
         <TimelineChart data={timeline24hData} />
+        </Card.Description>
       </Card>
     </Stack>
   );
@@ -374,7 +181,7 @@ function FatigueTrendChart({ data }: FatigueTrendChartProps) {
 
   return (
     <div className={styles.chartContainer}>
-      <Stack direction="row" gap={2} justifyContent="flex-end" className={styles.chartLegend}>
+      <Stack direction="row" gap={2} justifyContent="flex-end">
         <Stack direction="row" gap={1} alignItems="center">
           <div className={styles.legendDot} style={{ backgroundColor: '#FF6B6B' }} />
           <Text variant="bodySmall">
@@ -410,16 +217,17 @@ function FatigueTrendChart({ data }: FatigueTrendChartProps) {
 
         {/* X-axis labels */}
         {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
-          <text
-            key={week}
-            x={xScale(week)}
-            y={chartHeight - padding.bottom + 20}
-            textAnchor="middle"
-            fill="#999"
-            fontSize="12"
-          >
-            Week {week} {week === 7 ? '(Now)' : ''}
-          </text>
+            <text
+              key={week}
+              x={xScale(week)}
+              y={chartHeight - padding.bottom + 20}
+              textAnchor="middle"
+              fill="#999"
+              fontSize="12"
+            >
+              <Trans i18nKey="alerting.alert-noise.fatigue-trend.week">Week {{ week }}</Trans>{' '}
+              {week === 7 ? <Trans i18nKey="alerting.alert-noise.fatigue-trend.now">(Now)</Trans> : ''}
+            </text>
         ))}
 
         {/* Y-axis label */}
@@ -461,7 +269,7 @@ function FatigueTrendChart({ data }: FatigueTrendChartProps) {
 }
 
 interface MetricCardProps {
-  icon: string;
+  icon: 'exclamation-circle' | 'chart-line' | 'arrow-down';
   title: string;
   value: string;
   color: 'red' | 'blue' | 'cyan';
@@ -476,17 +284,19 @@ function MetricCard({ icon, title, value, color }: MetricCardProps) {
   };
 
   return (
-    <Card className={styles.metricCard}>
+    <Card className={styles.metricCard} noMargin>
       <Stack direction="column" gap={1}>
         <Stack direction="row" gap={1} alignItems="center">
-          <Icon name={icon as any} style={{ color: colorMap[color] }} />
+          <div style={{ color: colorMap[color] }}>
+            <Icon name={icon} />
+          </div>
           <Text variant="bodySmall" color="secondary">
             {title}
           </Text>
         </Stack>
-        <Text variant="h3" style={{ color: colorMap[color] }}>
-          {value}
-        </Text>
+        <div style={{ color: colorMap[color] }}>
+          <Text variant="h3">{value}</Text>
+        </div>
       </Stack>
     </Card>
   );
@@ -518,9 +328,7 @@ function TimelineChart({ data }: TimelineChartProps) {
       <svg width={chartWidth} height={chartHeight} className={styles.svg}>
         {data.timeline.map((item, index) => {
           const x = padding.left + index * barWidth;
-          const total = item.infrastructure + item.application + item.database + item.network;
-
-          let currentY = padding.top + graphHeight;
+            let currentY = padding.top + graphHeight;
 
           // Stack bars from bottom to top
           const bars = [
@@ -559,12 +367,11 @@ function TimelineChart({ data }: TimelineChartProps) {
         })}
       </svg>
 
-      <Stack direction="row" gap={2} justifyContent="center" className={styles.timelineLegend}>
+      <Stack direction="row" gap={2} justifyContent="center">
         <Text variant="bodySmall">
-          {t('alerting.alert-noise.timeline.peak', 'Peak: {{count}} alerts at {{time}}', {
-            count: data.peak.count,
-            time: data.peak.time,
-          })}
+          <Trans i18nKey="alerting.alert-noise.timeline.peak-text">
+            Peak: {{ count: data.peak.count }} alerts at {{ time: data.peak.time }}
+          </Trans>
         </Text>
         <Stack direction="row" gap={2}>
           <Stack direction="row" gap={1} alignItems="center">
@@ -604,7 +411,7 @@ interface AlertsToFixListProps {
 function AlertsToFixList({ data }: AlertsToFixListProps) {
   const styles = useStyles2(getStyles);
 
-  const actionColors: Record<string, string> = {
+  const actionColors: Record<string, 'blue' | 'red' | 'green' | 'orange' | 'purple' | 'darkgrey' | 'brand'> = {
     Refine: 'blue',
     Delete: 'red',
     Dedupe: 'orange',
@@ -613,14 +420,15 @@ function AlertsToFixList({ data }: AlertsToFixListProps) {
   return (
     <Stack direction="column" gap={2}>
       {data.alerts.map((alert) => (
-        <Card key={alert.id} className={styles.alertCard}>
+        <Card key={alert.id} className={styles.alertCard} noMargin>
+          <Card.Description>
           <Stack direction="row" gap={2} alignItems="flex-start" justifyContent="space-between">
-            <Stack direction="row" gap={2} alignItems="flex-start" style={{ flex: 1 }}>
+            <Stack direction="row" gap={2} alignItems="flex-start" grow={1}>
               <div className={styles.alertRank}>{alert.id}</div>
-              <Stack direction="column" gap={1} style={{ flex: 1 }}>
+              <Stack direction="column" gap={1} grow={1}>
                 <Stack direction="row" gap={1} alignItems="center">
                   <Text variant="h6">{alert.name}</Text>
-                  <Badge text={alert.action} color={actionColors[alert.action] as any} />
+                  <Badge text={alert.action} color={actionColors[alert.action]} />
                 </Stack>
                 <Text variant="bodySmall" color="secondary">
                   {alert.description}
@@ -628,13 +436,23 @@ function AlertsToFixList({ data }: AlertsToFixListProps) {
                 <Stack direction="row" gap={2} alignItems="center">
                   <Stack direction="row" gap={1} alignItems="center">
                     <Icon name="exclamation-circle" size="sm" />
-                    <Text variant="bodySmall">{alert.firesPerWeek} fires/week</Text>
+                    <Text variant="bodySmall">
+                      <Trans i18nKey="alerting.alert-noise.alerts-to-fix.fires-per-week">
+                        {{ fires: alert.firesPerWeek }} fires/week
+                      </Trans>
+                    </Text>
                   </Stack>
                   <Stack direction="row" gap={1} alignItems="center">
-                    <Icon name="arrow-down" size="sm" style={{ color: '#4ECDC4' }} />
-                    <Text variant="bodySmall" style={{ color: '#4ECDC4' }}>
-                      {alert.fatigueReduction}% team fatigue reduction
-                    </Text>
+                    <div style={{ color: '#4ECDC4' }}>
+                      <Icon name="arrow-down" size="sm" />
+                    </div>
+                    <div style={{ color: '#4ECDC4' }}>
+                      <Text variant="bodySmall">
+                        <Trans i18nKey="alerting.alert-noise.alerts-to-fix.reduction">
+                          {{ reduction: alert.fatigueReduction }}% team fatigue reduction
+                        </Trans>
+                      </Text>
+                    </div>
                   </Stack>
                 </Stack>
               </Stack>
@@ -643,6 +461,7 @@ function AlertsToFixList({ data }: AlertsToFixListProps) {
               <Trans i18nKey="alerting.alert-noise.alerts-to-fix.ask-assistant">Ask Assistant</Trans>
             </Button>
           </Stack>
+          </Card.Description>
         </Card>
       ))}
     </Stack>
@@ -659,9 +478,9 @@ function TopNoiseSourcesList({ data }: TopNoiseSourcesListProps) {
   return (
     <Stack direction="column" gap={1}>
       {/* Header Row */}
-      <Stack direction="row" gap={2} alignItems="center" className={styles.noiseSourceHeader}>
-        <div className={styles.sourceRank}></div>
-        <div className={styles.sourceName}></div>
+      <Stack direction="row" gap={2} alignItems="center">
+        <div className={styles.sourceRank} />
+        <div className={styles.sourceName} />
         <div className={styles.sparklineContainer}>
           <Stack direction="row" gap={2} justifyContent="space-around">
             <Text variant="bodySmall" color="secondary">
@@ -675,31 +494,37 @@ function TopNoiseSourcesList({ data }: TopNoiseSourcesListProps) {
             </Text>
           </Stack>
         </div>
-        <div className={styles.sourceFires}></div>
-        <div className={styles.sourceReduction}></div>
+        <div className={styles.sourceFires} />
+        <div className={styles.sourceReduction} />
       </Stack>
 
       {/* Data Rows */}
       {data.sources.map((source, index) => (
-        <Stack key={source.id} direction="row" gap={2} alignItems="center" className={styles.noiseSourceRow}>
-          <Text variant="bodySmall" color="secondary" className={styles.sourceRank}>
-            #{index + 1}
-          </Text>
-          <Text variant="bodySmall" className={styles.sourceName}>
-            {source.displayName}
-          </Text>
+        <Stack key={source.id} direction="row" gap={2} alignItems="center">
+          <div className={styles.sourceRank}>
+            <Text variant="bodySmall" color="secondary">
+              #{index + 1}
+            </Text>
+          </div>
+          <div className={styles.sourceName}>
+            <Text variant="bodySmall">{source.displayName}</Text>
+          </div>
           <div className={styles.sparklineContainer}>
             <Sparkline data={source.trend} />
           </div>
-          <Text variant="bodySmall" className={styles.sourceFires}>
-            {source.currentFires}
-          </Text>
-          <Stack direction="row" gap={0} alignItems="center" className={styles.sourceReduction}>
-            <Icon name="arrow-down" size="sm" style={{ color: '#4ECDC4' }} />
-            <Text variant="bodySmall" style={{ color: '#4ECDC4' }}>
-              {source.reduction}%
-            </Text>
-          </Stack>
+          <div className={styles.sourceFires}>
+            <Text variant="bodySmall">{source.currentFires}</Text>
+          </div>
+          <div className={styles.sourceReduction}>
+            <Stack direction="row" gap={0} alignItems="center">
+              <div style={{ color: '#4ECDC4' }}>
+                <Icon name="arrow-down" size="sm" />
+              </div>
+              <div style={{ color: '#4ECDC4' }}>
+                <Text variant="bodySmall">{source.reduction}%</Text>
+              </div>
+            </Stack>
+          </div>
         </Stack>
       ))}
     </Stack>
@@ -749,7 +574,6 @@ interface AlertsByCategoryChartProps {
 
 function AlertsByCategoryChart({ data }: AlertsByCategoryChartProps) {
   const styles = useStyles2(getStyles);
-  const maxBarWidth = 600;
 
   return (
     <Stack direction="column" gap={2}>
@@ -800,29 +624,29 @@ const getStyles = (theme: GrafanaTheme2) => ({
   svg: css({
     display: 'block',
   }),
-  chartLegend: css({
-    marginBottom: theme.spacing(2),
-  }),
   legendDot: css({
     width: '12px',
     height: '12px',
-    borderRadius: '50%',
-  }),
-  timelineLegend: css({
-    marginTop: theme.spacing(2),
+    borderRadius: theme.shape.radius.circle,
   }),
   metricCard: css({
     flex: 1,
     padding: theme.spacing(2),
   }),
+  metricValue: css({
+    display: 'inline',
+  }),
   alertCard: css({
     padding: theme.spacing(2),
     backgroundColor: theme.colors.background.secondary,
+    h2: css({
+      display: 'none',
+    }),
   }),
   alertRank: css({
     width: theme.spacing(4),
     height: theme.spacing(4),
-    borderRadius: '50%',
+    borderRadius: theme.shape.radius.circle,
     backgroundColor: theme.colors.background.canvas,
     display: 'flex',
     alignItems: 'center',
@@ -832,15 +656,6 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   halfWidth: css({
     flex: 1,
-  }),
-  noiseSourceHeader: css({
-    padding: theme.spacing(1, 0),
-    borderBottom: `1px solid ${theme.colors.border.weak}`,
-    marginBottom: theme.spacing(1),
-  }),
-  noiseSourceRow: css({
-    padding: theme.spacing(1, 0),
-    borderBottom: `1px solid ${theme.colors.border.weak}`,
   }),
   sourceRank: css({
     width: theme.spacing(4),
@@ -875,11 +690,14 @@ const getStyles = (theme: GrafanaTheme2) => ({
   }),
   categoryBarFill: css({
     height: '100%',
-    transition: 'width 0.3s ease',
   }),
   totalAlerts: css({
     marginTop: theme.spacing(2),
     paddingTop: theme.spacing(2),
     borderTop: `2px solid ${theme.colors.border.medium}`,
+  }),
+  alertsToFixList: css({
+    marginTop: '10px',
+    padding: theme.spacing(2),
   }),
 });
