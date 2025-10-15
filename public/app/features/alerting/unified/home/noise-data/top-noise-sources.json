@@ -1,0 +1,214 @@
+{
+  "sources": [
+    {
+      "id": 1,
+      "name": "cpu_usage_higher_than_90",
+      "displayName": "cpu_us...",
+      "currentFires": 8314,
+      "reduction": 85,
+      "trend": [
+        180,
+        175,
+        185,
+        190,
+        195,
+        185,
+        180,
+        165,
+        150,
+        135,
+        120,
+        95
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Golden IRM Demo - 963",
+      "displayName": "Golden...",
+      "currentFires": 1452,
+      "reduction": 72,
+      "trend": [
+        35,
+        32,
+        38,
+        40,
+        42,
+        38,
+        35,
+        28,
+        22,
+        18,
+        12,
+        8
+      ]
+    },
+    {
+      "id": 3,
+      "name": "[success-rate] frontend",
+      "displayName": "[succe...",
+      "currentFires": 209,
+      "reduction": 45,
+      "trend": [
+        8,
+        7,
+        9,
+        10,
+        11,
+        10,
+        9,
+        7,
+        6,
+        5,
+        4,
+        3
+      ]
+    },
+    {
+      "id": 4,
+      "name": "[latency] frontend-prod",
+      "displayName": "[latenc...",
+      "currentFires": 92,
+      "reduction": 38,
+      "trend": [
+        4,
+        3,
+        5,
+        5,
+        6,
+        5,
+        4,
+        3,
+        3,
+        2,
+        2,
+        1
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Ops Cluster Error log rate",
+      "displayName": "Ops Cl...",
+      "currentFires": 76,
+      "reduction": 65,
+      "trend": [
+        3,
+        2,
+        3,
+        4,
+        4,
+        3,
+        3,
+        2,
+        2,
+        2,
+        1,
+        1
+      ]
+    },
+    {
+      "id": 6,
+      "name": "webinar_pipeline_failure",
+      "displayName": "webina...",
+      "currentFires": 62,
+      "reduction": 55,
+      "trend": [
+        2,
+        2,
+        3,
+        3,
+        3,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": 7,
+      "name": "disk_usage_critical",
+      "displayName": "disk_u...",
+      "currentFires": 58,
+      "reduction": 48,
+      "trend": [
+        2,
+        2,
+        2,
+        3,
+        3,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    {
+      "id": 8,
+      "name": "memory_leak_detection",
+      "displayName": "memor...",
+      "currentFires": 47,
+      "reduction": 52,
+      "trend": [
+        2,
+        1,
+        2,
+        2,
+        3,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        0
+      ]
+    },
+    {
+      "id": 9,
+      "name": "network_packet_loss",
+      "displayName": "networ...",
+      "currentFires": 39,
+      "reduction": 41,
+      "trend": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0
+      ]
+    },
+    {
+      "id": 10,
+      "name": "database_connection_pool",
+      "displayName": "databa...",
+      "currentFires": 31,
+      "reduction": 36,
+      "trend": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

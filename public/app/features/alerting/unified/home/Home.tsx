@@ -7,6 +7,7 @@ import { AlertingPageWrapper } from '../components/AlertingPageWrapper';
 import { isLocalDevEnv } from '../utils/misc';
 import { withPageErrorBoundary } from '../withPageErrorBoundary';
 
+import AlertNoise from './AlertNoise';
 import GettingStarted, { WelcomeHeader } from './GettingStarted';
 import IRMCard from './IRMCard';
 import { getInsightsScenes, insightsIsAvailable } from './Insights';
@@ -16,7 +17,9 @@ import SyntheticMonitoringCard from './SyntheticMonitoringCard';
 function Home() {
   const insightsEnabled = insightsIsAvailable() || isLocalDevEnv();
 
-  const [activeTab, setActiveTab] = useState<'insights' | 'overview'>(insightsEnabled ? 'insights' : 'overview');
+  const [activeTab, setActiveTab] = useState<'insights' | 'alert-noise' | 'overview'>(
+    insightsEnabled ? 'insights' : 'overview'
+  );
   const insightsScene = getInsightsScenes();
 
   return (
@@ -42,6 +45,12 @@ function Home() {
             />
           )}
           <Tab
+            key="alert-noise"
+            label={t('alerting.home.label-alert-noise', 'Alert Noise')}
+            active={activeTab === 'alert-noise'}
+            onChangeTab={() => setActiveTab('alert-noise')}
+          />
+          <Tab
             key="overview"
             label={t('alerting.home.label-get-started', 'Get started')}
             active={activeTab === 'overview'}
@@ -50,6 +59,7 @@ function Home() {
         </TabsBar>
         <TabContent>
           {activeTab === 'insights' && <insightsScene.Component model={insightsScene} />}
+          {activeTab === 'alert-noise' && <AlertNoise />}
           {activeTab === 'overview' && <GettingStarted />}
         </TabContent>
       </Box>

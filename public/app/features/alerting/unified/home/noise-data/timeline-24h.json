@@ -1,0 +1,64 @@
+{
+  "timeline": [
+    {
+      "hour": "00:00",
+      "infrastructure": 42,
+      "application": 18,
+      "database": 12,
+      "network": 8
+    },
+    {
+      "hour": "03:00",
+      "infrastructure": 45,
+      "application": 20,
+      "database": 14,
+      "network": 9
+    },
+    {
+      "hour": "06:00",
+      "infrastructure": 48,
+      "application": 22,
+      "database": 15,
+      "network": 10
+    },
+    {
+      "hour": "09:00",
+      "infrastructure": 85,
+      "application": 42,
+      "database": 28,
+      "network": 18
+    },
+    {
+      "hour": "12:00",
+      "infrastructure": 102,
+      "application": 58,
+      "database": 42,
+      "network": 32
+    },
+    {
+      "hour": "15:00",
+      "infrastructure": 95,
+      "application": 52,
+      "database": 38,
+      "network": 28
+    },
+    {
+      "hour": "18:00",
+      "infrastructure": 78,
+      "application": 38,
+      "database": 30,
+      "network": 20
+    },
+    {
+      "hour": "21:00",
+      "infrastructure": 55,
+      "application": 25,
+      "database": 18,
+      "network": 12
+    }
+  ],
+  "peak": {
+    "time": "12:00",
+    "count": 234
+  }
+}

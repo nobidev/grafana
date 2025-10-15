@@ -1,0 +1,63 @@
+{
+  "current": [
+    {
+      "week": 1,
+      "value": 8500
+    },
+    {
+      "week": 2,
+      "value": 9200
+    },
+    {
+      "week": 3,
+      "value": 10100
+    },
+    {
+      "week": 4,
+      "value": 10800
+    },
+    {
+      "week": 5,
+      "value": 11300
+    },
+    {
+      "week": 6,
+      "value": 11100
+    },
+    {
+      "week": 7,
+      "value": 11645
+    }
+  ],
+  "projected": [
+    {
+      "week": 7,
+      "value": 11645
+    },
+    {
+      "week": 8,
+      "value": 5200
+    },
+    {
+      "week": 9,
+      "value": 3600
+    },
+    {
+      "week": 10,
+      "value": 2500
+    },
+    {
+      "week": 11,
+      "value": 1900
+    },
+    {
+      "week": 12,
+      "value": 1750
+    }
+  ],
+  "metrics": {
+    "currentWeeklyAlerts": 11645,
+    "projectedWeeklyAlerts": 1750,
+    "potentialReduction": 85
+  }
+}

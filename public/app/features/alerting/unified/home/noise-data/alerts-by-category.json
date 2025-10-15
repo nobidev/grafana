@@ -1,0 +1,29 @@
+{
+  "categories": [
+    {
+      "name": "Infrastructure",
+      "count": 3421,
+      "percentage": 45,
+      "color": "#FF6B6B"
+    },
+    {
+      "name": "Application",
+      "count": 2156,
+      "percentage": 28,
+      "color": "#4ECDC4"
+    },
+    {
+      "name": "Database",
+      "count": 1234,
+      "percentage": 16,
+      "color": "#9B59B6"
+    },
+    {
+      "name": "Network",
+      "count": 834,
+      "percentage": 11,
+      "color": "#45B7D1"
+    }
+  ],
+  "total": 7645
+}

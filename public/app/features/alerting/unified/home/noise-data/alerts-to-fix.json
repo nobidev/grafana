@@ -1,0 +1,50 @@
+{
+  "alerts": [
+    {
+      "id": 1,
+      "name": "cpu_usage_higher_than_90",
+      "action": "Refine",
+      "actionColor": "blue",
+      "description": "Adjust threshold to 95% and add 5-min sustained period",
+      "firesPerWeek": 8314,
+      "fatigueReduction": 85
+    },
+    {
+      "id": 2,
+      "name": "Golden IRM Demo - 963",
+      "action": "Delete",
+      "actionColor": "red",
+      "description": "Demo environment alert no longer needed",
+      "firesPerWeek": 1452,
+      "fatigueReduction": 72
+    },
+    {
+      "id": 3,
+      "name": "[success-rate] frontend",
+      "action": "Dedupe",
+      "actionColor": "orange",
+      "description": "Merge with [latency] frontend-prod into single SLO alert",
+      "firesPerWeek": 209,
+      "fatigueReduction": 45
+    },
+    {
+      "id": 4,
+      "name": "[latency] frontend-prod",
+      "action": "Dedupe",
+      "actionColor": "orange",
+      "description": "Consolidate with success-rate alert",
+      "firesPerWeek": 92,
+      "fatigueReduction": 38
+    },
+    {
+      "id": 5,
+      "name": "Ops Cluster Error log rate",
+      "action": "Refine",
+      "actionColor": "blue",
+      "description": "Filter out known benign errors from counting",
+      "firesPerWeek": 76,
+      "fatigueReduction": 65
+    }
+  ],
+  "totalReduction": 85
+}
