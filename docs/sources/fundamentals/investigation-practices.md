@@ -143,10 +143,9 @@ Increased database connection pool size to 100 and enabled connection pool monit
 
 ## Follow-up actions
 
-- [ ] Review connection pool sizing for all services
-- [ ] Create alert for connection pool utilization > 80%
-- [ ] Update capacity planning documentation
-```
+- Review connection pool sizing for all services
+- Create alert for connection pool utilization > 80%
+- Update capacity planning documentation
 
 ## Severity levels
 
@@ -437,7 +436,6 @@ Use this runbook when API response times exceed 2 seconds and CPU > 80%.
 
 ## Rollback
 If issues occur, scale back to original replica count immediately.
-```
 
 ### Query library
 
@@ -482,7 +480,6 @@ sum by (endpoint) (rate(http_requests_total[5m]))
 **Follow-up queries**:
 - Error details: `{endpoint="<ENDPOINT>"} |= "error"`
 - Response times: `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{endpoint="<ENDPOINT>"}[5m]))`
-```
 
 ### Dashboard library
 
