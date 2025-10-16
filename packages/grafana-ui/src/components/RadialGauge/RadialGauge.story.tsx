@@ -21,6 +21,7 @@ interface StoryProps extends RadialGaugeProps {
   sparkline: boolean;
   colorScheme: FieldColorModeId;
   decimals: number;
+  unit?: string;
 }
 
 const meta: Meta<StoryProps> = {
@@ -75,6 +76,7 @@ const meta: Meta<StoryProps> = {
       ],
     },
     decimals: { control: { type: 'range', min: 0, max: 7 } },
+    unit: { control: { type: 'text' } },
   },
 };
 
@@ -378,6 +380,7 @@ interface ExampleProps {
   colorScheme?: FieldColorModeId;
   decimals?: number;
   showScaleLabels?: boolean;
+  unit: string;
 }
 
 export function RadialGaugeExample({
@@ -405,6 +408,7 @@ export function RadialGaugeExample({
   colorScheme = FieldColorModeId.Thresholds,
   decimals = 0,
   showScaleLabels,
+  unit,
 }: ExampleProps) {
   const theme = useTheme2();
 
@@ -432,7 +436,7 @@ export function RadialGaugeExample({
         config: {
           min: min,
           max: max,
-          unit: 'percent',
+          unit: unit ?? 'percent',
           decimals: decimals,
           color: { mode: colorScheme, fixedColor: color ? theme.visualization.getColorByName(color) : undefined },
           thresholds: {

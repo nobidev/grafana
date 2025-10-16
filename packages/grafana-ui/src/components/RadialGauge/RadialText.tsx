@@ -51,10 +51,12 @@ export function RadialText({
   }
 
   const nameToAlignTo = (alignmentFactors ? alignmentFactors.title : displayValue.title) ?? '';
-  const valueToAlignTo = formattedValueToString(alignmentFactors ? alignmentFactors : displayValue);
+  const valueToAlignTo = formattedValueToString(alignmentFactors ? alignmentFactors : { ...displayValue, suffix: '' });
 
-  const showValue = textMode === 'value' || textMode === 'value_and_name';
-  const showName = textMode === 'name' || textMode === 'value_and_name';
+  const nameAboveUnitBelow = textMode === 'name_value_unit';
+
+  const showValue = textMode === 'value' || textMode === 'value_and_name' || textMode === 'name_value_unit';
+  const showName = textMode === 'name' || textMode === 'value_and_name' || textMode === 'name_value_unit';
   const maxTextWidth = radius * 2 - barWidth - radius / 7;
 
   // Not sure where this comes from but svg text is not using body line-height
@@ -98,46 +100,74 @@ export function RadialText({
   const valueHeight = valueFontSize * lineHeight;
   const nameHeight = nameFontSize * lineHeight;
 
-  const valueY = showName ? centerY - nameHeight / 2 : centerY;
-  const nameY = showValue ? valueY + valueHeight * 0.7 : centerY;
-  const nameColor = showValue ? theme.colors.text.secondary : theme.colors.text.primary;
-  const suffixShift = (valueFontSize - unitFontSize * 1.2) / 2;
+  function calculateTextPosition() {
+    // If name above value and unit below value
+    if (nameAboveUnitBelow) {
+      const nameY = centerY - nameHeight - valueHeight / 1.7;
+      const valueY = centerY - valueHeight / 5;
+      const unitY = valueY + valueHeight / 1.2;
+      return { nameY, valueY, unitY };
+    }
 
-  // For gauge shape we shift text up a bit
-  const valueDy = shape === 'gauge' ? -valueFontSize * 0.3 : 0;
-  const nameDy = shape === 'gauge' ? -nameFontSize * 0.7 : 0;
+    const valueY = showName ? centerY - nameHeight / 2 : centerY;
+    const nameY = showValue ? valueY + valueHeight * 0.7 : centerY;
+
+    // For gauge shape we shift text up a bit
+    const valueDy = shape === 'gauge' ? -valueFontSize * 0.3 : 0;
+    const nameDy = shape === 'gauge' ? -nameFontSize * 0.7 : 0;
+
+    return { valueY, nameY, valueDy, nameDy };
+  }
+
+  const layout = calculateTextPosition();
+  const suffixShift = (valueFontSize - unitFontSize * lineHeight) / 2;
+  const nameColor = showValue ? theme.colors.text.secondary : theme.colors.text.primary;
 
   return (
     <g>
       {showValue && (
         <text
           x={centerX}
-          y={valueY}
+          y={layout.valueY}
           fontSize={valueFontSize}
           fill={theme.colors.text.primary}
           className={styles.text}
           textAnchor="middle"
           dominantBaseline="middle"
-          dy={valueDy}
+          dy={layout.valueDy}
         >
           <tspan fontSize={unitFontSize}>{displayValue.prefix ?? ''}</tspan>
           <tspan>{displayValue.text}</tspan>
-          <tspan className={styles.text} fontSize={unitFontSize} dy={suffixShift}>
-            {displayValue.suffix ?? ''}
-          </tspan>
+          {!nameAboveUnitBelow && (
+            <tspan className={styles.text} fontSize={unitFontSize} dy={suffixShift}>
+              {displayValue.suffix ?? ''}
+            </tspan>
+          )}
         </text>
       )}
       {showName && (
         <text
           fontSize={nameFontSize}
           x={centerX}
-          y={nameY}
-          dy={nameDy}
+          y={layout.nameY}
+          dy={layout.nameDy}
           textAnchor="middle"
           dominantBaseline="middle"
           fill={nameColor}
         >
           {displayValue.title}
+        </text>
+      )}
+      {nameAboveUnitBelow && (
+        <text
+          fontSize={unitFontSize}
+          x={centerX}
+          y={layout.unitY}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={nameColor}
+        >
+          {displayValue.suffix ?? ''}
         </text>
       )}
     </g>

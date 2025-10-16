@@ -67,7 +67,7 @@ export interface RadialGaugeProps {
 }
 
 export type RadialGradientMode = 'none' | 'auto';
-export type RadialTextMode = 'auto' | 'value_and_name' | 'value' | 'name' | 'none';
+export type RadialTextMode = 'auto' | 'value_and_name' | 'name_value_unit' | 'value' | 'name' | 'none';
 export type RadialShape = 'circle' | 'gauge';
 
 export function RadialGauge(props: RadialGaugeProps) {
