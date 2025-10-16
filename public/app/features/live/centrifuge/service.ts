@@ -3,6 +3,7 @@ import {
   ConnectedContext,
   ConnectingContext,
   DisconnectedContext,
+  ErrorContext,
   ServerPublicationContext,
   State,
 } from 'centrifuge';
@@ -106,11 +107,18 @@ export class CentrifugeService implements CentrifugeSrv {
     this.centrifuge.on('connecting', this.onDisconnect);
     this.centrifuge.on('disconnected', this.onDisconnect);
     this.centrifuge.on('publication', this.onServerSideMessage);
+    this.centrifuge.on('error', this.onError);
   }
 
   //----------------------------------------------------------
   // Internal functions
   //----------------------------------------------------------
+
+  private onError = (context: ErrorContext) => {
+    // TODO?? when 401 error, we either need to show a clear error message
+    // or redirect to the /login page
+    console.warn('Grafana Live ERROR', context);
+  };
 
   private onConnect = (context: ConnectedContext) => {
     this.connectionState.next(true);
