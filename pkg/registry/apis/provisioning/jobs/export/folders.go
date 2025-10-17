@@ -15,8 +15,17 @@ import (
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning/resources"
 )
 
+func ExportFolders(ctx context.Context, repoName string, options provisioning.ExportJobOptions, clients resources.ResourceClients, repositoryResources resources.RepositoryResources, progress jobs.JobProgressRecorder) error {
+	folderClient, err := clients.Folder(ctx)
+	if err != nil {
+		return err
+	}
+
+	return exportFolders(ctx, repoName, options, folderClient, repositoryResources, progress)
+}
+
 // ExportFolders will load the full folder tree into memory and update the repositoryResources tree
-func ExportFolders(ctx context.Context, repoName string, options provisioning.ExportJobOptions, folderClient dynamic.ResourceInterface, repositoryResources resources.RepositoryResources, progress jobs.JobProgressRecorder) error {
+func exportFolders(ctx context.Context, repoName string, options provisioning.ExportJobOptions, folderClient dynamic.ResourceInterface, repositoryResources resources.RepositoryResources, progress jobs.JobProgressRecorder) error {
 	// Load and write all folders
 	// FIXME: we load the entire tree in memory
 	progress.SetMessage(ctx, "read folder tree from API server")

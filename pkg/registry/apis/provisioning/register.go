@@ -714,7 +714,7 @@ func (b *APIBuilder) GetPostStartHooks() (map[string]genericapiserver.PostStartH
 				b.legacyMigrator,
 				signerFactory,
 				b.clients,
-				export.ExportAll,
+				export.ExportFolders,
 			)
 			storageSwapper := migrate.NewStorageSwapper(b.unified, b.storageStatus)
 			legacyMigrator := migrate.NewLegacyMigrator(

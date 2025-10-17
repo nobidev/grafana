@@ -9,14 +9,12 @@ import (
 )
 
 func ExportAll(ctx context.Context, repoName string, options provisioning.ExportJobOptions, clients resources.ResourceClients, repositoryResources resources.RepositoryResources, progress jobs.JobProgressRecorder) error {
-	// FIXME: should we sign with grafana user?
-
 	folderClient, err := clients.Folder(ctx)
 	if err != nil {
 		return err
 	}
 
-	if err := ExportFolders(ctx, repoName, options, folderClient, repositoryResources, progress); err != nil {
+	if err := exportFolders(ctx, repoName, options, folderClient, repositoryResources, progress); err != nil {
 		return err
 	}
 
