@@ -26,7 +26,7 @@ func TestService_IsDisabled(t *testing.T) {
 		&setting.Cfg{
 			PreinstallPluginsAsync: []setting.InstallPlugin{{ID: "myplugin"}},
 		},
-		pluginstore.New(registry.NewInMemory(), &fakes.FakeLoader{}),
+		pluginstore.New(registry.NewInMemory(), &fakes.FakeLoader{}, &fakes.FakeSourceRegistry{}),
 		&fakes.FakePluginInstaller{},
 		prometheus.NewRegistry(),
 		&fakes.FakePluginRepo{},
@@ -144,6 +144,12 @@ func TestService_Run(t *testing.T) {
 			pluginsToInstallSync: []setting.InstallPlugin{{ID: "myplugin"}},
 			pluginsToInstall:     []setting.InstallPlugin{{ID: "myplugin2"}},
 		},
+		{
+			name:                 "should install a plugin with a URL regardless of versioning",
+			shouldInstall:        true,
+			pluginsToInstallSync: []setting.InstallPlugin{{ID: "our-plugin-datasource", URL: "https://s3.our.domain/grafana-plugins/our-plugin-datasource-1.2.1+linux.zip"}},
+			existingPlugins:      []*plugins.Plugin{{JSONData: plugins.JSONData{ID: "our-plugin-datasource", Info: plugins.Info{Version: "1.2.2"}}}},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -154,12 +160,14 @@ func TestService_Run(t *testing.T) {
 			}
 			installed := 0
 			installedFromURL := 0
+			store, err := pluginstore.NewPluginStoreForTest(preg, &fakes.FakeLoader{}, &fakes.FakeSourceRegistry{})
+			require.NoError(t, err)
 			s, err := ProvideService(
 				&setting.Cfg{
 					PreinstallPluginsAsync: tt.pluginsToInstall,
 					PreinstallPluginsSync:  tt.pluginsToInstallSync,
 				},
-				pluginstore.New(preg, &fakes.FakeLoader{}),
+				store,
 				&fakes.FakePluginInstaller{
 					AddFunc: func(ctx context.Context, pluginID string, version string, opts plugins.AddOpts) error {
 						for _, plugin := range tt.pluginsToFail {
@@ -197,12 +205,25 @@ func TestService_Run(t *testing.T) {
 					&pluginchecker.FakePluginPreinstall{},
 				),
 			)
+			require.NoError(t, err)
+
+			t.Cleanup(func() {
+				s.StopAsync()
+				err := s.AwaitTerminated(context.Background())
+				if tt.shouldThrowError {
+					require.ErrorContains(t, err, "Failed to install plugin")
+					return
+				}
+				require.NoError(t, err)
+			})
+
+			err = s.StartAsync(context.Background())
+			require.NoError(t, err)
+			err = s.AwaitRunning(context.Background())
 			if tt.shouldThrowError {
 				require.ErrorContains(t, err, "Failed to install plugin")
 				return
 			}
-			require.NoError(t, err)
-			err = s.Run(context.Background())
 			require.NoError(t, err)
 
 			if tt.shouldInstall {
@@ -226,6 +247,7 @@ func TestService_Run(t *testing.T) {
 						expectedInstalled++
 					}
 				}
+				<-s.installComplete
 				require.Equal(t, expectedInstalled, installed)
 				require.Equal(t, expectedInstalledFromURL, installedFromURL)
 			}

@@ -8,7 +8,7 @@ import { Trans, t } from '@grafana/i18n';
 import { Card, FilterInput, Icon, Pagination, Select, Stack, TagList, useStyles2 } from '@grafana/ui';
 import { DEFAULT_PER_PAGE_PAGINATION } from 'app/core/constants';
 import { getQueryParamValue } from 'app/core/utils/query';
-import { FolderDTO } from 'app/types';
+import { FolderDTO } from 'app/types/folders';
 import { GrafanaRuleDefinition, RulerGrafanaRuleDTO } from 'app/types/unified-alerting-dto';
 
 import { usePagination } from './hooks/usePagination';
@@ -213,6 +213,7 @@ export const getStyles = (theme: GrafanaTheme2) => ({
   noResults: css({
     padding: theme.spacing(2),
     backgroundColor: theme.colors.background.secondary,
+    borderRadius: theme.shape.radius.lg,
     fontStyle: 'italic',
   }),
 });

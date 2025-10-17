@@ -1,7 +1,7 @@
 import { PluginExtensionAddedLinkConfig, PluginExtensionPoints } from '@grafana/data';
 import { contextSrv } from 'app/core/core';
 import { dispatch } from 'app/store/store';
-import { AccessControlAction } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
 
 import { log } from '../../plugins/extensions/logs/log';
 import { createAddedLinkConfig } from '../../plugins/extensions/utils';
@@ -24,7 +24,6 @@ export function getExploreExtensionConfigs(): PluginExtensionAddedLinkConfig[] {
         icon: 'apps',
         category: 'Dashboards',
         configure: () => {
-          // moving this and the ui to runtime
           const canAddPanelToDashboard =
             contextSrv.hasPermission(AccessControlAction.DashboardsCreate) ||
             contextSrv.hasPermission(AccessControlAction.DashboardsWrite);
@@ -57,6 +56,42 @@ export function getExploreExtensionConfigs(): PluginExtensionAddedLinkConfig[] {
         onClick: (_, { context }) => {
           dispatch(changeCorrelationEditorDetails({ editorMode: true }));
           dispatch(runQueries({ exploreId: context!.exploreId }));
+        },
+      }),
+      createAddedLinkConfig<PluginExtensionExploreContext>({
+        // grafana-metricsdrilldown-app/add-to-dashboard/v1
+        // This is called at the top level, so will break if we add a translation here 😱
+        // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
+        title: 'Add metrics drilldown panel to dashboard',
+        description: 'Use the panel from metrics drilldown and create/add it to a dashboard',
+        targets: ['grafana-metricsdrilldown-app/add-to-dashboard/v1'],
+        icon: 'apps',
+        category: 'Dashboards',
+        configure: () => {
+          const canAddPanelToDashboard =
+            contextSrv.hasPermission(AccessControlAction.DashboardsCreate) ||
+            contextSrv.hasPermission(AccessControlAction.DashboardsWrite);
+
+          // hide option if user has insufficient permissions
+          if (!canAddPanelToDashboard) {
+            return undefined;
+          }
+
+          return {};
+        },
+        onClick: (_, { context, openModal }) => {
+          const panelData = context?.panelData;
+
+          if (!panelData) {
+            return;
+          }
+
+          openModal({
+            title: getAddToDashboardTitle(),
+            body: ({ onDismiss }) => (
+              <ExploreToDashboardPanel onClose={onDismiss!} exploreId={context?.exploreId!} panelData={panelData} />
+            ),
+          });
         },
       }),
     ];

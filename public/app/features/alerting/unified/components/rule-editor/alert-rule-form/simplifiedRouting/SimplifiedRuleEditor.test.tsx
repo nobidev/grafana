@@ -2,9 +2,10 @@ import { UserEvent } from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { GrafanaRuleFormStep, renderRuleEditor, ui } from 'test/helpers/alertingRuleEditor';
 import { clickSelectOption } from 'test/helpers/selectOptionInTest';
-import { screen, waitFor } from 'test/test-utils';
+import { screen, waitFor, within } from 'test/test-utils';
 import { byRole } from 'testing-library-selector';
 
+import { setPluginLinksHook } from '@grafana/runtime';
 import { contextSrv } from 'app/core/services/context_srv';
 import { setupMswServer } from 'app/features/alerting/unified/mockApi';
 import { grantUserPermissions, mockDataSource } from 'app/features/alerting/unified/mocks';
@@ -17,15 +18,15 @@ import { setupDataSources } from 'app/features/alerting/unified/testSetup/dataso
 import { DataSourceType } from 'app/features/alerting/unified/utils/datasource';
 import { MANUAL_ROUTING_KEY, SIMPLIFIED_QUERY_EDITOR_KEY } from 'app/features/alerting/unified/utils/rule-form';
 import { AlertmanagerChoice } from 'app/plugins/datasource/alertmanager/types';
-import { AccessControlAction } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
 
-import { grafanaRulerGroup } from '../../../../mocks/grafanaRulerApi';
+import { grafanaRulerGroup, mockPreviewApiResponse } from '../../../../mocks/grafanaRulerApi';
 
 jest.mock('app/core/components/AppChrome/AppChromeUpdate', () => ({
   AppChromeUpdate: ({ actions }: { actions: ReactNode }) => <div>{actions}</div>,
 }));
 
-jest.setTimeout(60 * 1000);
+jest.setTimeout(90 * 1000);
 
 const dataSources = {
   default: mockDataSource(
@@ -44,10 +45,16 @@ const dataSources = {
 };
 
 const selectFolderAndGroup = async (user: UserEvent) => {
-  await user.click(await screen.findByRole('button', { name: /select folder/i }));
-  await user.click(await screen.findByLabelText(FOLDER_TITLE_HAPPY_PATH));
+  const folderPicker = ui.inputs.folder.get();
+  const folderButton = await within(folderPicker).findByRole('button', { name: /select folder/i });
+  await user.click(folderButton);
+
+  const folderOption = await within(folderPicker).findByLabelText(FOLDER_TITLE_HAPPY_PATH);
+  await user.click(folderOption);
+
   const groupInput = await ui.inputs.group.find();
-  await user.click(await byRole('combobox').find(groupInput));
+  const groupCombobox = await byRole('combobox').find(groupInput);
+  await user.click(groupCombobox);
   await clickSelectOption(groupInput, grafanaRulerGroup.name);
 };
 
@@ -55,6 +62,8 @@ const selectContactPoint = async (contactPointName: string) => {
   const contactPointInput = await ui.inputs.simplifiedRouting.contactPoint.find();
   await clickSelectOption(contactPointInput, contactPointName);
 };
+
+const server = setupMswServer();
 
 // combobox hack
 beforeEach(() => {
@@ -70,14 +79,18 @@ beforeEach(() => {
   Object.defineProperty(Element.prototype, 'getBoundingClientRect', {
     value: mockGetBoundingClientRect,
   });
+
+  mockPreviewApiResponse(server, []);
 });
 
-setupMswServer();
+setupDataSources(dataSources.default, dataSources.am);
+
+// Setup plugin extensions hook to prevent setPluginLinksHook errors
+setPluginLinksHook(() => ({ links: [], isLoading: false }));
 
 describe('Can create a new grafana managed alert using simplified routing', () => {
   beforeEach(() => {
     window.localStorage.clear();
-    setupDataSources(dataSources.default, dataSources.am);
     contextSrv.isEditor = true;
     contextSrv.hasEditPermissionInFolders = true;
     grantUserPermissions([
@@ -99,11 +112,9 @@ describe('Can create a new grafana managed alert using simplified routing', () =
 
   it('cannot create new grafana managed alert when using simplified routing and not selecting a contact point', async () => {
     const capture = captureRequests((r) => r.method === 'POST' && r.url.includes('/api/ruler/'));
-
     const { user } = renderRuleEditor();
 
     await user.type(await ui.inputs.name.find(), 'my great new rule');
-
     await selectFolderAndGroup(user);
 
     //select contact point routing
@@ -112,9 +123,9 @@ describe('Can create a new grafana managed alert using simplified routing', () =
     // do not select a contact point
     // save and check that call to backend was not made
     await user.click(ui.buttons.save.get());
+
     expect(await screen.findByText('Contact point is required.')).toBeInTheDocument();
     const capturedRequests = await capture;
-
     expect(capturedRequests).toHaveLength(0);
   });
 

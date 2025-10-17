@@ -7,6 +7,7 @@ import {
   DataFrame,
   EventBusSrv,
   ExploreLogsPanelState,
+  LogLevel,
   LogsMetaItem,
   LogsSortOrder,
   SplitOpen,
@@ -19,19 +20,19 @@ import { LogsVisualisationType } from '../../explore/Logs/Logs';
 import { ControlledLogsTable } from './ControlledLogsTable';
 import { InfiniteScroll } from './InfiniteScroll';
 import { LogRows, Props } from './LogRows';
-import { LogListControlOptions } from './panel/LogList';
+import { LogListOptions } from './panel/LogList';
 import { LogListContextProvider, useLogListContext } from './panel/LogListContext';
 import { LogListControls } from './panel/LogListControls';
 import { ScrollToLogsEvent } from './panel/virtualization';
 
 export interface ControlledLogRowsProps extends Omit<Props, 'scrollElement'> {
-  hasUnescapedContent?: boolean;
   loading: boolean;
   logsMeta?: LogsMetaItem[];
   loadMoreLogs?: (range: AbsoluteTimeRange) => void;
   logOptionsStorageKey?: string;
-  onLogOptionsChange?: (option: keyof LogListControlOptions, value: string | boolean | string[]) => void;
+  onLogOptionsChange?: (option: LogListOptions, value: string | boolean | string[]) => void;
   range: TimeRange;
+  filterLevels?: LogLevel[];
 
   /** Props added for Table **/
   visualisationType: LogsVisualisationType;
@@ -45,7 +46,14 @@ export interface ControlledLogRowsProps extends Omit<Props, 'scrollElement'> {
 
 export type LogRowsComponentProps = Omit<
   ControlledLogRowsProps,
-  'app' | 'dedupStrategy' | 'showLabels' | 'showTime' | 'logsSortOrder' | 'prettifyLogMessage' | 'wrapLogMessage'
+  | 'app'
+  | 'dedupStrategy'
+  | 'filterLevels'
+  | 'showLabels'
+  | 'showTime'
+  | 'logsSortOrder'
+  | 'prettifyLogMessage'
+  | 'wrapLogMessage'
 >;
 
 export const ControlledLogRows = forwardRef<HTMLDivElement | null, ControlledLogRowsProps>(
@@ -53,7 +61,7 @@ export const ControlledLogRows = forwardRef<HTMLDivElement | null, ControlledLog
     {
       deduplicatedRows,
       dedupStrategy,
-      hasUnescapedContent,
+      filterLevels,
       showLabels,
       showTime,
       logsMeta,
@@ -72,8 +80,8 @@ export const ControlledLogRows = forwardRef<HTMLDivElement | null, ControlledLog
         displayedFields={[]}
         dedupStrategy={dedupStrategy}
         enableLogDetails={false}
+        filterLevels={filterLevels}
         fontSize="default"
-        hasUnescapedContent={hasUnescapedContent}
         logOptionsStorageKey={logOptionsStorageKey}
         logs={deduplicatedRows ?? []}
         logsMeta={logsMeta}

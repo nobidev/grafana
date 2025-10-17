@@ -15,6 +15,7 @@ import (
 	"github.com/grafana/grafana/pkg/plugins/auth"
 	"github.com/grafana/grafana/pkg/plugins/backendplugin"
 	"github.com/grafana/grafana/pkg/plugins/log"
+	"github.com/grafana/grafana/pkg/plugins/pluginassets"
 	"github.com/grafana/grafana/pkg/plugins/repo"
 	"github.com/grafana/grafana/pkg/plugins/storage"
 )
@@ -378,6 +379,7 @@ type FakeLicensingService struct {
 	TokenRaw       string
 	LicensePath    string
 	LicenseAppURL  string
+	CDNPrefix      string
 }
 
 func NewFakeLicensingService() *FakeLicensingService {
@@ -398,6 +400,10 @@ func (s *FakeLicensingService) AppURL() string {
 
 func (s *FakeLicensingService) Environment() []string {
 	return []string{fmt.Sprintf("GF_ENTERPRISE_LICENSE_TEXT=%s", s.TokenRaw)}
+}
+
+func (s *FakeLicensingService) ContentDeliveryPrefix() string {
+	return s.CDNPrefix
 }
 
 type FakeRoleRegistry struct {
@@ -436,6 +442,10 @@ func NewFakePluginFS(base string) *FakePluginFS {
 	return &FakePluginFS{
 		base: base,
 	}
+}
+
+func (f *FakePluginFS) Type() string {
+	return "fake"
 }
 
 func (f *FakePluginFS) Open(name string) (fs.File, error) {
@@ -660,4 +670,66 @@ func (p *FakeBackendPlugin) Kill() {
 
 func (p *FakeBackendPlugin) Target() backendplugin.Target {
 	return "test-target"
+}
+
+func (p *FakeBackendPlugin) Logger() log.Logger {
+	return log.NewTestLogger()
+}
+
+type AssetProvider struct {
+	ModuleFunc    func(plugin pluginassets.PluginInfo) (string, error)
+	AssetPathFunc func(plugin pluginassets.PluginInfo, assetPath ...string) (string, error)
+}
+
+func NewFakeAssetProvider() *AssetProvider {
+	return &AssetProvider{}
+}
+
+func (p *AssetProvider) Module(plugin pluginassets.PluginInfo) (string, error) {
+	if p.ModuleFunc != nil {
+		return p.ModuleFunc(plugin)
+	}
+	return "", nil
+}
+
+func (p *AssetProvider) AssetPath(plugin pluginassets.PluginInfo, assetPath ...string) (string, error) {
+	if p.AssetPathFunc != nil {
+		return p.AssetPathFunc(plugin, assetPath...)
+	}
+	return "", nil
+}
+
+type FakeErrorTracker struct {
+	RecordFunc func(ctx context.Context, err *plugins.Error)
+	ClearFunc  func(ctx context.Context, pluginID string)
+	ErrorsFunc func(ctx context.Context) []*plugins.Error
+}
+
+func NewFakeErrorTracker() *FakeErrorTracker {
+	return &FakeErrorTracker{}
+}
+
+func (t *FakeErrorTracker) Record(ctx context.Context, err *plugins.Error) {
+	if t.RecordFunc != nil {
+		t.RecordFunc(ctx, err)
+		return
+	}
+}
+
+func (t *FakeErrorTracker) Clear(ctx context.Context, pluginID string) {
+	if t.ClearFunc != nil {
+		t.ClearFunc(ctx, pluginID)
+		return
+	}
+}
+
+func (t *FakeErrorTracker) Errors(ctx context.Context) []*plugins.Error {
+	if t.ErrorsFunc != nil {
+		return t.ErrorsFunc(ctx)
+	}
+	return nil
+}
+
+func (t *FakeErrorTracker) Error(ctx context.Context, pluginID string) *plugins.Error {
+	return &plugins.Error{}
 }

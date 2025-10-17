@@ -5,6 +5,7 @@ import { connect, ConnectedProps } from 'react-redux';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
+import { config, getBackendSrv } from '@grafana/runtime';
 import {
   Avatar,
   CellProps,
@@ -24,9 +25,12 @@ import {
 import { Page } from 'app/core/components/Page/Page';
 import { fetchRoleOptions } from 'app/core/components/RolePicker/api';
 import { contextSrv } from 'app/core/services/context_srv';
-import { AccessControlAction, Role, StoreState, TeamWithRoles } from 'app/types';
+import { Role, AccessControlAction } from 'app/types/accessControl';
+import { StoreState } from 'app/types/store';
+import { TeamWithRoles } from 'app/types/teams';
 
 import { TeamRolePicker } from '../../core/components/RolePicker/TeamRolePicker';
+import { EnterpriseAuthFeaturesCard } from '../admin/EnterpriseAuthFeaturesCard';
 
 import { deleteTeam, loadTeams, changePage, changeQuery, changeSort } from './state/actions';
 
@@ -62,6 +66,7 @@ export const TeamList = ({
   changeSort,
 }: Props) => {
   const [roleOptions, setRoleOptions] = useState<Role[]>([]);
+  const [scimGroupSyncEnabled, setScimGroupSyncEnabled] = useState(false);
   const styles = useStyles2(getStyles);
 
   useEffect(() => {
@@ -72,6 +77,25 @@ export const TeamList = ({
     if (contextSrv.licensedAccessControlEnabled() && contextSrv.hasPermission(AccessControlAction.ActionRolesList)) {
       fetchRoleOptions().then((roles) => setRoleOptions(roles));
     }
+  }, []);
+
+  useEffect(() => {
+    const checkSCIMSettings = async () => {
+      if (!config.featureToggles.enableSCIM) {
+        setScimGroupSyncEnabled(false);
+        return;
+      }
+      try {
+        const scimSettings = await getBackendSrv().get(
+          `/apis/scim.grafana.app/v0alpha1/namespaces/${config.namespace}/config`
+        );
+        setScimGroupSyncEnabled(scimSettings?.items[0]?.spec?.enableGroupSync || false);
+      } catch {
+        setScimGroupSyncEnabled(false);
+      }
+    };
+
+    checkSCIMSettings();
   }, []);
 
   const canCreate = contextSrv.hasPermission(AccessControlAction.ActionTeamsCreate);
@@ -195,7 +219,7 @@ export const TeamList = ({
           const canReadTeam = contextSrv.hasPermissionInMetadata(AccessControlAction.ActionTeamsRead, original);
           const canDelete =
             contextSrv.hasPermissionInMetadata(AccessControlAction.ActionTeamsDelete, original) &&
-            !original.isProvisioned;
+            (!scimGroupSyncEnabled || !original.isProvisioned);
           return (
             <Stack direction="row" justifyContent="flex-end" gap={2}>
               {canReadTeam && (
@@ -223,7 +247,7 @@ export const TeamList = ({
         },
       },
     ],
-    [displayRolePicker, hasFetched, rolesLoading, roleOptions, deleteTeam, styles]
+    [displayRolePicker, hasFetched, rolesLoading, roleOptions, deleteTeam, styles, scimGroupSyncEnabled]
   );
 
   return (
@@ -288,6 +312,7 @@ export const TeamList = ({
             )}
           </>
         )}
+        {!query && <EnterpriseAuthFeaturesCard page="teams" />}
       </Page.Contents>
     </Page>
   );

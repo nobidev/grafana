@@ -4,7 +4,7 @@ import { TimeRange } from '@grafana/data';
 import { t } from '@grafana/i18n';
 import { Panel } from '@grafana/schema';
 import { AddToDashboardForm } from 'app/features/dashboard-scene/addToDashboard/AddToDashboardForm';
-import { useSelector } from 'app/types';
+import { useSelector } from 'app/types/store';
 
 import { getExploreItemSelector } from '../../state/selectors';
 
@@ -18,13 +18,14 @@ interface Props {
 }
 
 export function ExploreToDashboardPanel(props: Props): ReactElement {
+  // extension point panelData
   const { exploreId, onClose, panelData } = props;
 
-  // the props can include a prebuilt panel json object to use over the explore item
-  const exploreItem = panelData ? undefined : useSelector(getExploreItemSelector(exploreId));
+  const exploreItem = useSelector(getExploreItemSelector(exploreId));
 
   const buildPanel = () => {
     if (panelData) {
+      // the panel data from metrics drilldown is already built
       return panelData.panel;
     }
 

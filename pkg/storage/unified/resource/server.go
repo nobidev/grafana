@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"iter"
 	"log/slog"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
@@ -19,9 +21,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	claims "github.com/grafana/authlib/types"
+	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
+	"github.com/grafana/grafana/pkg/apimachinery/validation"
+	secrets "github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
+	"github.com/grafana/grafana/pkg/util/scheduler"
 )
 
 // ResourceServer implements all gRPC services
@@ -80,6 +86,11 @@ type BackendReadResponse struct {
 	Error *resourcepb.ErrorResult
 }
 
+type ResourceLastImportTime struct {
+	NamespacedResource
+	LastImportTime time.Time
+}
+
 // The StorageBackend is an internal abstraction that supports interacting with
 // the underlying raw storage medium.  This interface is never exposed directly,
 // it is provided by concrete instances that actually write values.
@@ -102,12 +113,26 @@ type StorageBackend interface {
 	// ListHistory is like ListIterator, but it returns the history of a resource
 	ListHistory(context.Context, *resourcepb.ListRequest, func(ListIterator) error) (int64, error)
 
+	// ListModifiedSince will return all resources that have changed since the given resource version.
+	// If a resource has changes, only the latest change will be returned.
+	ListModifiedSince(ctx context.Context, key NamespacedResource, sinceRv int64) (int64, iter.Seq2[*ModifiedResource, error])
+
 	// Get all events from the store
 	// For HA setups, this will be more events than the local WriteEvent above!
 	WatchWriteEvents(ctx context.Context) (<-chan *WrittenEvent, error)
 
 	// Get resource stats within the storage backend.  When namespace is empty, it will apply to all
 	GetResourceStats(ctx context.Context, namespace string, minCount int) ([]ResourceStats, error)
+
+	// GetResourceLastImportTimes returns import times for all namespaced resources in the backend.
+	GetResourceLastImportTimes(ctx context.Context) iter.Seq2[ResourceLastImportTime, error]
+}
+
+type ModifiedResource struct {
+	Action          resourcepb.WatchEvent_Type
+	Key             resourcepb.ResourceKey
+	Value           []byte
+	ResourceVersion int64
 }
 
 type ResourceStats struct {
@@ -134,6 +159,17 @@ type BlobSupport interface {
 	// TODO? List+Delete?  This is for admin access
 }
 
+type QOSEnqueuer interface {
+	Enqueue(ctx context.Context, tenantID string, runnable func()) error
+}
+
+type QueueConfig struct {
+	MaxBackoff time.Duration
+	MinBackoff time.Duration
+	MaxRetries int
+	Timeout    time.Duration
+}
+
 type BlobConfig struct {
 	// The CDK configuration URL
 	URL string
@@ -151,16 +187,26 @@ type SearchOptions struct {
 	Resources DocumentBuilderSupplier
 
 	// How many threads should build indexes
-	WorkerThreads int
+	InitWorkerThreads int
 
 	// Skip building index on startup for small indexes
 	InitMinCount int
 
-	// Channel to watch for index events (for testing)
-	IndexEventsChan chan *IndexEvent
+	// How often to rebuild dashboard index. 0 disables periodic rebuilds.
+	DashboardIndexMaxAge time.Duration
 
-	// Interval for periodic index rebuilds (0 disables periodic rebuilds)
-	RebuildInterval time.Duration
+	// Maximum age of file-based index that can be reused. Ignored if zero.
+	MaxIndexAge time.Duration
+
+	// Minimum build version for reusing file-based indexes. Ignored if nil.
+	MinBuildVersion *semver.Version
+
+	// Number of workers to use for index rebuilds.
+	IndexRebuildWorkers int
+
+	// Minimum time between index updates. This is also used as a delay after a successful write operation, to guarantee
+	// that subsequent search will observe the effect of the writing.
+	IndexMinUpdateInterval time.Duration
 }
 
 type ResourceServerOptions struct {
@@ -186,6 +232,9 @@ type ResourceServerOptions struct {
 	// Link RBAC
 	AccessClient claims.AccessClient
 
+	// Manage secure values
+	SecureValues secrets.InlineSecureValueSupport
+
 	// Callbacks for startup and shutdown
 	Lifecycle LifecycleHooks
 
@@ -199,10 +248,17 @@ type ResourceServerOptions struct {
 
 	IndexMetrics *BleveIndexMetrics
 
+	// MaxPageSizeBytes is the maximum size of a page in bytes.
 	MaxPageSizeBytes int
+
+	// QOSQueue is the quality of service queue used to enqueue
+	QOSQueue  QOSEnqueuer
+	QOSConfig QueueConfig
+
+	OwnsIndexFn func(key NamespacedResource) (bool, error)
 }
 
-func NewResourceServer(opts ResourceServerOptions) (ResourceServer, error) {
+func NewResourceServer(opts ResourceServerOptions) (*server, error) {
 	if opts.Tracer == nil {
 		opts.Tracer = noop.NewTracerProvider().Tracer("resource-server")
 	}
@@ -218,6 +274,7 @@ func NewResourceServer(opts ResourceServerOptions) (ResourceServer, error) {
 	if opts.Diagnostics == nil {
 		opts.Diagnostics = &noopService{}
 	}
+
 	if opts.Now == nil {
 		opts.Now = func() int64 {
 			return time.Now().UnixMilli()
@@ -227,6 +284,23 @@ func NewResourceServer(opts ResourceServerOptions) (ResourceServer, error) {
 	if opts.MaxPageSizeBytes <= 0 {
 		// By default, we use 2MB for the page size.
 		opts.MaxPageSizeBytes = 1024 * 1024 * 2
+	}
+
+	if opts.QOSQueue == nil {
+		opts.QOSQueue = scheduler.NewNoopQueue()
+	}
+
+	if opts.QOSConfig.Timeout == 0 {
+		opts.QOSConfig.Timeout = 30 * time.Second
+	}
+	if opts.QOSConfig.MaxBackoff == 0 {
+		opts.QOSConfig.MaxBackoff = 1 * time.Second
+	}
+	if opts.QOSConfig.MinBackoff == 0 {
+		opts.QOSConfig.MinBackoff = 100 * time.Millisecond
+	}
+	if opts.QOSConfig.MaxRetries == 0 {
+		opts.QOSConfig.MaxRetries = 3
 	}
 
 	// Initialize the blob storage
@@ -263,6 +337,7 @@ func NewResourceServer(opts ResourceServerOptions) (ResourceServer, error) {
 		blob:             blobstore,
 		diagnostics:      opts.Diagnostics,
 		access:           opts.AccessClient,
+		secure:           opts.SecureValues,
 		writeHooks:       opts.WriteHooks,
 		lifecycle:        opts.Lifecycle,
 		now:              opts.Now,
@@ -271,11 +346,16 @@ func NewResourceServer(opts ResourceServerOptions) (ResourceServer, error) {
 		storageMetrics:   opts.storageMetrics,
 		indexMetrics:     opts.IndexMetrics,
 		maxPageSizeBytes: opts.MaxPageSizeBytes,
+		reg:              opts.Reg,
+		queue:            opts.QOSQueue,
+		queueConfig:      opts.QOSConfig,
+
+		artificialSuccessfulWriteDelay: opts.Search.IndexMinUpdateInterval,
 	}
 
 	if opts.Search.Resources != nil {
 		var err error
-		s.search, err = newSearchSupport(opts.Search, s.backend, s.access, s.blob, opts.Tracer, opts.IndexMetrics)
+		s.search, err = newSearchSupport(opts.Search, s.backend, s.access, s.blob, opts.Tracer, opts.IndexMetrics, opts.OwnsIndexFn)
 		if err != nil {
 			return nil, err
 		}
@@ -297,6 +377,7 @@ type server struct {
 	log            *slog.Logger
 	backend        StorageBackend
 	blob           BlobSupport
+	secure         secrets.InlineSecureValueSupport
 	search         *searchSupport
 	diagnostics    resourcepb.DiagnosticsServer
 	access         claims.AccessClient
@@ -317,6 +398,14 @@ type server struct {
 	initErr error
 
 	maxPageSizeBytes int
+	reg              prometheus.Registerer
+	queue            QOSEnqueuer
+	queueConfig      QueueConfig
+
+	// This value is used by storage server to artificially delay returning response after successful
+	// write operations to make sure that subsequent search by the same client will return up-to-date results.
+	// Set from SearchOptions.IndexMinUpdateInterval.
+	artificialSuccessfulWriteDelay time.Duration
 }
 
 // Init implements ResourceServer.
@@ -359,6 +448,10 @@ func (s *server) Stop(ctx context.Context) error {
 		}
 	}
 
+	if s.search != nil {
+		s.search.stop()
+	}
+
 	// Stops the streaming
 	s.cancel()
 
@@ -372,6 +465,8 @@ func (s *server) Stop(ctx context.Context) error {
 }
 
 // Old value indicates an update -- otherwise a create
+//
+//nolint:gocyclo
 func (s *server) newEvent(ctx context.Context, user claims.AuthInfo, key *resourcepb.ResourceKey, value, oldValue []byte) (*WriteEvent, *resourcepb.ErrorResult) {
 	tmp := &unstructured.Unstructured{}
 	err := tmp.UnmarshalJSON(value)
@@ -427,6 +522,11 @@ func (s *server) newEvent(ctx context.Context, user claims.AuthInfo, key *resour
 		}
 	}
 
+	// Verify that this resource can reference secure values
+	if err := canReferenceSecureValues(ctx, obj, event.ObjectOld, s.secure); err != nil {
+		return nil, err
+	}
+
 	if key.Namespace != obj.GetNamespace() {
 		return nil, NewBadRequestError("key/namespace do not match")
 	}
@@ -454,8 +554,8 @@ func (s *server) newEvent(ctx context.Context, user claims.AuthInfo, key *resour
 		return nil, NewBadRequestError(
 			fmt.Sprintf("key/name do not match (key: %s, name: %s)", key.Name, obj.GetName()))
 	}
-	if err := validateName(obj.GetName()); err != nil {
-		return nil, err
+	if errs := validation.IsValidGrafanaName(obj.GetName()); errs != nil {
+		return nil, NewBadRequestError(errs[0])
 	}
 
 	// For folder moves, we need to check permissions on both folders
@@ -477,8 +577,7 @@ func (s *server) newEvent(ctx context.Context, user claims.AuthInfo, key *resour
 			check.Name = key.Name
 		}
 
-		check.Folder = obj.GetFolder()
-		a, err := s.access.Check(ctx, user, check)
+		a, err := s.access.Check(ctx, user, check, obj.GetFolder())
 		if err != nil {
 			return nil, AsErrorResult(err)
 		}
@@ -515,10 +614,9 @@ func (s *server) checkFolderMovePermissions(ctx context.Context, user claims.Aut
 		Resource:  key.Resource,
 		Namespace: key.Namespace,
 		Name:      key.Name,
-		Folder:    oldFolder,
 	}
 
-	a, err := s.access.Check(ctx, user, updateCheck)
+	a, err := s.access.Check(ctx, user, updateCheck, oldFolder)
 	if err != nil {
 		return AsErrorResult(err)
 	}
@@ -535,10 +633,10 @@ func (s *server) checkFolderMovePermissions(ctx context.Context, user claims.Aut
 		Group:     key.Group,
 		Resource:  key.Resource,
 		Namespace: key.Namespace,
-		Folder:    newFolder,
+		Name:      key.Name,
 	}
 
-	a, err = s.access.Check(ctx, user, createCheck)
+	a, err = s.access.Check(ctx, user, createCheck, newFolder)
 	if err != nil {
 		return AsErrorResult(err)
 	}
@@ -556,6 +654,10 @@ func (s *server) Create(ctx context.Context, req *resourcepb.CreateRequest) (*re
 	ctx, span := s.tracer.Start(ctx, "storage_server.Create")
 	defer span.End()
 
+	if r := verifyRequestKey(req.Key); r != nil {
+		return nil, fmt.Errorf("invalid request key: %s", r.Message)
+	}
+
 	rsp := &resourcepb.CreateResponse{}
 	user, ok := claims.AuthInfoFrom(ctx)
 	if !ok || user == nil {
@@ -565,6 +667,27 @@ func (s *server) Create(ctx context.Context, req *resourcepb.CreateRequest) (*re
 		}
 		return rsp, nil
 	}
+
+	var (
+		res *resourcepb.CreateResponse
+		err error
+	)
+	runErr := s.runInQueue(ctx, req.Key.Namespace, func(queueCtx context.Context) {
+		res, err = s.create(queueCtx, user, req)
+	})
+	if runErr != nil {
+		return HandleQueueError(runErr, func(e *resourcepb.ErrorResult) *resourcepb.CreateResponse {
+			return &resourcepb.CreateResponse{Error: e}
+		})
+	}
+
+	s.sleepAfterSuccessfulWriteOperation(res, err)
+
+	return res, err
+}
+
+func (s *server) create(ctx context.Context, user claims.AuthInfo, req *resourcepb.CreateRequest) (*resourcepb.CreateResponse, error) {
+	rsp := &resourcepb.CreateResponse{}
 
 	event, e := s.newEvent(ctx, user, req.Key, req.Value, nil)
 	if e != nil {
@@ -581,6 +704,37 @@ func (s *server) Create(ctx context.Context, req *resourcepb.CreateRequest) (*re
 	}
 	s.log.Debug("server.WriteEvent", "type", event.Type, "rv", rsp.ResourceVersion, "previousRV", event.PreviousRV, "group", event.Key.Group, "namespace", event.Key.Namespace, "name", event.Key.Name, "resource", event.Key.Resource)
 	return rsp, nil
+}
+
+type responseWithErrorResult interface {
+	GetError() *resourcepb.ErrorResult
+}
+
+// sleepAfterSuccessfulWriteOperation will sleep for a specified time if the operation was successful.
+// Returns boolean indicating whether the sleep was performed or not (used in testing).
+//
+// This sleep is performed to guarantee search-after-write consistency, when rate-limiting updates to search index.
+func (s *server) sleepAfterSuccessfulWriteOperation(res responseWithErrorResult, err error) bool {
+	if s.artificialSuccessfulWriteDelay <= 0 {
+		return false
+	}
+
+	if err != nil {
+		// No sleep necessary if operation failed.
+		return false
+	}
+
+	// We expect that non-nil interface values with typed nils can still handle GetError() call.
+	if res != nil {
+		errRes := res.GetError()
+		if errRes != nil {
+			// No sleep necessary if operation failed.
+			return false
+		}
+	}
+
+	time.Sleep(s.artificialSuccessfulWriteDelay)
+	return true
 }
 
 func (s *server) Update(ctx context.Context, req *resourcepb.UpdateRequest) (*resourcepb.UpdateResponse, error) {
@@ -601,6 +755,26 @@ func (s *server) Update(ctx context.Context, req *resourcepb.UpdateRequest) (*re
 		return rsp, nil
 	}
 
+	var (
+		res *resourcepb.UpdateResponse
+		err error
+	)
+	runErr := s.runInQueue(ctx, req.Key.Namespace, func(queueCtx context.Context) {
+		res, err = s.update(queueCtx, user, req)
+	})
+	if runErr != nil {
+		return HandleQueueError(runErr, func(e *resourcepb.ErrorResult) *resourcepb.UpdateResponse {
+			return &resourcepb.UpdateResponse{Error: e}
+		})
+	}
+
+	s.sleepAfterSuccessfulWriteOperation(res, err)
+
+	return res, err
+}
+
+func (s *server) update(ctx context.Context, user claims.AuthInfo, req *resourcepb.UpdateRequest) (*resourcepb.UpdateResponse, error) {
+	rsp := &resourcepb.UpdateResponse{}
 	latest := s.backend.ReadResource(ctx, &resourcepb.ReadRequest{
 		Key: req.Key,
 	})
@@ -612,8 +786,12 @@ func (s *server) Update(ctx context.Context, req *resourcepb.UpdateRequest) (*re
 		return rsp, nil
 	}
 
+	// TODO: once we know the client is always sending the RV, require ResourceVersion > 0
+	// See: https://github.com/grafana/grafana/pull/111866
 	if req.ResourceVersion > 0 && latest.ResourceVersion != req.ResourceVersion {
-		return nil, ErrOptimisticLockingFailed
+		return &resourcepb.UpdateResponse{
+			Error: &ErrOptimisticLockingFailed,
+		}, nil
 	}
 
 	event, e := s.newEvent(ctx, user, req.Key, req.Value, latest.Value)
@@ -650,6 +828,27 @@ func (s *server) Delete(ctx context.Context, req *resourcepb.DeleteRequest) (*re
 		return rsp, nil
 	}
 
+	var (
+		res *resourcepb.DeleteResponse
+		err error
+	)
+
+	runErr := s.runInQueue(ctx, req.Key.Namespace, func(queueCtx context.Context) {
+		res, err = s.delete(queueCtx, user, req)
+	})
+	if runErr != nil {
+		return HandleQueueError(runErr, func(e *resourcepb.ErrorResult) *resourcepb.DeleteResponse {
+			return &resourcepb.DeleteResponse{Error: e}
+		})
+	}
+
+	s.sleepAfterSuccessfulWriteOperation(res, err)
+
+	return res, err
+}
+
+func (s *server) delete(ctx context.Context, user claims.AuthInfo, req *resourcepb.DeleteRequest) (*resourcepb.DeleteResponse, error) {
+	rsp := &resourcepb.DeleteResponse{}
 	latest := s.backend.ReadResource(ctx, &resourcepb.ReadRequest{
 		Key: req.Key,
 	})
@@ -658,7 +857,7 @@ func (s *server) Delete(ctx context.Context, req *resourcepb.DeleteRequest) (*re
 		return rsp, nil
 	}
 	if req.ResourceVersion > 0 && latest.ResourceVersion != req.ResourceVersion {
-		rsp.Error = AsErrorResult(ErrOptimisticLockingFailed)
+		rsp.Error = &ErrOptimisticLockingFailed
 		return rsp, nil
 	}
 
@@ -668,8 +867,7 @@ func (s *server) Delete(ctx context.Context, req *resourcepb.DeleteRequest) (*re
 		Resource:  req.Key.Resource,
 		Namespace: req.Key.Namespace,
 		Name:      req.Key.Name,
-		Folder:    latest.Folder,
-	})
+	}, latest.Folder)
 	if err != nil {
 		rsp.Error = AsErrorResult(err)
 		return rsp, nil
@@ -688,16 +886,17 @@ func (s *server) Delete(ctx context.Context, req *resourcepb.DeleteRequest) (*re
 		PreviousRV: latest.ResourceVersion,
 		GUID:       uuid.New().String(),
 	}
-	requester, ok := claims.AuthInfoFrom(ctx)
-	if !ok {
-		return nil, apierrors.NewBadRequest("unable to get user")
-	}
 	marker := &unstructured.Unstructured{}
 	err = json.Unmarshal(latest.Value, marker)
 	if err != nil {
 		return nil, apierrors.NewBadRequest(
 			fmt.Sprintf("unable to read previous object, %v", err))
 	}
+	oldObj, err := utils.MetaAccessor(marker)
+	if err != nil {
+		return nil, err
+	}
+
 	obj, err := utils.MetaAccessor(marker)
 	if err != nil {
 		return nil, err
@@ -706,9 +905,11 @@ func (s *server) Delete(ctx context.Context, req *resourcepb.DeleteRequest) (*re
 	obj.SetUpdatedTimestamp(&now.Time)
 	obj.SetManagedFields(nil)
 	obj.SetFinalizers(nil)
-	obj.SetUpdatedBy(requester.GetUID())
+	obj.SetUpdatedBy(user.GetUID())
 	obj.SetGeneration(utils.DeletedGeneration)
 	obj.SetAnnotation(utils.AnnoKeyKubectlLastAppliedConfig, "") // clears it
+	event.ObjectOld = oldObj
+	event.Object = obj
 	event.Value, err = marker.MarshalJSON()
 	if err != nil {
 		return nil, apierrors.NewBadRequest(
@@ -732,14 +933,27 @@ func (s *server) Read(ctx context.Context, req *resourcepb.ReadRequest) (*resour
 			}}, nil
 	}
 
-	// if req.Key.Group == "" {
-	// 	status, _ := AsErrorResult(apierrors.NewBadRequest("missing group"))
-	// 	return &ReadResponse{Status: status}, nil
-	// }
 	if req.Key.Resource == "" {
 		return &resourcepb.ReadResponse{Error: NewBadRequestError("missing resource")}, nil
 	}
 
+	var (
+		res *resourcepb.ReadResponse
+		err error
+	)
+	runErr := s.runInQueue(ctx, req.Key.Namespace, func(queueCtx context.Context) {
+		res, err = s.read(queueCtx, user, req)
+	})
+	if runErr != nil {
+		return HandleQueueError(runErr, func(e *resourcepb.ErrorResult) *resourcepb.ReadResponse {
+			return &resourcepb.ReadResponse{Error: e}
+		})
+	}
+
+	return res, err
+}
+
+func (s *server) read(ctx context.Context, user claims.AuthInfo, req *resourcepb.ReadRequest) (*resourcepb.ReadResponse, error) {
 	rsp := s.backend.ReadResource(ctx, req)
 	if rsp.Error != nil && rsp.Error.Code == http.StatusNotFound {
 		return &resourcepb.ReadResponse{Error: rsp.Error}, nil
@@ -751,8 +965,7 @@ func (s *server) Read(ctx context.Context, req *resourcepb.ReadRequest) (*resour
 		Resource:  req.Key.Resource,
 		Namespace: req.Key.Namespace,
 		Name:      req.Key.Name,
-		Folder:    rsp.Folder,
-	})
+	}, rsp.Folder)
 	if err != nil {
 		return &resourcepb.ReadResponse{Error: AsErrorResult(err)}, nil
 	}
@@ -798,15 +1011,20 @@ func (s *server) List(ctx context.Context, req *resourcepb.ListRequest) (*resour
 		}
 	}
 
+	// Fast path for getting single value in a list
+	if rsp := s.tryFastPathList(ctx, req); rsp != nil {
+		return rsp, nil
+	}
+
 	if req.Limit < 1 {
-		req.Limit = 50 // default max 50 items in a page
+		req.Limit = 500 // default max 500 items in a page
 	}
 	maxPageBytes := s.maxPageSizeBytes
 	pageBytes := 0
 	rsp := &resourcepb.ListResponse{}
 
 	key := req.Options.Key
-	checker, err := s.access.Compile(ctx, user, claims.ListRequest{
+	checker, _, err := s.access.Compile(ctx, user, claims.ListRequest{
 		Group:     key.Group,
 		Resource:  key.Resource,
 		Namespace: key.Namespace,
@@ -814,7 +1032,7 @@ func (s *server) List(ctx context.Context, req *resourcepb.ListRequest) (*resour
 	})
 	var trashChecker claims.ItemChecker // only for trash
 	if req.Source == resourcepb.ListRequest_TRASH {
-		trashChecker, err = s.access.Compile(ctx, user, claims.ListRequest{
+		trashChecker, _, err = s.access.Compile(ctx, user, claims.ListRequest{
 			Group:     key.Group,
 			Resource:  key.Resource,
 			Namespace: key.Namespace,
@@ -891,6 +1109,40 @@ func (s *server) List(ctx context.Context, req *resourcepb.ListRequest) (*resour
 	return rsp, err
 }
 
+// Some list queries can be calculated with simple reads
+func (s *server) tryFastPathList(ctx context.Context, req *resourcepb.ListRequest) *resourcepb.ListResponse {
+	if req.Source != resourcepb.ListRequest_STORE || req.Options.Key.Namespace == "" {
+		return nil
+	}
+
+	for _, v := range req.Options.Fields {
+		if v.Key == "metadata.name" && v.Operator == `=` {
+			if len(v.Values) == 1 {
+				read := &resourcepb.ReadRequest{
+					Key:             req.Options.Key,
+					ResourceVersion: req.ResourceVersion,
+				}
+				read.Key.Name = v.Values[0]
+				found, err := s.Read(ctx, read)
+				if err != nil {
+					return &resourcepb.ListResponse{Error: AsErrorResult(err)}
+				}
+
+				// Return a value when it exists
+				rsp := &resourcepb.ListResponse{}
+				if len(found.Value) > 0 {
+					rsp.Items = []*resourcepb.ResourceWrapper{{
+						Value:           found.Value,
+						ResourceVersion: found.ResourceVersion,
+					}}
+				}
+				return rsp
+			}
+		}
+	}
+	return nil
+}
+
 // isTrashItemAuthorized checks if the user has access to the trash item.
 func (s *server) isTrashItemAuthorized(ctx context.Context, iter ListIterator, trashChecker claims.ItemChecker) bool {
 	user, ok := claims.AuthInfoFrom(ctx)
@@ -906,6 +1158,11 @@ func (s *server) isTrashItemAuthorized(ctx context.Context, iter ListIterator, t
 
 	obj, err := utils.MetaAccessor(partial)
 	if err != nil {
+		return false
+	}
+
+	// provisioned objects should not be retrievable in the trash
+	if obj.GetAnnotation(utils.AnnoKeyManagerKind) != "" {
 		return false
 	}
 
@@ -951,7 +1208,7 @@ func (s *server) Watch(req *resourcepb.WatchRequest, srv resourcepb.ResourceStor
 	}
 
 	key := req.Options.Key
-	checker, err := s.access.Compile(ctx, user, claims.ListRequest{
+	checker, _, err := s.access.Compile(ctx, user, claims.ListRequest{
 		Group:     key.Group,
 		Resource:  key.Resource,
 		Namespace: key.Namespace,
@@ -1146,10 +1403,18 @@ func (s *server) GetStats(ctx context.Context, req *resourcepb.ResourceStatsRequ
 }
 
 func (s *server) ListManagedObjects(ctx context.Context, req *resourcepb.ListManagedObjectsRequest) (*resourcepb.ListManagedObjectsResponse, error) {
+	if s.search == nil {
+		return nil, fmt.Errorf("search index not configured")
+	}
+
 	return s.search.ListManagedObjects(ctx, req)
 }
 
 func (s *server) CountManagedObjects(ctx context.Context, req *resourcepb.CountManagedObjectsRequest) (*resourcepb.CountManagedObjectsResponse, error) {
+	if s.search == nil {
+		return nil, fmt.Errorf("search index not configured")
+	}
+
 	return s.search.CountManagedObjects(ctx, req)
 }
 
@@ -1232,4 +1497,46 @@ func (s *server) GetBlob(ctx context.Context, req *resourcepb.GetBlobRequest) (*
 		rsp.Error = AsErrorResult(err)
 	}
 	return rsp, nil
+}
+
+func (s *server) runInQueue(ctx context.Context, tenantID string, runnable func(ctx context.Context)) error {
+	// Enforce a timeout for the entire operation, including queueing and execution.
+	queueCtx, cancel := context.WithTimeout(ctx, s.queueConfig.Timeout)
+	defer cancel()
+
+	done := make(chan struct{})
+	wrappedRunnable := func() {
+		defer close(done)
+		runnable(queueCtx)
+	}
+
+	// Retry enqueueing with backoff, respecting the timeout context.
+	boff := backoff.New(queueCtx, backoff.Config{
+		MinBackoff: s.queueConfig.MinBackoff,
+		MaxBackoff: s.queueConfig.MaxBackoff,
+		MaxRetries: s.queueConfig.MaxRetries,
+	})
+
+	for {
+		err := s.queue.Enqueue(queueCtx, tenantID, wrappedRunnable)
+		if err == nil {
+			// Successfully enqueued.
+			break
+		}
+
+		s.log.Warn("failed to enqueue runnable, retrying", "tenantID", tenantID, "error", err)
+		if !boff.Ongoing() {
+			// Backoff finished (retries exhausted or context canceled).
+			return fmt.Errorf("failed to enqueue for tenant %s: %w", tenantID, err)
+		}
+		boff.Wait()
+	}
+
+	// Wait for the runnable to complete or for the context to be done.
+	select {
+	case <-done:
+		return nil // Completed successfully.
+	case <-queueCtx.Done():
+		return queueCtx.Err() // Timed out or canceled while waiting for execution.
+	}
 }

@@ -21,15 +21,14 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
+	scope "github.com/grafana/grafana/apps/scope/pkg/apis/scope/v0alpha1"
 
-	"github.com/grafana/grafana/pkg/promlib/models"
 	"github.com/grafana/grafana/pkg/tsdb/loki/kinds/dataquery"
 )
 
 const (
 	flagLokiLogsDataplane         = "lokiLogsDataplane"
 	flagLokiRunQueriesInParallel  = "lokiRunQueriesInParallel"
-	flagLokiStructuredMetadata    = "lokiStructuredMetadata"
 	flagLogQLScope                = "logQLScope"
 	flagLokiExperimentalStreaming = "lokiExperimentalStreaming"
 	fromAlertHeaderName           = "FromAlert"
@@ -74,9 +73,9 @@ type datasourceInfo struct {
 
 type QueryJSONModel struct {
 	dataquery.LokiDataQuery
-	Direction           *string              `json:"direction,omitempty"`
-	SupportingQueryType *string              `json:"supportingQueryType"`
-	Scopes              []models.ScopeFilter `json:"scopes"`
+	Direction           *string             `json:"direction,omitempty"`
+	SupportingQueryType *string             `json:"supportingQueryType"`
+	Scopes              []scope.ScopeFilter `json:"scopes"`
 }
 
 type ResponseOpts struct {
@@ -134,7 +133,7 @@ func callResource(ctx context.Context, req *backend.CallResourceRequest, sender 
 	))
 	defer span.End()
 
-	api := newLokiAPI(dsInfo.HTTPClient, dsInfo.URL, plog, tracer, false)
+	api := newLokiAPI(dsInfo.HTTPClient, dsInfo.URL, plog, tracer)
 
 	var rawLokiResponse RawLokiResponse
 	var err error
@@ -163,6 +162,13 @@ func callResource(ctx context.Context, req *backend.CallResourceRequest, sender 
 	respHeaders := map[string][]string{
 		"content-type": {"application/json"},
 	}
+
+	// frontend sets the X-Grafana-Cache with the desired response cache control value
+	if len(req.GetHTTPHeaders().Get("X-Grafana-Cache")) > 0 {
+		respHeaders["X-Grafana-Cache"] = []string{"y"}
+		respHeaders["Cache-Control"] = []string{req.GetHTTPHeaders().Get("X-Grafana-Cache")}
+	}
+
 	if rawLokiResponse.Encoding != "" {
 		respHeaders["content-encoding"] = []string{rawLokiResponse.Encoding}
 	}
@@ -186,13 +192,13 @@ func (s *Service) QueryData(ctx context.Context, req *backend.QueryDataRequest) 
 		logsDataplane: isFeatureEnabled(ctx, flagLokiLogsDataplane),
 	}
 
-	return queryData(ctx, req, dsInfo, responseOpts, s.tracer, logger, isFeatureEnabled(ctx, flagLokiRunQueriesInParallel), isFeatureEnabled(ctx, flagLokiStructuredMetadata), isFeatureEnabled(ctx, flagLogQLScope))
+	return queryData(ctx, req, dsInfo, responseOpts, s.tracer, logger, isFeatureEnabled(ctx, flagLokiRunQueriesInParallel), isFeatureEnabled(ctx, flagLogQLScope))
 }
 
-func queryData(ctx context.Context, req *backend.QueryDataRequest, dsInfo *datasourceInfo, responseOpts ResponseOpts, tracer trace.Tracer, plog log.Logger, runInParallel bool, requestStructuredMetadata, logQLScopes bool) (*backend.QueryDataResponse, error) {
+func queryData(ctx context.Context, req *backend.QueryDataRequest, dsInfo *datasourceInfo, responseOpts ResponseOpts, tracer trace.Tracer, plog log.Logger, runInParallel bool, logQLScopes bool) (*backend.QueryDataResponse, error) {
 	result := backend.NewQueryDataResponse()
 
-	api := newLokiAPI(dsInfo.HTTPClient, dsInfo.URL, plog, tracer, requestStructuredMetadata)
+	api := newLokiAPI(dsInfo.HTTPClient, dsInfo.URL, plog, tracer)
 
 	start := time.Now()
 	queries, err := parseQuery(req, logQLScopes)

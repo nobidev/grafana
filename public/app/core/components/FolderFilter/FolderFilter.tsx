@@ -9,7 +9,7 @@ import { config } from 'app/core/config';
 import { getBackendSrv } from 'app/core/services/backend_srv';
 import { getGrafanaSearcher } from 'app/features/search/service/searcher';
 import { DashboardSearchItemType } from 'app/features/search/types';
-import { FolderInfo, PermissionLevelString } from 'app/types';
+import { FolderInfo } from 'app/types/folders';
 
 export interface FolderFilterProps {
   onChange: (folder: FolderInfo[]) => void;
@@ -46,7 +46,7 @@ export function FolderFilter({ onChange, maxMenuHeight }: FolderFilterProps): JS
         loadOptions={debouncedLoadOptions}
         maxMenuHeight={maxMenuHeight}
         placeholder={t('folder-filter.select-placeholder', 'Filter by folder')}
-        noOptionsMessage="No folders found"
+        noOptionsMessage={t('folder-filter.noOptionsMessage-no-folders-found', 'No folders found')}
         prefix={<Icon name="filter" />}
         aria-label={t('folder-filter.select-aria-label', 'Folder filter')}
         defaultOptions
@@ -68,7 +68,7 @@ async function getFoldersAsOptions(
       query: searchString,
       kind: ['folder'],
       limit: 100,
-      permission: PermissionLevelString.View,
+      permission: 'view',
     });
 
     const options = queryResponse.view.map((item) => ({
@@ -88,7 +88,7 @@ async function getFoldersAsOptions(
   const params = {
     query: searchString,
     type: DashboardSearchItemType.DashFolder,
-    permission: PermissionLevelString.View,
+    permission: 'view',
   };
 
   const searchHits = await getBackendSrv().search(params);

@@ -3,37 +3,56 @@ import {
   sceneGraph,
   SceneGridItemLike,
   SceneGridRow,
+  SceneObject,
   SceneObjectBase,
   SceneObjectState,
   VizPanel,
 } from '@grafana/scenes';
-import { Spec as DashboardV2Spec } from '@grafana/schema/dist/esm/schema/dashboard/v2alpha1/types.spec.gen';
+import { Spec as DashboardV2Spec } from '@grafana/schema/dist/esm/schema/dashboard/v2';
+import appEvents from 'app/core/app_events';
+import { ShowConfirmModalEvent, ShowModalReactEvent } from 'app/types/events';
 
 import { dashboardEditActions, ObjectsReorderedOnCanvasEvent } from '../../edit-pane/shared';
 import { serializeRowsLayout } from '../../serialization/layoutSerializers/RowsLayoutSerializer';
-import { isClonedKey, joinCloneKeys } from '../../utils/clone';
 import { getDashboardSceneFor } from '../../utils/utils';
+import { AutoGridLayoutManager } from '../layout-auto-grid/AutoGridLayoutManager';
 import { DashboardGridItem } from '../layout-default/DashboardGridItem';
 import { DefaultGridLayoutManager } from '../layout-default/DefaultGridLayoutManager';
 import { RowRepeaterBehavior } from '../layout-default/RowRepeaterBehavior';
-import { TabItemRepeaterBehavior } from '../layout-tabs/TabItemRepeaterBehavior';
 import { TabsLayoutManager } from '../layout-tabs/TabsLayoutManager';
+import { findAllGridTypes } from '../layouts-shared/findAllGridTypes';
 import { getRowFromClipboard } from '../layouts-shared/paste';
 import { generateUniqueTitle, ungroupLayout } from '../layouts-shared/utils';
 import { DashboardLayoutManager } from '../types/DashboardLayoutManager';
+import { isLayoutParent } from '../types/LayoutParent';
 import { LayoutRegistryItem } from '../types/LayoutRegistryItem';
 
+import { ConvertMixedGridsModal } from './ConvertMixedGridsModal';
 import { RowItem } from './RowItem';
-import { RowItemRepeaterBehavior } from './RowItemRepeaterBehavior';
 import { RowLayoutManagerRenderer } from './RowsLayoutManagerRenderer';
 
 interface RowsLayoutManagerState extends SceneObjectState {
   rows: RowItem[];
 }
 
+enum GridLayoutType {
+  AutoGridLayout = 'AutoGridLayout',
+  GridLayout = 'GridLayout',
+}
+
+function mapIdToGridLayoutType(id?: string): GridLayoutType | undefined {
+  switch (id) {
+    case GridLayoutType.AutoGridLayout:
+      return GridLayoutType.AutoGridLayout;
+    case GridLayoutType.GridLayout:
+      return GridLayoutType.GridLayout;
+    default:
+      return undefined;
+  }
+}
+
 export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> implements DashboardLayoutManager {
   public static Component = RowLayoutManagerRenderer;
-
   public readonly isDashboardLayoutManager = true;
 
   public static readonly descriptor: LayoutRegistryItem = {
@@ -69,16 +88,7 @@ export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> i
   }
 
   public cloneLayout(ancestorKey: string, isSource: boolean): DashboardLayoutManager {
-    return this.clone({
-      rows: this.state.rows.map((row) => {
-        const key = joinCloneKeys(ancestorKey, row.state.key!);
-
-        return row.clone({
-          key,
-          layout: row.state.layout.cloneLayout(key, isSource),
-        });
-      }),
-    });
+    return this.clone({});
   }
 
   public duplicate(): DashboardLayoutManager {
@@ -120,45 +130,175 @@ export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> i
     this.addNewRow(row);
   }
 
-  public activateRepeaters() {
-    this.state.rows.forEach((row) => {
-      if (!row.isActive) {
-        row.activate();
-      }
-
-      const behavior = (row.state.$behaviors ?? []).find((b) => b instanceof RowItemRepeaterBehavior);
-
-      if (!behavior?.isActive) {
-        behavior?.activate();
-      }
-
-      row.getLayout().activateRepeaters?.();
-    });
-  }
-
   public shouldUngroup(): boolean {
     return this.state.rows.length === 1;
   }
 
-  public removeRow(row: RowItem) {
+  public getOutlineChildren() {
+    const outlineChildren: SceneObject[] = [];
+
+    for (const row of this.state.rows) {
+      outlineChildren.push(row);
+
+      if (row.state.repeatedRows) {
+        for (const clone of row.state.repeatedRows!) {
+          outlineChildren.push(clone);
+        }
+      }
+    }
+
+    return outlineChildren;
+  }
+
+  public convertAllRowsLayouts(gridLayoutType: GridLayoutType) {
+    for (const row of this.state.rows) {
+      switch (gridLayoutType) {
+        case GridLayoutType.AutoGridLayout:
+          if (!(row.getLayout() instanceof AutoGridLayoutManager)) {
+            row.switchLayout(AutoGridLayoutManager.createFromLayout(row.getLayout()));
+          }
+          break;
+        case GridLayoutType.GridLayout:
+          if (!(row.getLayout() instanceof DefaultGridLayoutManager)) {
+            row.switchLayout(DefaultGridLayoutManager.createFromLayout(row.getLayout()));
+          }
+          break;
+      }
+    }
+  }
+
+  public ungroupRows() {
+    const hasNonGridLayout = this.state.rows.some((row) => !row.getLayout().descriptor.isGridLayout);
+    const gridTypes = new Set(findAllGridTypes(this));
+
+    if (hasNonGridLayout) {
+      appEvents.publish(
+        new ShowConfirmModalEvent({
+          title: t('dashboard.rows-layout.ungroup-nested-title', 'Ungroup nested groups?'),
+          text: t('dashboard.rows-layout.ungroup-nested-text', 'This will ungroup all nested groups.'),
+          yesText: t('dashboard.rows-layout.continue', 'Continue'),
+          noText: t('dashboard.rows-layout.cancel', 'Cancel'),
+          onConfirm: () => {
+            if (gridTypes.size > 1) {
+              requestAnimationFrame(() => {
+                this._confirmConvertMixedGrids(gridTypes);
+              });
+            } else {
+              this.wrapUngroupRowsInEdit(mapIdToGridLayoutType(gridTypes.values().next().value)!);
+            }
+          },
+        })
+      );
+      return;
+    }
+
+    if (gridTypes.size > 1) {
+      this._confirmConvertMixedGrids(gridTypes);
+      return;
+    } else {
+      this.wrapUngroupRowsInEdit(mapIdToGridLayoutType(gridTypes.values().next().value)!);
+    }
+  }
+
+  private _confirmConvertMixedGrids(availableIds: Set<string>) {
+    appEvents.publish(
+      new ShowModalReactEvent({
+        component: ConvertMixedGridsModal,
+        props: {
+          availableIds,
+          onSelect: (id: string) => {
+            const selected = mapIdToGridLayoutType(id);
+            if (selected) {
+              this.wrapUngroupRowsInEdit(selected);
+            }
+          },
+        },
+      })
+    );
+  }
+
+  private wrapUngroupRowsInEdit(gridLayoutType: GridLayoutType) {
+    const parent = this.parent;
+    if (!parent || !isLayoutParent(parent)) {
+      throw new Error('Ungroup rows failed: parent is not a layout container');
+    }
+
+    const previousLayout = this.clone({});
+    const scene = getDashboardSceneFor(this);
+
+    dashboardEditActions.edit({
+      description: t('dashboard.rows-layout.edit.ungroup-rows', 'Ungroup rows'),
+      source: scene,
+      perform: () => {
+        this._ungroupRows(gridLayoutType);
+      },
+      undo: () => {
+        parent.switchLayout(previousLayout);
+      },
+    });
+  }
+
+  private _ungroupRows(gridLayoutType: GridLayoutType) {
+    const hasNonGridLayout = this.state.rows.some((row) => !row.getLayout().descriptor.isGridLayout);
+
+    if (hasNonGridLayout) {
+      for (const row of this.state.rows) {
+        const layout = row.getLayout();
+        if (!layout.descriptor.isGridLayout) {
+          if (layout instanceof RowsLayoutManager) {
+            layout._ungroupRows(gridLayoutType);
+          } else {
+            throw new Error(`Ungrouping not supported for layout type: ${layout.descriptor.name}`);
+          }
+        }
+      }
+    }
+
+    this.convertAllRowsLayouts(gridLayoutType);
+
+    const firstRow = this.state.rows[0];
+    const firstRowLayout = firstRow.getLayout();
+    const otherRows = this.state.rows.slice(1);
+
+    for (const row of otherRows) {
+      const layout = row.getLayout();
+      if (firstRowLayout.merge) {
+        firstRowLayout.merge(layout);
+      } else {
+        throw new Error(`Layout type ${firstRowLayout.descriptor.name} does not support merging`);
+      }
+    }
+
+    this.setState({ rows: [firstRow] });
+    this.removeRow(firstRow, true);
+  }
+
+  public removeRow(row: RowItem, skipUndo?: boolean) {
     // When removing last row replace ourselves with the inner row layout
     if (this.shouldUngroup()) {
-      ungroupLayout(this, row.state.layout);
+      ungroupLayout(this, row.state.layout, skipUndo ?? false);
       return;
     }
 
     const indexOfRowToRemove = this.state.rows.findIndex((r) => r === row);
 
-    dashboardEditActions.removeElement({
-      removedObject: row,
-      source: this,
-      perform: () => this.setState({ rows: this.state.rows.filter((r) => r !== row) }),
-      undo: () => {
-        const rows = [...this.state.rows];
-        rows.splice(indexOfRowToRemove, 0, row);
-        this.setState({ rows });
-      },
-    });
+    const perform = () => this.setState({ rows: this.state.rows.filter((r) => r !== row) });
+    const undo = () => {
+      const rows = [...this.state.rows];
+      rows.splice(indexOfRowToRemove, 0, row);
+      this.setState({ rows });
+    };
+
+    if (skipUndo) {
+      perform();
+    } else {
+      dashboardEditActions.removeElement({
+        removedObject: row,
+        source: this,
+        perform,
+        undo,
+      });
+    }
   }
 
   public moveRow(_rowKey: string, fromIndex: number, toIndex: number) {
@@ -190,20 +330,20 @@ export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> i
 
     if (layout instanceof TabsLayoutManager) {
       for (const tab of layout.state.tabs) {
-        if (isClonedKey(tab.state.key!)) {
+        if (tab.state.repeatSourceKey) {
           continue;
         }
 
         const conditionalRendering = tab.state.conditionalRendering;
         conditionalRendering?.clearParent();
 
-        const behavior = tab.state.$behaviors?.find((b) => b instanceof TabItemRepeaterBehavior);
-        const $behaviors = !behavior
-          ? undefined
-          : [new RowItemRepeaterBehavior({ variableName: behavior.state.variableName })];
-
         rows.push(
-          new RowItem({ layout: tab.state.layout.clone(), title: tab.state.title, conditionalRendering, $behaviors })
+          new RowItem({
+            layout: tab.state.layout.clone(),
+            title: tab.state.title,
+            conditionalRendering,
+            repeatByVariable: tab.state.repeatByVariable,
+          })
         );
       }
     } else if (layout instanceof DefaultGridLayoutManager) {
@@ -223,21 +363,24 @@ export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> i
         }
 
         if (child instanceof SceneGridRow) {
-          if (!isClonedKey(child.state.key!)) {
-            const behaviour = child.state.$behaviors?.find((b) => b instanceof RowRepeaterBehavior);
-
-            config.push({
-              title: child.state.title,
-              isCollapsed: !!child.state.isCollapsed,
-              isDraggable: child.state.isDraggable,
-              isResizable: child.state.isResizable,
-              children: child.state.children,
-              repeat: behaviour?.state.variableName,
-            });
-
-            // Since we encountered a row item, any subsequent panels should be added to a new row
-            children = undefined;
+          // Skip repeated row clones
+          if ('repeatSourceKey' in child.state && child.state.repeatSourceKey) {
+            return;
           }
+
+          const behaviour = child.state.$behaviors?.find((b) => b instanceof RowRepeaterBehavior);
+
+          config.push({
+            title: child.state.title,
+            isCollapsed: !!child.state.isCollapsed,
+            isDraggable: child.state.isDraggable,
+            isResizable: child.state.isResizable,
+            children: child.state.children,
+            repeat: behaviour?.state.variableName,
+          });
+
+          // Since we encountered a row item, any subsequent panels should be added to a new row
+          children = undefined;
         } else {
           if (!children) {
             children = [];
@@ -253,12 +396,13 @@ export class RowsLayoutManager extends SceneObjectBase<RowsLayoutManagerState> i
           new RowItem({
             title: rowConfig.title,
             collapse: !!rowConfig.isCollapsed,
+            repeatByVariable: rowConfig.repeat,
             layout: DefaultGridLayoutManager.fromGridItems(
               rowConfig.children,
               rowConfig.isDraggable ?? layout.state.grid.state.isDraggable,
-              rowConfig.isResizable ?? layout.state.grid.state.isResizable
+              rowConfig.isResizable ?? layout.state.grid.state.isResizable,
+              layout.state.grid.state.isLazy
             ),
-            $behaviors: rowConfig.repeat ? [new RowItemRepeaterBehavior({ variableName: rowConfig.repeat })] : [],
           })
       );
     } else {

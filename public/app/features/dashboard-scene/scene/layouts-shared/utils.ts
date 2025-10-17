@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { SceneObject } from '@grafana/scenes';
+import { contextSrv } from 'app/core/core';
 
 import { DashboardLayoutManager, isDashboardLayoutManager } from '../types/DashboardLayoutManager';
 import { isLayoutParent } from '../types/LayoutParent';
@@ -68,10 +69,15 @@ export function generateUniqueTitle(title: string | undefined, existingTitles: S
   return baseTitle;
 }
 
-export function ungroupLayout(layout: DashboardLayoutManager, innerLayout: DashboardLayoutManager) {
+export function ungroupLayout(layout: DashboardLayoutManager, innerLayout: DashboardLayoutManager, skipUndo?: boolean) {
   const layoutParent = layout.parent!;
   if (isLayoutParent(layoutParent)) {
     innerLayout.clearParent();
-    layoutParent.switchLayout(innerLayout);
+    layoutParent.switchLayout(innerLayout, skipUndo);
   }
+}
+
+export function getIsLazy(preload: boolean | undefined): boolean {
+  // We don't want to lazy load panels in the case of image renderer
+  return !(preload || (contextSrv.user && contextSrv.user.authenticatedBy === 'render'));
 }

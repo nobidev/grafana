@@ -1,10 +1,12 @@
 import { ReactElement, useMemo, useState } from 'react';
 
-import { type PluginExtensionLink, PluginExtensionPoints, RawTimeRange, getTimeZone } from '@grafana/data';
+import { type PluginExtensionLink, PluginExtensionPoints, RawTimeRange, TimeRange, getTimeZone } from '@grafana/data';
 import { config, reportInteraction, usePluginLinks } from '@grafana/runtime';
-import { DataQuery, TimeZone } from '@grafana/schema';
+import { DataQuery, Panel, TimeZone } from '@grafana/schema';
 import { contextSrv } from 'app/core/services/context_srv';
-import { AccessControlAction, ExplorePanelData, useSelector } from 'app/types';
+import { AccessControlAction } from 'app/types/accessControl';
+import { ExplorePanelData } from 'app/types/explore';
+import { useSelector } from 'app/types/store';
 
 import { getExploreItemSelector, isLeftPaneSelector, selectCorrelationDetails } from '../state/selectors';
 
@@ -87,6 +89,7 @@ export type PluginExtensionExploreContext = {
   timeRange: RawTimeRange;
   timeZone: TimeZone;
   shouldShowAddCorrelation: boolean;
+  panelData?: { panel: Panel; range: TimeRange };
 };
 
 function useExtensionPointContext(props: Props): PluginExtensionExploreContext {
