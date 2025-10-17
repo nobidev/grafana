@@ -98,6 +98,8 @@ export type QueryLibraryContextType = {
   activeDatasources: string[];
   /** Set a guard function that returns true to allow closing, false to prevent closing */
   setCloseGuard: (shouldAllowClose: () => boolean) => void;
+  shouldOpenToggletip: boolean;
+  setShouldOpenToggletip: (shouldOpenToggletip: boolean) => void;
 };
 
 export const QueryLibraryContext = createContext<QueryLibraryContextType>({
@@ -137,6 +139,8 @@ export const QueryLibraryContext = createContext<QueryLibraryContextType>({
   newQuery: undefined,
   activeDatasources: [],
   setCloseGuard: () => {},
+  shouldOpenToggletip: false,
+  setShouldOpenToggletip: () => {},
 });
 
 export function useQueryLibraryContext() {

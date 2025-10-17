@@ -79,7 +79,7 @@ export function ExploreToolbar({
   const dispatch = useDispatch();
   const splitted = useSelector(isSplit);
   const styles = useStyles2(getStyles, splitted);
-  const { renderSavedQueryToggletip } = useQueryLibraryContext();
+  const { renderSavedQueryToggletip, setShouldOpenToggletip } = useQueryLibraryContext();
 
   const timeZone = useSelector((state: StoreState) => getTimeZone(state.user));
   const fiscalYearStartMonth = useSelector((state: StoreState) => getFiscalYearStartMonth(state.user));
@@ -113,6 +113,7 @@ export function ExploreToolbar({
     : t('explore.toolbar.refresh-picker-run', 'Run query');
 
   const onChangeDatasource = async (dsSettings: DataSourceInstanceSettings) => {
+    setShouldOpenToggletip(true);
     if (!isCorrelationsEditorMode) {
       dispatch(changeDatasource({ exploreId, datasource: dsSettings.uid, options: { importQueries: true } }));
     } else {
