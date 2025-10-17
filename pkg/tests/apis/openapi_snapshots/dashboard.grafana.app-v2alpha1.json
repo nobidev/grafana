@@ -1060,6 +1060,71 @@
           }
         }
       },
+      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardAction": {
+        "type": "object",
+        "required": [
+          "type",
+          "title"
+        ],
+        "properties": {
+          "confirmation": {
+            "type": "string"
+          },
+          "fetch": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardFetchOptions"
+          },
+          "infinity": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardInfinityOptions"
+          },
+          "oneClick": {
+            "type": "boolean"
+          },
+          "style": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardV2alpha1ActionStyle"
+          },
+          "title": {
+            "type": "string",
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "default": ""
+          },
+          "variables": {
+            "type": "array",
+            "items": {
+              "default": {},
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardActionVariable"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardActionVariable": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "type"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "default": ""
+          },
+          "name": {
+            "type": "string",
+            "default": ""
+          },
+          "type": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
       "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardAdHocFilterWithLabels": {
         "description": "Define the AdHocFilterWithLabels type",
         "type": "object",
@@ -1250,7 +1315,6 @@
       "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardAnnotationQuerySpec": {
         "type": "object",
         "required": [
-          "query",
           "enable",
           "hide",
           "iconColor",
@@ -1259,6 +1323,9 @@
         "properties": {
           "builtIn": {
             "type": "boolean"
+          },
+          "datasource": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataSourceRef"
           },
           "enable": {
             "type": "boolean",
@@ -1276,7 +1343,7 @@
             "default": ""
           },
           "legacyOptions": {
-            "description": "Catch-all field for datasource-specific properties. Should not be available in as code tooling.",
+            "description": "Catch-all field for datasource-specific properties",
             "type": "object",
             "additionalProperties": {
               "type": "object"
@@ -1287,12 +1354,7 @@
             "default": ""
           },
           "query": {
-            "default": {},
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataQueryKind"
-              }
-            ]
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataQueryKind"
           }
         }
       },
@@ -1658,25 +1720,25 @@
         "description": "ConversionStatus is the status of the conversion of the dashboard.",
         "type": "object",
         "required": [
-          "failed",
-          "storedVersion",
-          "error"
+          "failed"
         ],
         "properties": {
           "error": {
             "description": "The error message from the conversion. Empty if the conversion has not failed.",
-            "type": "string",
-            "default": ""
+            "type": "string"
           },
           "failed": {
             "description": "Whether from another version has failed. If true, means that the dashboard is not valid, and the caller should instead fetch the stored version.",
             "type": "boolean",
             "default": false
           },
+          "source": {
+            "description": "The original value map[string]any",
+            "type": "object"
+          },
           "storedVersion": {
             "description": "The version which was stored when the dashboard was created / updated. Fetching this version should always succeed.",
-            "type": "string",
-            "default": ""
+            "type": "string"
           }
         }
       },
@@ -1868,24 +1930,11 @@
         "type": "object",
         "required": [
           "kind",
-          "group",
-          "version",
           "spec"
         ],
         "properties": {
-          "datasource": {
-            "description": "New type for datasource reference Not creating a new type until we figure out how to handle DS refs for group by, adhoc, and every place that uses DataSourceRef in TS.",
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardV2alpha1DataQueryKindDatasource"
-              }
-            ]
-          },
-          "group": {
-            "type": "string",
-            "default": ""
-          },
           "kind": {
+            "description": "The kind of a DataQueryKind is the datasource type",
             "type": "string",
             "default": ""
           },
@@ -1894,15 +1943,10 @@
             "additionalProperties": {
               "type": "object"
             }
-          },
-          "version": {
-            "type": "string",
-            "default": ""
           }
         }
       },
       "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataSourceRef": {
-        "description": "Keeping this for backwards compatibility for GroupByVariableSpec and AdhocVariableSpec This type is widely used in the codebase and changing it will have a big impact",
         "type": "object",
         "properties": {
           "type": {
@@ -2087,6 +2131,47 @@
           }
         }
       },
+      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardFetchOptions": {
+        "type": "object",
+        "required": [
+          "method",
+          "url"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": ""
+              }
+            }
+          },
+          "method": {
+            "type": "string",
+            "default": ""
+          },
+          "queryParams": {
+            "description": "These are 2D arrays of strings, each representing a key-value pair We are defining them this way because we can't generate a go struct that that would have exactly two strings in each sub-array",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": ""
+              }
+            }
+          },
+          "url": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
       "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardFieldColor": {
         "description": "Map a field to a color.",
         "type": "object",
@@ -2113,6 +2198,18 @@
         "description": "The data model used in Grafana, namely the data frame, is a columnar-oriented table structure that unifies both time series and table query results. Each column within this structure is called a field. A field can represent a single time series or table column. Field options allow you to change how the data is displayed in your visualizations.",
         "type": "object",
         "properties": {
+          "actions": {
+            "description": "Define interactive HTTP requests that can be triggered from data visualizations.",
+            "type": "array",
+            "items": {
+              "default": {},
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardAction"
+                }
+              ]
+            }
+          },
           "color": {
             "description": "Panel color configuration",
             "allOf": [
@@ -2452,6 +2549,52 @@
           }
         }
       },
+      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardInfinityOptions": {
+        "type": "object",
+        "required": [
+          "method",
+          "url",
+          "datasourceUid"
+        ],
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "datasourceUid": {
+            "type": "string",
+            "default": ""
+          },
+          "headers": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": ""
+              }
+            }
+          },
+          "method": {
+            "type": "string",
+            "default": ""
+          },
+          "queryParams": {
+            "description": "These are 2D arrays of strings, each representing a key-value pair We are defining them this way because we can't generate a go struct that that would have exactly two strings in each sub-array",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "default": ""
+              }
+            }
+          },
+          "url": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
       "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardIntervalVariableKind": {
         "description": "Interval variable kind",
         "type": "object",
@@ -2764,6 +2907,9 @@
           "hidden"
         ],
         "properties": {
+          "datasource": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataSourceRef"
+          },
           "hidden": {
             "type": "boolean",
             "default": false
@@ -3011,6 +3157,9 @@
               }
             ]
           },
+          "datasource": {
+            "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardDataSourceRef"
+          },
           "definition": {
             "type": "string"
           },
@@ -3073,6 +3222,20 @@
           "sort": {
             "type": "string",
             "default": ""
+          },
+          "staticOptions": {
+            "type": "array",
+            "items": {
+              "default": {},
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardVariableOption"
+                }
+              ]
+            }
+          },
+          "staticOptionsOrder": {
+            "type": "string"
           }
         }
       },
@@ -3740,10 +3903,10 @@
           }
         }
       },
-      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardV2alpha1DataQueryKindDatasource": {
+      "com.github.grafana.grafana.apps.dashboard.pkg.apis.dashboard.v2alpha1.DashboardV2alpha1ActionStyle": {
         "type": "object",
         "properties": {
-          "name": {
+          "backgroundColor": {
             "type": "string"
           }
         }

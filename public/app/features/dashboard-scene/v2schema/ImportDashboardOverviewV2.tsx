@@ -6,7 +6,7 @@ import {
   AnnotationQueryKind,
   Spec as DashboardV2Spec,
   defaultDataQueryKind,
-} from '@grafana/schema/dist/esm/schema/dashboard/v2alpha1/types.spec.gen';
+} from '@grafana/schema/dist/esm/schema/dashboard/v2';
 import { Form } from 'app/core/components/Form/Form';
 import { getDashboardAPI } from 'app/features/dashboard/api/dashboard_api';
 import { SaveDashboardCommand } from 'app/features/dashboard/components/SaveDashboard/types';
@@ -98,16 +98,24 @@ export function ImportDashboardOverviewV2() {
             }
           }
         } else if (variable.kind === 'DatasourceVariable') {
-          return {
-            ...variable,
-            spec: {
-              ...variable.spec,
-              current: {
-                text: '',
-                value: '',
-              },
-            },
-          };
+          const dsType = variable.spec.pluginId;
+          if (dsType) {
+            if (form[`datasource-${dsType}`]) {
+              const ds = form[`datasource-${dsType}`];
+              return {
+                ...variable,
+                spec: {
+                  ...variable.spec,
+                  current: {
+                    // @ts-ignore
+                    text: ds.name,
+                    // @ts-ignore
+                    value: ds.uid,
+                  },
+                },
+              };
+            }
+          }
         }
         return variable;
       }),
@@ -116,7 +124,7 @@ export function ImportDashboardOverviewV2() {
           if (element.kind === 'Panel') {
             const panel = { ...element.spec };
             if (panel.data?.kind === 'QueryGroup') {
-              const newQueries = panel.data.spec.queries.map((query: any) => {
+              const newQueries = panel.data.spec.queries.map((query) => {
                 if (query.kind === 'PanelQuery') {
                   const queryType = query.spec.query?.kind;
                   // Match datasource by query kind

@@ -1,28 +1,28 @@
 package metadata
 
 import (
+	"cmp"
 	"context"
+	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
-	claims "github.com/grafana/authlib/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/metadata"
 
+	claims "github.com/grafana/authlib/types"
 	"github.com/grafana/grafana-app-sdk/logging"
-	secretv0alpha1 "github.com/grafana/grafana/pkg/apis/secret/v0alpha1"
+
+	secretv1beta1 "github.com/grafana/grafana/apps/secret/pkg/apis/secret/v1beta1"
 	"github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
 	"github.com/grafana/grafana/pkg/registry/apis/secret/xkube"
-	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/storage/secret/metadata/metrics"
 )
 
-// TODO: this should be a "decrypt" service rather, so that other services can wire and call it.
 func ProvideDecryptStorage(
-	features featuremgmt.FeatureToggles,
 	tracer trace.Tracer,
 	keeperService contracts.KeeperService,
 	keeperMetadataStorage contracts.KeeperMetadataStorage,
@@ -30,11 +30,6 @@ func ProvideDecryptStorage(
 	decryptAuthorizer contracts.DecryptAuthorizer,
 	reg prometheus.Registerer,
 ) (contracts.DecryptStorage, error) {
-	if !features.IsEnabledGlobally(featuremgmt.FlagGrafanaAPIServerWithExperimentalAPIs) ||
-		!features.IsEnabledGlobally(featuremgmt.FlagSecretsManagementAppPlatform) {
-		return &decryptStorage{}, nil
-	}
-
 	if decryptAuthorizer == nil {
 		return nil, fmt.Errorf("a decrypt authorizer is required")
 	}
@@ -60,7 +55,7 @@ type decryptStorage struct {
 }
 
 // Decrypt decrypts a secure value from the keeper.
-func (s *decryptStorage) Decrypt(ctx context.Context, namespace xkube.Namespace, name string) (_ secretv0alpha1.ExposedSecureValue, decryptErr error) {
+func (s *decryptStorage) Decrypt(ctx context.Context, namespace xkube.Namespace, name string) (_ secretv1beta1.ExposedSecureValue, decryptErr error) {
 	ctx, span := s.tracer.Start(ctx, "DecryptStorage.Decrypt", trace.WithAttributes(
 		attribute.String("namespace", namespace.String()),
 		attribute.String("name", name),
@@ -73,50 +68,75 @@ func (s *decryptStorage) Decrypt(ctx context.Context, namespace xkube.Namespace,
 	defer func() {
 		span.SetAttributes(attribute.String("decrypter.identity", decrypterIdentity))
 
+		args := []any{
+			"namespace", namespace.String(),
+			"secret_name", name,
+			"decrypter_identity", decrypterIdentity,
+		}
+
+		// The service identity used for decryption is always what is from the signed token, but if the request is
+		// coming from grafana, the service identity will be grafana, but the request metadata will contain
+		// additional service identity information (such as coming from the provisioning service in grafana).
+		// we do this for auditing purposes.
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			if svcIdentities := md.Get(contracts.HeaderGrafanaServiceIdentityName); len(svcIdentities) > 0 {
+				args = append(args, "grafana_decrypter_identity", svcIdentities[0])
+				span.SetAttributes(attribute.String("grafana_decrypter.identity", svcIdentities[0]))
+			}
+		}
+
+		decryptResultLabel := metrics.DecryptResultLabel(decryptErr)
+
 		if decryptErr == nil {
-			logging.FromContext(ctx).Info("Audit log:", "operation", "decrypt_secret_success", "namespace", namespace, "secret_name", name, "decrypter_identity", decrypterIdentity)
+			span.SetStatus(codes.Ok, "Decrypt succeeded")
+			args = append(args, "operation", "decrypt_secret_success")
 		} else {
 			span.SetStatus(codes.Error, "Decrypt failed")
 			span.RecordError(decryptErr)
-
-			logging.FromContext(ctx).Info("Audit log:", "operation", "decrypt_secret_error", "namespace", namespace, "secret_name", name, "decrypter_identity", decrypterIdentity, "error", decryptErr)
+			args = append(args, "operation", "decrypt_secret_error", "error", decryptErr.Error(), "result", decryptResultLabel)
 		}
-		success := decryptErr == nil
-		s.metrics.DecryptDuration.WithLabelValues(strconv.FormatBool(success)).Observe(time.Since(start).Seconds())
-		s.metrics.DecryptRequestCount.WithLabelValues(strconv.FormatBool(success)).Inc()
+
+		logging.FromContext(ctx).Info("Secrets Audit Log", args...)
+
+		s.metrics.DecryptDuration.WithLabelValues(decryptResultLabel).Observe(time.Since(start).Seconds())
+
+		// Do not leak error details to caller, return only the wrapped domain errors.
+		if decryptErr != nil {
+			decryptErr = cmp.Or(errors.Unwrap(decryptErr), contracts.ErrDecryptFailed)
+		}
 	}()
 
 	// Basic authn check before reading a secure value metadata, it is here on purpose.
 	if _, ok := claims.AuthInfoFrom(ctx); !ok {
-		return "", contracts.ErrDecryptNotAuthorized
+		return "", fmt.Errorf("no auth info in context (%w)", contracts.ErrDecryptNotAuthorized)
 	}
 
 	// The auth token will not necessarily have the permission to read the secure value metadata,
 	// but we still need to do it to inspect the `decrypters` field, hence the actual `authorize`
 	// function call happens after this.
-	sv, err := s.secureValueMetadataStorage.ReadForDecrypt(ctx, namespace, name)
+	sv, err := s.secureValueMetadataStorage.Read(ctx, namespace, name, contracts.ReadOpts{})
 	if err != nil {
-		return "", contracts.ErrDecryptNotFound
+		return "", fmt.Errorf("failed to read secure value metadata storage: %v (%w)", err, contracts.ErrDecryptNotFound)
 	}
 
-	decrypterIdentity, authorized := s.decryptAuthorizer.Authorize(ctx, name, sv.Decrypters)
+	decrypterIdentity, authorized, reason := s.decryptAuthorizer.Authorize(ctx, namespace, name, sv.Spec.Decrypters, sv.OwnerReferences)
 	if !authorized {
-		return "", contracts.ErrDecryptNotAuthorized
+		return "", fmt.Errorf("failed to authorize decryption with reason %v (%w)", reason, contracts.ErrDecryptNotAuthorized)
 	}
 
-	keeperConfig, err := s.keeperMetadataStorage.GetKeeperConfig(ctx, namespace.String(), sv.Keeper, contracts.ReadOpts{})
+	keeperConfig, err := s.keeperMetadataStorage.GetKeeperConfig(ctx, namespace.String(), sv.Spec.Keeper, contracts.ReadOpts{})
 	if err != nil {
-		return "", contracts.ErrDecryptFailed
+		return "", fmt.Errorf("failed to read keeper config metadata storage: %v (%w)", err, contracts.ErrDecryptFailed)
 	}
 
 	keeper, err := s.keeperService.KeeperForConfig(keeperConfig)
 	if err != nil {
-		return "", contracts.ErrDecryptFailed
+		return "", fmt.Errorf("failed to get keeper for config: %v (%w)", err, contracts.ErrDecryptFailed)
 	}
 
-	exposedValue, err := keeper.Expose(ctx, keeperConfig, namespace.String(), contracts.ExternalID(sv.ExternalID))
+	exposedValue, err := keeper.Expose(ctx, keeperConfig, namespace.String(), name, sv.Status.Version)
 	if err != nil {
-		return "", contracts.ErrDecryptFailed
+		return "", fmt.Errorf("failed to expose secret: %v (%w)", err, contracts.ErrDecryptFailed)
 	}
 
 	return exposedValue, nil

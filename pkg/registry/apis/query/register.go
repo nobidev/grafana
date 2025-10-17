@@ -31,37 +31,38 @@ import (
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/plugincontext"
 	"github.com/grafana/grafana/pkg/services/pluginsintegration/pluginstore"
+	"github.com/grafana/grafana/pkg/setting"
 )
 
 var _ builder.APIGroupBuilder = (*QueryAPIBuilder)(nil)
 
 type QueryAPIBuilder struct {
-	log                    log.Logger
-	concurrentQueryLimit   int
-	userFacingDefaultError string
-	features               featuremgmt.FeatureToggles
+	log                  log.Logger
+	concurrentQueryLimit int
+	features             featuremgmt.FeatureToggles
 
 	authorizer authorizer.Authorizer
 
-	tracer         tracing.Tracer
-	metrics        *metrics.ExprMetrics
-	parser         *queryParser
-	clientSupplier clientapi.DataSourceClientSupplier
-	registry       query.DataSourceApiServerRegistry
-	converter      *expr.ResultConverter
-	queryTypes     *query.QueryTypeDefinitionList
+	tracer                 tracing.Tracer
+	metrics                *metrics.ExprMetrics
+	instanceProvider       clientapi.InstanceProvider
+	registry               query.DataSourceApiServerRegistry
+	converter              *expr.ResultConverter
+	queryTypes             *query.QueryTypeDefinitionList
+	legacyDatasourceLookup service.LegacyDataSourceLookup
+	connections            DataSourceConnectionProvider
 }
 
-func NewQueryAPIBuilder(features featuremgmt.FeatureToggles,
-	clientSupplier clientapi.DataSourceClientSupplier,
+func NewQueryAPIBuilder(
+	features featuremgmt.FeatureToggles,
+	instanceProvider clientapi.InstanceProvider,
 	ar authorizer.Authorizer,
 	registry query.DataSourceApiServerRegistry,
-	legacy service.LegacyDataSourceLookup,
 	registerer prometheus.Registerer,
 	tracer tracing.Tracer,
+	legacyDatasourceLookup service.LegacyDataSourceLookup,
+	connections DataSourceConnectionProvider,
 ) (*QueryAPIBuilder, error) {
-	reader := expr.NewExpressionQueryReader(features)
-
 	// Include well typed query definitions
 	var queryTypes *query.QueryTypeDefinitionList
 	if features.IsEnabledGlobally(featuremgmt.FlagDatasourceQueryTypes) {
@@ -80,22 +81,25 @@ func NewQueryAPIBuilder(features featuremgmt.FeatureToggles,
 	return &QueryAPIBuilder{
 		concurrentQueryLimit: 4,
 		log:                  log.New("query_apiserver"),
-		clientSupplier:       clientSupplier,
+		instanceProvider:     instanceProvider,
 		authorizer:           ar,
 		registry:             registry,
-		parser:               newQueryParser(reader, legacy, tracer, log.New("query_parser")),
 		metrics:              metrics.NewQueryServiceExpressionsMetrics(registerer),
 		tracer:               tracer,
 		features:             features,
 		queryTypes:           queryTypes,
+		connections:          connections,
 		converter: &expr.ResultConverter{
 			Features: features,
 			Tracer:   tracer,
 		},
+		legacyDatasourceLookup: legacyDatasourceLookup,
 	}, nil
 }
 
-func RegisterAPIService(features featuremgmt.FeatureToggles,
+func RegisterAPIService(
+	cfg *setting.Cfg,
+	features featuremgmt.FeatureToggles,
 	apiregistration builder.APIRegistrar,
 	dataSourcesService datasources.DataSourceService,
 	pluginStore pluginstore.Store,
@@ -104,7 +108,8 @@ func RegisterAPIService(features featuremgmt.FeatureToggles,
 	pCtxProvider *plugincontext.Provider,
 	registerer prometheus.Registerer,
 	tracer tracing.Tracer,
-	legacy service.LegacyDataSourceLookup,
+	legacyDatasourceLookup service.LegacyDataSourceLookup,
+	exprService *expr.Service,
 ) (*QueryAPIBuilder, error) {
 	if !featuremgmt.AnyEnabled(features,
 		featuremgmt.FlagQueryService,
@@ -125,14 +130,17 @@ func RegisterAPIService(features featuremgmt.FeatureToggles,
 			return authorizer.DecisionAllow, "", nil
 		})
 
+	reg := client.NewDataSourceRegistryFromStore(pluginStore, dataSourcesService)
+
 	builder, err := NewQueryAPIBuilder(
 		features,
-		&CommonDataSourceClientSupplier{
-			Client: client.NewQueryClientForPluginClient(pluginClient, pCtxProvider, accessControl),
-		},
+		client.NewSingleTenantInstanceProvider(cfg, features, pluginClient, pCtxProvider, accessControl),
 		ar,
 		client.NewDataSourceRegistryFromStore(pluginStore, dataSourcesService),
-		legacy, registerer, tracer,
+		registerer,
+		tracer,
+		legacyDatasourceLookup,
+		&connectionsProvider{dsService: dataSourcesService, registry: reg},
 	)
 	apiregistration.RegisterAPI(builder)
 	return builder, err
@@ -146,6 +154,8 @@ func addKnownTypes(scheme *runtime.Scheme, gv schema.GroupVersion) {
 	scheme.AddKnownTypes(gv,
 		&query.DataSourceApiServer{},
 		&query.DataSourceApiServerList{},
+		&query.DataSourceConnection{},
+		&query.DataSourceConnectionList{},
 		&query.QueryDataRequest{},
 		&query.QueryDataResponse{},
 		&query.QueryTypeDefinition{},
@@ -167,6 +177,14 @@ func (b *QueryAPIBuilder) UpdateAPIGroupInfo(apiGroupInfo *genericapiserver.APIG
 	gv := query.SchemeGroupVersion
 
 	storage := map[string]rest.Storage{}
+
+	// Get a list of all datasource instances
+	if b.features.IsEnabledGlobally(featuremgmt.FlagQueryServiceWithConnections) {
+		// Eventually this would be backed either by search or reconciler pattern
+		storage[query.ConnectionResourceInfo.StoragePath()] = &connectionAccess{
+			connections: b.connections,
+		}
+	}
 
 	plugins := newPluginsStorage(b.registry)
 	storage[plugins.resourceInfo.StoragePath()] = plugins

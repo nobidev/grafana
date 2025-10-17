@@ -12,12 +12,11 @@ import {
   defaultSpec as defaultDashboardV2Spec,
   defaultDataQueryKind,
   defaultPanelSpec,
-  defaultTimeSettingsSpec,
   GridLayoutKind,
   PanelKind,
   PanelSpec,
   QueryVariableKind,
-} from '@grafana/schema/dist/esm/schema/dashboard/v2alpha1/types.spec.gen';
+} from '@grafana/schema/dist/esm/schema/dashboard/v2';
 import { DEFAULT_ANNOTATION_COLOR } from '@grafana/ui';
 import { AnnoKeyDashboardSnapshotOriginalUrl } from 'app/features/apiserver/types';
 import { SaveDashboardAsOptions } from 'app/features/dashboard/components/SaveDashboard/types';
@@ -25,13 +24,14 @@ import { DASHBOARD_SCHEMA_VERSION } from 'app/features/dashboard/state/Dashboard
 
 import { buildPanelEditScene } from '../panel-edit/PanelEditor';
 import { DashboardScene } from '../scene/DashboardScene';
-import { transformSaveModelToScene } from '../serialization/transformSaveModelToScene';
-import { transformSceneToSaveModel } from '../serialization/transformSceneToSaveModel';
+import { getTestDashboardSceneFromSaveModel } from '../utils/test-utils';
 import { findVizPanelByKey } from '../utils/utils';
 
 import { V1DashboardSerializer, V2DashboardSerializer } from './DashboardSceneSerializer';
-import { getPanelElement, transformSaveModelSchemaV2ToScene } from './transformSaveModelSchemaV2ToScene';
-import { transformSceneToSaveModelSchemaV2 } from './transformSceneToSaveModelSchemaV2';
+import nestedDashboard from './testfiles/nested_dashboard.json';
+import { getPanelElement } from './transformSaveModelSchemaV2ToScene';
+import { transformSaveModelToScene } from './transformSaveModelToScene';
+import { transformSceneToSaveModel } from './transformSceneToSaveModel';
 
 jest.mock('@grafana/runtime', () => ({
   ...jest.requireActual('@grafana/runtime'),
@@ -43,22 +43,23 @@ jest.mock('@grafana/runtime', () => ({
   config: {
     ...jest.requireActual('@grafana/runtime').config,
     bootData: {
-      settings: {
-        defaultDatasource: '-- Grafana --',
-        datasources: {
-          '-- Grafana --': {
-            name: 'Grafana',
-            meta: { id: 'grafana' },
-            type: 'datasource',
-            uid: 'grafana',
-          },
-          prometheus: {
-            name: 'prometheus',
-            meta: { id: 'prometheus' },
-            type: 'datasource',
-            uid: 'prometheus-uid',
-          },
-        },
+      user: {
+        timezone: 'UTC',
+      },
+    },
+    defaultDatasource: '-- Grafana --',
+    datasources: {
+      '-- Grafana --': {
+        name: 'Grafana',
+        meta: { id: 'grafana' },
+        type: 'datasource',
+        uid: 'grafana',
+      },
+      prometheus: {
+        name: 'prometheus',
+        meta: { id: 'prometheus' },
+        type: 'datasource',
+        uid: 'prometheus-uid',
       },
     },
   },
@@ -565,14 +566,14 @@ describe('DashboardSceneSerializer', () => {
             variables: [
               {
                 kind: 'GroupByVariable',
+                group: 'ds',
+                datasource: {
+                  name: 'ds-uid',
+                },
                 spec: {
                   current: {
                     text: 'Host',
                     value: 'host',
-                  },
-                  datasource: {
-                    type: 'ds',
-                    uid: 'ds-uid',
                   },
                   name: 'GroupBy',
                   options: [
@@ -607,14 +608,14 @@ describe('DashboardSceneSerializer', () => {
             variables: [
               {
                 kind: 'AdhocVariable',
+                group: 'prometheus',
+                datasource: {
+                  name: 'gdev-prometheus',
+                },
                 spec: {
                   name: 'adhoc',
                   label: 'Adhoc Label',
                   description: 'Adhoc Description',
-                  datasource: {
-                    uid: 'gdev-prometheus',
-                    type: 'prometheus',
-                  },
                   hide: 'dontHide',
                   skipUrlSync: false,
                   filters: [],
@@ -671,30 +672,38 @@ describe('DashboardSceneSerializer', () => {
         expect(serializer.getTrackingInformation(dashboard)).toBe(undefined);
       });
 
-      it('provides dashboard tracking information with from initial save model', () => {
-        const dashboard = setupV2({
-          timeSettings: {
-            nowDelay: '10s',
-            from: '',
-            to: '',
-            autoRefresh: '',
-            autoRefreshIntervals: [],
-            hideTimepicker: false,
-            fiscalYearStartMonth: 0,
-            timezone: '',
-          },
-          liveNow: true,
-        });
+      it('provides dashboard tracking information from initial save model', () => {
+        const dashboard = setupV2(nestedDashboard as Partial<DashboardV2Spec>);
 
         expect(dashboard.getTrackingInformation()).toEqual({
           uid: 'dashboard-test',
-          title: 'hello',
-          panels_count: 1,
-          panel_type__count: 1,
-          variable_type_custom_count: 1,
+          title: 'Cloudwatch ec2 new layout',
+          panels_count: 6,
+          schemaVersion: DASHBOARD_SCHEMA_VERSION,
           settings_nowdelay: undefined,
           settings_livenow: true,
-          schemaVersion: DASHBOARD_SCHEMA_VERSION,
+          variable_type_custom_count: 1,
+          variable_type_query_count: 1,
+          panel_type_timeseries_count: 6,
+        });
+
+        expect(dashboard.getDynamicDashboardsTrackingInformation()).toEqual({
+          panelCount: 6,
+          rowCount: 6,
+          tabCount: 4,
+          templateVariableCount: 2,
+          maxNestingLevel: 3,
+          dashStructure:
+            '[{"kind":"row","children":[{"kind":"row","children":[{"kind":"tab","children":[{"kind":"panel"},{"kind":"panel"},{"kind":"panel"}]},{"kind":"tab","children":[]}]},{"kind":"row","children":[{"kind":"row","children":[{"kind":"panel"}]}]}]},{"kind":"row","children":[{"kind":"row","children":[{"kind":"tab","children":[{"kind":"panel"}]},{"kind":"tab","children":[{"kind":"panel"}]}]}]}]',
+          conditionalRenderRulesCount: 3,
+          autoLayoutCount: 3,
+          customGridLayoutCount: 2,
+          rowsLayoutCount: 4,
+          tabsLayoutCount: 2,
+          panelsByDatasourceType: {
+            cloudwatch: 5,
+            datasource: 1,
+          },
         });
       });
     });
@@ -864,14 +873,15 @@ describe('DashboardSceneSerializer', () => {
                 id: 1,
                 title: 'Panel 1',
                 vizConfig: {
-                  kind: 'graph',
+                  kind: 'VizConfig',
+                  group: 'graph',
+                  version: '1.0.0',
                   spec: {
                     fieldConfig: {
                       defaults: { custom: { lineWidth: 2 } },
                       overrides: [],
                     },
                     options: { legend: { show: true } },
-                    pluginVersion: '1.0.0',
                   },
                 },
               },
@@ -883,14 +893,15 @@ describe('DashboardSceneSerializer', () => {
 
         const panelSpec = saveAsModel.elements['panel-1'].spec as PanelSpec;
         expect(panelSpec.vizConfig).toMatchObject({
-          kind: 'graph',
+          kind: 'VizConfig',
+          group: 'graph',
+          version: '1.0.0',
           spec: {
             fieldConfig: {
               defaults: { custom: { lineWidth: 2 } },
               overrides: [],
             },
             options: { legend: { show: true } },
-            pluginVersion: '1.0.0',
           },
         });
       });
@@ -952,7 +963,7 @@ describe('DashboardSceneSerializer', () => {
           });
           const saveAsModel = serializer.getSaveAsModel(dashboard, baseOptions);
           // referencing index 1 as transformation adds built in annotation query
-          expect(saveAsModel.annotations[1].spec.query.datasource).toEqual({
+          expect(saveAsModel.annotations[1].spec.query?.datasource).toEqual({
             name: 'prometheus-uid',
           });
         });
@@ -1227,9 +1238,10 @@ describe('DashboardSceneSerializer', () => {
                 description: '',
                 links: [],
                 vizConfig: {
-                  kind: 'timeseries',
+                  kind: 'VizConfig',
+                  group: 'timeseries',
+                  version: '1.0.0',
                   spec: {
-                    pluginVersion: '1.0.0',
                     options: {},
                     fieldConfig: { defaults: {}, overrides: [] },
                   },
@@ -1278,9 +1290,10 @@ describe('DashboardSceneSerializer', () => {
                 description: '',
                 links: [],
                 vizConfig: {
-                  kind: 'timeseries',
+                  kind: 'VizConfig',
+                  group: 'timeseries',
+                  version: '1.0.0',
                   spec: {
-                    pluginVersion: '1.0.0',
                     options: {},
                     fieldConfig: { defaults: {}, overrides: [] },
                   },
@@ -1473,87 +1486,5 @@ function setup(override: Partial<Dashboard> = {}) {
 }
 
 function setupV2(spec?: Partial<DashboardV2Spec>) {
-  const dashboard = transformSaveModelSchemaV2ToScene({
-    kind: 'DashboardWithAccessInfo',
-    spec: {
-      ...defaultDashboardV2Spec(),
-      title: 'hello',
-      timeSettings: {
-        ...defaultTimeSettingsSpec(),
-        autoRefresh: '10s',
-        from: 'now-1h',
-        to: 'now',
-      },
-      elements: {
-        'panel-1': {
-          kind: 'Panel',
-          spec: {
-            ...defaultPanelSpec(),
-            id: 1,
-            title: 'Panel 1',
-          },
-        },
-      },
-      layout: {
-        kind: 'GridLayout',
-        spec: {
-          items: [
-            {
-              kind: 'GridLayoutItem',
-              spec: {
-                x: 0,
-                y: 0,
-                width: 12,
-                height: 8,
-                element: {
-                  kind: 'ElementReference',
-                  name: 'panel-1',
-                },
-              },
-            },
-          ],
-        },
-      },
-      variables: [
-        {
-          kind: 'CustomVariable',
-          spec: {
-            name: 'app',
-            label: 'Query Variable',
-            description: 'A query variable',
-            skipUrlSync: false,
-            hide: 'dontHide',
-            options: [],
-            multi: false,
-            current: {
-              text: 'app1',
-              value: 'app1',
-            },
-            query: 'app1',
-            allValue: '',
-            includeAll: false,
-            allowCustomValue: true,
-          },
-        },
-      ],
-      ...spec,
-    },
-    apiVersion: 'v1',
-    metadata: {
-      name: 'dashboard-test',
-      resourceVersion: '1',
-      creationTimestamp: '2023-01-01T00:00:00Z',
-    },
-    access: {
-      canEdit: true,
-      canSave: true,
-      canStar: true,
-      canShare: true,
-    },
-  });
-
-  const initialSaveModel = transformSceneToSaveModelSchemaV2(dashboard);
-  dashboard.setInitialSaveModel(initialSaveModel);
-
-  return dashboard;
+  return getTestDashboardSceneFromSaveModel(spec);
 }

@@ -33,7 +33,7 @@ Grafana provides OAuth2 integrations for the following auth providers:
 
 If your OAuth2 provider is not listed, you can use Generic OAuth authentication.
 
-This topic describes how to configure Generic OAuth authentication using different methods and includes [examples of setting up Generic OAuth](#examples-of-setting-up-generic-oauth2) with specific OAuth2 providers.
+This topic describes how to configure Generic OAuth authentication using different methods and includes [examples of setting up Generic OAuth](#examples-of-setting-up-generic-oauth) with specific OAuth2 providers.
 
 ## Before you begin
 
@@ -49,10 +49,6 @@ If Users use the same email address in Azure AD that they use with other authent
 
 ## Configure generic OAuth authentication client using the Grafana UI
 
-{{< admonition type="note" >}}
-Available behind the `ssoSettingsAPI` feature toggle, which is enabled by default.
-{{< /admonition >}}
-
 As a Grafana Admin, you can configure Generic OAuth client from within Grafana using the Generic OAuth UI. To do this, navigate to **Administration > Authentication > Generic OAuth** page and fill in the form. If you have a current configuration in the Grafana configuration file then the form will be pre-populated with those values otherwise the form will contain default values.
 
 After you have filled in the form, click **Save** to save the configuration. If the save was successful, Grafana will apply the new configurations.
@@ -66,10 +62,6 @@ If you run Grafana in high availability mode, configuration changes may not get 
 Refer to [configuration options](#configuration-options) for more information.
 
 ## Configure generic OAuth authentication client using the Terraform provider
-
-{{< admonition type="note" >}}
-Available behind the `ssoSettingsAPI` feature toggle, which is enabled by default. Supported in the Terraform provider since v2.12.0.
-{{< /admonition >}}
 
 ```terraform
 resource "grafana_sso_settings" "generic_sso_settings" {
@@ -138,6 +130,10 @@ Grafana can resolve a user's login from the OAuth2 ID token, user information re
 Grafana looks at these sources in the order listed until it finds a login.
 If no login is found, then the user's login is set to user's email address.
 
+{{< admonition type="important" >}}
+Email is required for successful sign-up and login with Generic OAuth. Even if you map `login` from another claim (for example `sub`), Grafana still requires the user to have an email. Ensure your provider returns an email claim or configure `email_attribute_path` so Grafana can resolve it. Including the `email` scope is strongly recommended (for OIDC providers use `openid profile email`).
+{{< /admonition >}}
+
 Refer to the following table for information on what to configure based on how your Oauth2 provider returns a user's login:
 
 | Source of login                                                                 | Required configuration                           |
@@ -148,6 +144,21 @@ Refer to the following table for information on what to configure based on how y
 | Another field of the user information from the UserInfo endpoint.               | Set `login_attribute_path` configuration option. |
 | `login` or `username` field of the OAuth2 access token.                         | N/A                                              |
 | Another field of the OAuth2 access token.                                       | Set `login_attribute_path` configuration option. |
+
+#### Use the `sub` claim for login
+
+Most of the OAuth2 providers expose a stable subject identifier in the `sub` claim. You can use it to populate the Grafana login by setting `login_attribute_path` to `sub`. Because email is still required, also make sure Grafana can resolve the user's email (for example by including the `email` scope or mapping a custom field via `email_attribute_path`).
+
+Example configuration:
+
+```ini
+[auth.generic_oauth]
+enabled = true
+scopes = openid profile email
+login_attribute_path = sub
+# If your provider does not return `email` at the top level, map it explicitly
+# email_attribute_path = user.email
+```
 
 ### Configure display name
 
@@ -328,7 +339,7 @@ org_mapping = org_foo:org_foo:Viewer org_bar:org_bar:Editor *:org_baz:Editor
 ## Configure team synchronization
 
 {{< admonition type="note" >}}
-Only available in [Grafana Enterprise](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/introduction/grafana-enterprise/) and [Grafana Cloud Advanced](https://grafana.com/docs/grafana-cloud/).
+Available in [Grafana Enterprise](https://grafana.com/docs/grafana/<GRAFANA_VERSION>/introduction/grafana-enterprise/) and to customers on select Grafana Cloud plans. For pricing information, visit [pricing](https://grafana.com/pricing/) or contact our sales team.
 {{< /admonition >}}
 
 By using Team Sync, you can link your OAuth2 groups to teams within Grafana. This will automatically assign users to the appropriate teams.
@@ -384,6 +395,7 @@ If the configuration option requires a JMESPath expression that includes a colon
 | `empty_scopes`               | No       | Yes                | Set to `true` to use an empty scope during authentication.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `false`         |
 | `allow_sign_up`              | No       | Yes                | Controls Grafana user creation through the Generic OAuth login. Only existing Grafana users can log in with Generic OAuth if set to `false`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `true`          |
 | `auto_login`                 | No       | Yes                | Set to `true` to enable users to bypass the login screen and automatically log in. This setting is ignored if you configure multiple auth providers to use auto-login.                                                                                                                                                                                                                                                                                                                                                                                                                                      | `false`         |
+| `login_prompt`               | No       | Yes                | Indicates the type of user interaction when the user logs in with the IdP. Available values are `login`, `consent` and `select_account`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |                 |
 | `id_token_attribute_name`    | No       | Yes                | The name of the key used to extract the ID token from the returned OAuth2 token.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | `id_token`      |
 | `login_attribute_path`       | No       | Yes                | [JMESPath](http://jmespath.org/examples.html) expression to use for user login lookup from the user ID token. For more information on how user login is retrieved, refer to [Configure login](#configure-login).                                                                                                                                                                                                                                                                                                                                                                                            |                 |
 | `name_attribute_path`        | No       | Yes                | [JMESPath](http://jmespath.org/examples.html) expression to use for user name lookup from the user ID token. This name will be used as the user's display name. For more information on how user display name is retrieved, refer to [Configure display name](#configure-display-name).                                                                                                                                                                                                                                                                                                                     |                 |
@@ -457,7 +469,6 @@ Support for the Auth0 "audience" feature is not currently available in Grafana. 
 To set up Generic OAuth authentication with Auth0, follow these steps:
 
 1. Create an Auth0 application using the following parameters:
-
    - Name: Grafana
    - Type: Regular Web Application
 
@@ -492,7 +503,6 @@ To set up Generic OAuth authentication with Bitbucket, follow these steps:
 1. Navigate to **Settings > Workspace setting > OAuth consumers** in BitBucket.
 
 1. Create an application by selecting **Add consumer** and using the following parameters:
-
    - Allowed Callback URLs: `https://<grafana domain>/login/generic_oauth`
 
 1. Click **Save**.
@@ -525,7 +535,6 @@ By default, a refresh token is included in the response for the **Authorization 
 To set up Generic OAuth authentication with OneLogin, follow these steps:
 
 1. Create a new Custom Connector in OneLogin with the following settings:
-
    - Name: Grafana
    - Sign On Method: OpenID Connect
    - Redirect URI: `https://<grafana domain>/login/generic_oauth`
@@ -533,7 +542,6 @@ To set up Generic OAuth authentication with OneLogin, follow these steps:
    - Login URL: `https://<grafana domain>/login/generic_oauth`
 
 1. Add an app to the Grafana Connector:
-
    - Display Name: Grafana
 
 1. Update the `[auth.generic_oauth]` section of the Grafana configuration file using the client ID and client secret from the **SSO** tab of the app details page:

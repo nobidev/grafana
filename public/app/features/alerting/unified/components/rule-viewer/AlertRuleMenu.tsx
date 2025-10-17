@@ -2,12 +2,13 @@ import { PropsOf } from '@emotion/react';
 
 import { AppEvents } from '@grafana/data';
 import { t } from '@grafana/i18n';
+import { config } from '@grafana/runtime';
 import { Button, ComponentSize, Dropdown, Menu } from '@grafana/ui';
 import appEvents from 'app/core/app_events';
 import MenuItemPauseRule from 'app/features/alerting/unified/components/MenuItemPauseRule';
 import MoreButton from 'app/features/alerting/unified/components/MoreButton';
 import { useRulePluginLinkExtension } from 'app/features/alerting/unified/plugins/useRulePluginLinkExtensions';
-import { Rule, RuleGroupIdentifierV2, RuleIdentifier } from 'app/types/unified-alerting';
+import { EditableRuleIdentifier, Rule, RuleGroupIdentifierV2, RuleIdentifier } from 'app/types/unified-alerting';
 import { PromAlertingRuleState, RulerRuleDTO } from 'app/types/unified-alerting-dto';
 
 import {
@@ -18,7 +19,13 @@ import {
 } from '../../hooks/useAbilities';
 import { createShareLink, isLocalDevEnv, isOpenSourceEdition } from '../../utils/misc';
 import * as ruleId from '../../utils/rule-id';
-import { prometheusRuleType, rulerRuleType } from '../../utils/rules';
+import {
+  getRuleUID,
+  isEditableRuleIdentifier,
+  isPausedRule,
+  prometheusRuleType,
+  rulerRuleType,
+} from '../../utils/rules';
 import { createRelativeUrl } from '../../utils/url';
 import { DeclareIncidentMenuItem } from '../bridges/DeclareIncidentButton';
 
@@ -28,7 +35,8 @@ interface Props {
   identifier: RuleIdentifier;
   groupIdentifier: RuleGroupIdentifierV2;
   handleSilence: () => void;
-  handleDelete: (rule: RulerRuleDTO, groupIdentifier: RuleGroupIdentifierV2) => void;
+  handleManageEnrichments?: () => void;
+  handleDelete: (identifier: EditableRuleIdentifier, groupIdentifier: RuleGroupIdentifierV2) => void;
   handleDuplicateRule: (identifier: RuleIdentifier) => void;
   onPauseChange?: () => void;
   buttonSize?: ComponentSize;
@@ -47,6 +55,7 @@ const AlertRuleMenu = ({
   identifier,
   groupIdentifier,
   handleSilence,
+  handleManageEnrichments,
   handleDelete,
   handleDuplicateRule,
   onPauseChange,
@@ -118,10 +127,36 @@ const AlertRuleMenu = ({
   const showDivider =
     [canPause, canSilence, shouldShowDeclareIncidentButton, canDuplicate].some(Boolean) && [canExport].some(Boolean);
 
+  // grab the UID from either rulerRule or promRule
+  const ruleUid = getRuleUID(rulerRule ?? promRule);
+
+  const isPaused =
+    (rulerRuleType.grafana.rule(rulerRule) && isPausedRule(rulerRule)) ||
+    (prometheusRuleType.grafana.rule(promRule) && promRule.isPaused);
+
+  // todo: make this new menu item for enrichments an extension of the alertrulemenu items. For first iteration, we'll keep it here.
+  const canManageEnrichments =
+    ruleUid &&
+    handleManageEnrichments &&
+    config.featureToggles.alertingEnrichmentPerRule &&
+    config.featureToggles.alertEnrichment;
+
   const menuItems = (
     <>
-      {canPause && rulerRuleType.grafana.rule(rulerRule) && groupIdentifier.groupOrigin === 'grafana' && (
-        <MenuItemPauseRule rule={rulerRule} groupIdentifier={groupIdentifier} onPauseChange={onPauseChange} />
+      {canManageEnrichments && (
+        <Menu.Item
+          label={t('alerting.alert-menu.manage-enrichments', 'Manage enrichments')}
+          icon="edit"
+          onClick={handleManageEnrichments}
+        />
+      )}
+      {canPause && ruleUid && groupIdentifier.groupOrigin === 'grafana' && (
+        <MenuItemPauseRule
+          uid={ruleUid}
+          isPaused={isPaused}
+          groupIdentifier={groupIdentifier}
+          onPauseChange={onPauseChange}
+        />
       )}
       {canSilence && (
         <Menu.Item
@@ -162,14 +197,19 @@ const AlertRuleMenu = ({
           ))}
         </>
       )}
-      {canDelete && rulerRule && (
+      {canDelete && (
         <>
           <Menu.Divider />
           <Menu.Item
             label={t('alerting.common.delete', 'Delete')}
             icon="trash-alt"
             destructive
-            onClick={() => handleDelete(rulerRule, groupIdentifier)}
+            onClick={() => {
+              // if the identifier is not for a editable rule I wonder how you even got here.
+              if (isEditableRuleIdentifier(identifier)) {
+                handleDelete(identifier, groupIdentifier);
+              }
+            }}
           />
         </>
       )}

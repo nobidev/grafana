@@ -20,12 +20,11 @@ import {
   QueryVariableKind,
   TabsLayoutTabKind,
   DataQueryKind,
-} from '@grafana/schema/dist/esm/schema/dashboard/v2alpha1/types.spec.gen';
+} from '@grafana/schema/dist/esm/schema/dashboard/v2';
 import { MIXED_DATASOURCE_NAME } from 'app/plugins/datasource/mixed/MixedDataSource';
 
-import { ConditionalRendering } from '../../conditional-rendering/ConditionalRendering';
-import { ConditionalRenderingGroup } from '../../conditional-rendering/ConditionalRenderingGroup';
-import { conditionalRenderingSerializerRegistry } from '../../conditional-rendering/serializers';
+import { ConditionalRenderingGroup } from '../../conditional-rendering/group/ConditionalRenderingGroup';
+import { CustomTimeRangeCompare } from '../../scene/CustomTimeRangeCompare';
 import { DashboardDatasourceBehaviour } from '../../scene/DashboardDatasourceBehaviour';
 import { DashboardScene } from '../../scene/DashboardScene';
 import { LibraryPanelBehavior } from '../../scene/LibraryPanelBehavior';
@@ -61,10 +60,10 @@ export function buildVizPanel(panel: PanelKind, id?: number): VizPanel {
     key: getVizPanelKeyForPanelId(id ?? panel.spec.id),
     title: panel.spec.title?.substring(0, 5000),
     description: panel.spec.description,
-    pluginId: panel.spec.vizConfig.kind,
+    pluginId: panel.spec.vizConfig.group,
     options: panel.spec.vizConfig.spec.options,
     fieldConfig: transformMappingsToV1(panel.spec.vizConfig.spec.fieldConfig),
-    pluginVersion: panel.spec.vizConfig.spec.pluginVersion,
+    pluginVersion: panel.spec.vizConfig.version,
     displayMode: panel.spec.transparent ? 'transparent' : 'default',
     hoverHeader: !panel.spec.title && !timeOverrideShown,
     hoverHeaderOffset: 0,
@@ -74,6 +73,9 @@ export function buildVizPanel(panel: PanelKind, id?: number): VizPanel {
     $behaviors: [],
     extendPanelContext: setDashboardPanelContext,
     // _UNSAFE_customMigrationHandler: getAngularPanelMigrationHandler(panel), //FIXME: Angular Migration
+    headerActions: config.featureToggles.timeComparison
+      ? [new CustomTimeRangeCompare({ key: 'time-compare', compareWith: undefined, compareOptions: [] })]
+      : undefined,
   };
 
   if (!config.publicDashboardAccessToken) {
@@ -223,15 +225,15 @@ export function getRuntimePanelDataSource(query: DataQueryKind): DataSourceRef {
  * @param queryKind - The kind of query being performed
  * @returns The resolved DataSourceRef
  */
-function getDataSourceForQuery(querySpecDS: DataSourceRef | undefined | null, queryKind: string): DataSourceRef {
+export function getDataSourceForQuery(querySpecDS: DataSourceRef | undefined | null, queryKind: string): DataSourceRef {
   // If datasource is specified and has a uid, use it
   if (querySpecDS?.uid) {
     return querySpecDS;
   }
 
   // Otherwise try to infer datasource based on query kind (kind = ds type)
-  const defaultDatasource = config.bootData.settings.defaultDatasource;
-  const dsList = config.bootData.settings.datasources;
+  const defaultDatasource = config.defaultDatasource;
+  const dsList = config.datasources;
 
   // First check if the default datasource matches the query type
   if (dsList && dsList[defaultDatasource] && dsList[defaultDatasource].meta.id === queryKind) {
@@ -289,20 +291,12 @@ export function getLayout(sceneState: DashboardLayoutManager): DashboardV2Spec['
 
 export function getConditionalRendering(
   item: TabsLayoutTabKind | RowsLayoutRowKind | AutoGridLayoutItemKind
-): ConditionalRendering {
+): ConditionalRenderingGroup {
   if (!item.spec.conditionalRendering) {
-    return ConditionalRendering.createEmpty();
+    return ConditionalRenderingGroup.createEmpty();
   }
 
-  const rootGroup = conditionalRenderingSerializerRegistry
-    .get(item.spec.conditionalRendering.kind)
-    .deserialize(item.spec.conditionalRendering);
-
-  if (rootGroup && !(rootGroup instanceof ConditionalRenderingGroup)) {
-    throw new Error(`Conditional rendering must always start with a root group`);
-  }
-
-  return new ConditionalRendering({ rootGroup: rootGroup });
+  return ConditionalRenderingGroup.deserialize(item.spec.conditionalRendering);
 }
 
 export function getElements(layout: DashboardLayoutManager, scene: DashboardScene): DashboardV2Spec['elements'] {

@@ -31,7 +31,7 @@ import {
   AutoGridLayoutSpec,
   RowsLayoutSpec,
   TabsLayoutSpec,
-} from '@grafana/schema/dist/esm/schema/dashboard/v2alpha1/types.spec.gen';
+} from '@grafana/schema/dist/esm/schema/dashboard/v2';
 
 import { DashboardEditPane } from '../edit-pane/DashboardEditPane';
 import { DashboardAnnotationsDataLayer } from '../scene/DashboardAnnotationsDataLayer';
@@ -108,33 +108,29 @@ jest.mock('@grafana/runtime', () => ({
   ...jest.requireActual('@grafana/runtime'),
   config: {
     ...jest.requireActual('@grafana/runtime').config,
-    bootData: {
-      settings: {
-        defaultDatasource: 'loki',
-        datasources: {
-          Prometheus: {
-            name: 'Prometheus',
-            meta: { id: 'prometheus' },
-            type: 'datasource',
-          },
-          '-- Grafana --': {
-            name: 'Grafana',
-            meta: { id: 'grafana' },
-            type: 'datasource',
-          },
-          loki: {
-            name: 'Loki',
-            meta: {
-              id: 'loki',
-              name: 'Loki',
-              type: 'datasource',
-              info: { version: '1.0.0' },
-              module: 'app/plugins/datasource/loki/module',
-              baseUrl: '/plugins/loki',
-            },
-            type: 'datasource',
-          },
+    defaultDatasource: 'loki',
+    datasources: {
+      Prometheus: {
+        name: 'Prometheus',
+        meta: { id: 'prometheus' },
+        type: 'datasource',
+      },
+      '-- Grafana --': {
+        name: 'Grafana',
+        meta: { id: 'grafana' },
+        type: 'datasource',
+      },
+      loki: {
+        name: 'Loki',
+        meta: {
+          id: 'loki',
+          name: 'Loki',
+          type: 'datasource',
+          info: { version: '1.0.0' },
+          module: 'app/plugins/datasource/loki/module',
+          baseUrl: '/plugins/loki',
         },
+        type: 'datasource',
       },
     },
   },

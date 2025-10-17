@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/grafana/pkg/tests/apis"
 	"github.com/grafana/grafana/pkg/tests/testinfra"
 	"github.com/grafana/grafana/pkg/tests/testsuite"
+	"github.com/grafana/grafana/pkg/util/testutil"
 )
 
 var gvrTeams = schema.GroupVersionResource{
@@ -26,14 +27,19 @@ var gvrUsers = schema.GroupVersionResource{
 	Resource: "users",
 }
 
+var gvrTeamBindings = schema.GroupVersionResource{
+	Group:    "iam.grafana.app",
+	Version:  "v0alpha1",
+	Resource: "teambindings",
+}
+
 func TestMain(m *testing.M) {
 	testsuite.Run(m)
 }
 
 func TestIntegrationIdentity(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping integration test")
-	}
+	testutil.SkipIntegrationTestInShortMode(t)
+
 	helper := apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
 		AppModeProduction: false, // required for experimental APIs
 		DisableAnonymous:  true,
@@ -66,9 +72,10 @@ func TestIntegrationIdentity(t *testing.T) {
           },
           "spec": {
             "email": "staff@Org1",
-            "title": "staff"
-          },
-          "status": {}
+            "title": "staff",
+			"provisioned": false,
+			"externalUID": ""
+          }
         }
       ]
     }`, found)
@@ -91,34 +98,48 @@ func TestIntegrationIdentity(t *testing.T) {
 				"grafanaAdmin": true,
 				"login": "admin",
 				"name": "",
-				"provisioned": false
+				"provisioned": false,
+				"role": "Admin"
 			},
 			{
 				"disabled": false,
-				"email": "admin2-1",
+				"email": "grafana-admin",
 				"emailVerified": false,
 				"grafanaAdmin": true,
-				"login": "admin2-1",
-				"name": "",
-				"provisioned": false
+				"login": "grafana-admin",
+				"name": "admin2",
+				"provisioned": false,
+				"role": "Admin"
 			},
 			{
 				"disabled": false,
-				"email": "editor-1",
+				"email": "editor",
 				"emailVerified": false,
 				"grafanaAdmin": false,
-				"login": "editor-1",
-				"name": "",
-				"provisioned": false
+				"login": "editor",
+				"name": "editor",
+				"provisioned": false,
+				"role": "Editor"
 			},
 			{
 				"disabled": false,
-				"email": "viewer-1",
+				"email": "viewer",
 				"emailVerified": false,
 				"grafanaAdmin": false,
-				"login": "viewer-1",
-				"name": "",
-				"provisioned": false
+				"login": "viewer",
+				"name": "viewer",
+				"provisioned": false,
+				"role": "Viewer"
+			},
+			{
+				"disabled": false,
+				"email": "none",
+				"emailVerified": false,
+				"grafanaAdmin": false,
+				"login": "none",
+				"name": "none",
+				"provisioned": false,
+				"role": "None"
 			}
 		]`, found)
 
@@ -136,40 +157,54 @@ func TestIntegrationIdentity(t *testing.T) {
 		require.JSONEq(t, `[
 			{
 				"disabled": false,
-				"email": "admin2-1",
+				"email": "grafana-admin",
 				"emailVerified": false,
 				"grafanaAdmin": true,
-				"login": "admin2-1",
-				"name": "",
-				"provisioned": false
+				"login": "grafana-admin",
+				"name": "admin2",
+				"provisioned": false,
+				"role": "Admin"
 			},
 			{
 				"disabled": false,
-				"email": "admin2-2",
+				"email": "admin2-org-2",
 				"emailVerified": false,
 				"grafanaAdmin": false,
-				"login": "admin2-2",
-				"name": "",
-				"provisioned": false
+				"login": "admin2-org-2",
+				"name": "admin2",
+				"provisioned": false,
+				"role": "Admin"
 			},
 			{
 				"disabled": false,
-				"email": "editor-2",
+				"email": "editor-org-2",
 				"emailVerified": false,
 				"grafanaAdmin": false,
-				"login": "editor-2",
-				"name": "",
-				"provisioned": false
+				"login": "editor-org-2",
+				"name": "editor",
+				"provisioned": false,
+				"role": "Editor"
 			},
 			{
 				"disabled": false,
-				"email": "viewer-2",
+				"email": "viewer-org-2",
 				"emailVerified": false,
 				"grafanaAdmin": false,
-				"login": "viewer-2",
-				"name": "",
-				"provisioned": false
+				"login": "viewer-org-2",
+				"name": "viewer",
+				"provisioned": false,
+				"role": "Viewer"
+			},
+			{
+				"disabled": false,
+				"email": "none-org-2",
+				"emailVerified": false,
+				"grafanaAdmin": false,
+				"login": "none-org-2",
+				"name": "none",
+				"provisioned": false,
+				"role": "None"
 			}
-		]`, found)
+		] `, found)
 	})
 }

@@ -1,65 +1,54 @@
 import { css } from '@emotion/css';
-import { Property } from 'csstype';
 
-import { GrafanaTheme2, formattedValueToString } from '@grafana/data';
+import { formattedValueToString } from '@grafana/data';
 
-import { useStyles2 } from '../../../../themes/ThemeContext';
-import { renderSingleLink } from '../../DataLinksActionsTooltip';
-import { TableCellOptions, TableCellDisplayMode } from '../../types';
-import { useSingleLink } from '../hooks';
-import { AutoCellProps } from '../types';
+import { MaybeWrapWithLink } from '../components/MaybeWrapWithLink';
+import { TABLE } from '../constants';
+import { getActiveCellSelector } from '../styles';
+import { AutoCellProps, TableCellStyles } from '../types';
 
-export default function AutoCell({ value, field, justifyContent, rowIdx, cellOptions }: AutoCellProps) {
-  const styles = useStyles2(getStyles, justifyContent);
-
+export function AutoCell({ value, field, rowIdx }: AutoCellProps) {
   const displayValue = field.display!(value);
   const formattedValue = formattedValueToString(displayValue);
-  const link = useSingleLink(field, rowIdx);
-
   return (
-    <div className={styles.cell}>
-      {link == null ? formattedValue : renderSingleLink(link, formattedValue, getLinkStyle(styles, cellOptions))}
-    </div>
+    <MaybeWrapWithLink field={field} rowIdx={rowIdx}>
+      {formattedValue}
+    </MaybeWrapWithLink>
   );
 }
 
-const getLinkStyle = (styles: ReturnType<typeof getStyles>, cellOptions: TableCellOptions) => {
-  if (cellOptions.type === TableCellDisplayMode.Auto) {
-    return styles.linkCell;
-  }
+export const getStyles: TableCellStyles = (_theme, { textWrap, shouldOverflow, maxHeight }) =>
+  css({
+    ...(textWrap && { whiteSpace: 'pre-line' }),
+    ...(shouldOverflow && {
+      [getActiveCellSelector(Boolean(maxHeight))]: {
+        whiteSpace: 'pre-line',
+      },
+    }),
+    ...(maxHeight != null &&
+      textWrap && {
+        height: 'auto',
+        overflowY: 'hidden',
+        display: '-webkit-box',
+        WebkitBoxOrient: 'vertical',
+        WebkitLineClamp: Math.floor(maxHeight / TABLE.LINE_HEIGHT),
+        [getActiveCellSelector(true)]: {
+          display: 'flex',
+          WebkitLineClamp: 'none',
+          WebkitBoxOrient: 'unset',
+          overflowY: 'auto',
+          height: 'fit-content',
+        },
+      }),
+  });
 
-  return styles.cellLinkForColoredCell;
-};
-
-const getStyles = (theme: GrafanaTheme2, justifyContent: Property.JustifyContent | undefined) => ({
-  cell: css({
-    display: 'flex',
-    justifyContent: justifyContent,
-    a: {
-      color: 'inherit',
-    },
-  }),
-  cellLinkForColoredCell: css({
-    cursor: 'pointer',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    userSelect: 'text',
-    whiteSpace: 'nowrap',
-    fontWeight: theme.typography.fontWeightMedium,
-    textDecoration: 'underline',
-  }),
-  linkCell: css({
-    cursor: 'pointer',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    userSelect: 'text',
-    whiteSpace: 'nowrap',
-    color: `${theme.colors.text.link} !important`,
-    fontWeight: theme.typography.fontWeightMedium,
-    paddingRight: theme.spacing(1.5),
-    '&:hover': {
-      textDecoration: 'underline',
-      color: theme.colors.text.link,
-    },
-  }),
-});
+export const getJsonCellStyles: TableCellStyles = (_theme, { textWrap, shouldOverflow, maxHeight }) =>
+  css({
+    fontFamily: 'monospace',
+    ...(textWrap && { whiteSpace: 'pre' }),
+    ...(shouldOverflow && {
+      [getActiveCellSelector(Boolean(maxHeight))]: {
+        whiteSpace: 'pre',
+      },
+    }),
+  });
