@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -247,10 +248,38 @@ func (r *legacyResourceResourceMigrator) Migrate(ctx context.Context) error {
 		r.progress.SetTotal(ctx, int(count))
 	}
 
+	var file *os.File
+	if true { // ONLY necessary in SQLite to avoid lock contention
+		// https://github.com/grafana/grafana/blob/v12.2.0/pkg/storage/unified/sql/bulk.go#L115
+		file, err = os.CreateTemp("", "grafana-gitsync-migrate-*.parquet")
+		if err != nil {
+			return err
+		}
+
+		writer, err := parquet.NewParquetWriter(file)
+		if err != nil {
+			return err
+		}
+		opts.Store = parquet.NewBulkResourceWriterClient(writer) // write to parquet
+	}
+
 	opts.OnlyCount = false // this time actually write
 	_, err = r.legacy.Migrate(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("migrate legacy %s: %w", r.kind.Resource, err)
+	}
+
+	if file != nil {
+		iter, err := parquet.NewParquetReader(file.Name(), 50)
+		if err != nil {
+			return err
+		}
+		for iter.Next() {
+			req := iter.Request()
+			if err = r.Write(ctx, req.Key, req.Value); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
