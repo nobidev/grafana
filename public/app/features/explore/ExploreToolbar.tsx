@@ -7,6 +7,7 @@ import { DataSourceInstanceSettings, RawTimeRange, GrafanaTheme2 } from '@grafan
 import { Components } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
+import { DataQuery } from '@grafana/schema';
 import {
   defaultIntervals,
   PageToolbar,
@@ -29,6 +30,7 @@ import { getFiscalYearStartMonth, getTimeZone } from '../profile/state/selectors
 import { ExploreTimeControls } from './ExploreTimeControls';
 import { LiveTailButton } from './LiveTailButton';
 import { useQueriesDrawerContext } from './QueriesDrawer/QueriesDrawerContext';
+import { useQueryLibraryContext } from './QueryLibrary/QueryLibraryContext';
 import { ShortLinkButtonMenu } from './ShortLinkButtonMenu';
 import { ToolbarExtensionPoint } from './extensions/ToolbarExtensionPoint';
 import { changeDatasource } from './state/datasource';
@@ -64,12 +66,20 @@ interface Props {
   onChangeTime: (range: RawTimeRange, changedByScanner?: boolean) => void;
   onContentOutlineToogle: () => void;
   isContentOutlineOpen: boolean;
+  onReplaceQuery: (query: DataQuery, index: number) => void;
 }
 
-export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle, isContentOutlineOpen }: Props) {
+export function ExploreToolbar({
+  exploreId,
+  onChangeTime,
+  onContentOutlineToogle,
+  isContentOutlineOpen,
+  onReplaceQuery,
+}: Props) {
   const dispatch = useDispatch();
   const splitted = useSelector(isSplit);
   const styles = useStyles2(getStyles, splitted);
+  const { renderSavedQueryToggletip } = useQueryLibraryContext();
 
   const timeZone = useSelector((state: StoreState) => getTimeZone(state.user));
   const fiscalYearStartMonth = useSelector((state: StoreState) => getFiscalYearStartMonth(state.user));
@@ -239,14 +249,18 @@ export function ExploreToolbar({ exploreId, onChangeTime, onContentOutlineToogle
           >
             <Trans i18nKey="explore.explore-toolbar.outline">Outline</Trans>
           </ToolbarButton>,
-          <DataSourcePicker
-            key={`${exploreId}-ds-picker`}
-            mixed={!isCorrelationsEditorMode}
-            onChange={onChangeDatasource}
-            current={datasourceInstance?.getRef()}
-            hideTextValue={showSmallDataSourcePicker}
-            width={showSmallDataSourcePicker ? 8 : undefined}
-          />,
+          renderSavedQueryToggletip(
+            datasourceInstance?.uid ?? '',
+            <DataSourcePicker
+              key={`${exploreId}-ds-picker`}
+              mixed={!isCorrelationsEditorMode}
+              onChange={onChangeDatasource}
+              current={datasourceInstance?.getRef()}
+              hideTextValue={showSmallDataSourcePicker}
+              width={showSmallDataSourcePicker ? 8 : undefined}
+            />,
+            (query: DataQuery) => onReplaceQuery(query, 0)
+          ),
           <ToolbarExtensionPoint
             key="toolbar-extension-point"
             exploreId={exploreId}

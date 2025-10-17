@@ -61,6 +61,7 @@ import { changeSize, changeCompactMode } from './state/explorePane';
 import { splitOpen } from './state/main';
 import {
   addQueryRow,
+  changeQueries,
   modifyQueries,
   scanStart,
   scanStopAction,
@@ -347,6 +348,36 @@ export class Explore extends PureComponent<Props, ExploreState> {
     this.setState({ contentOutlineVisible: true });
   };
 
+  onChangeQuery(newQueries: DataQuery[], options?: { skipAutoImport?: boolean }) {
+    changeQueries({ exploreId: this.props.exploreId, queries: newQueries, options });
+  }
+
+  onReplaceQuery = (query: DataQuery, index: number, isFromLibrary = false) => {
+    const { queries, datasourceInstance, exploreId } = this.props;
+
+    // Replace old query with new query, preserving the original refId
+    const newQueries = queries.map((item, itemIndex) => {
+      if (itemIndex === index) {
+        return { ...query, refId: item.refId };
+      }
+      return item;
+    });
+    this.props.changeQueries({ exploreId, queries: newQueries, options: { skipAutoImport: true } });
+
+    // Update datasources based on the new query set
+    if (query.datasource?.uid && datasourceInstance) {
+      const uniqueDatasources = new Set(newQueries.map((q) => q.datasource?.uid));
+      const isMixed = uniqueDatasources.size > 1;
+      const newDatasourceRef = {
+        uid: isMixed ? MIXED_DATASOURCE_NAME : query.datasource.uid,
+      };
+      const shouldChangeDatasource = datasourceInstance.uid !== newDatasourceRef.uid;
+      if (shouldChangeDatasource) {
+        this.props.changeDatasource({ exploreId, datasource: newDatasourceRef, options: undefined });
+      }
+    }
+  };
+
   renderEmptyState(exploreContainerStyles: string) {
     return (
       <div className={cx(exploreContainerStyles)}>
@@ -623,6 +654,7 @@ export class Explore extends PureComponent<Props, ExploreState> {
           onChangeTime={this.onChangeTime}
           onContentOutlineToogle={this.onContentOutlineToogle}
           isContentOutlineOpen={contentOutlineVisible}
+          onReplaceQuery={this.onReplaceQuery}
         />
         <div
           style={{
@@ -660,6 +692,7 @@ export class Explore extends PureComponent<Props, ExploreState> {
                           changeCompactMode={(compact: boolean) =>
                             this.props.changeCompactMode(this.props.exploreId, false)
                           }
+                          onReplaceQuery={this.onReplaceQuery}
                         />
                         <SecondaryActions
                           // do not allow people to add queries with potentially different datasources in correlations editor mode
@@ -848,6 +881,7 @@ const mapDispatchToProps = {
   changeDatasource,
   changeSize,
   modifyQueries,
+  changeQueries,
   scanStart,
   scanStopAction,
   setQueries,

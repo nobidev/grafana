@@ -21,6 +21,7 @@ interface Props {
   exploreId: string;
   changeCompactMode: (compact: boolean) => void;
   isOpen?: boolean;
+  onReplaceQuery?: (query: DataQuery, index: number) => void;
 }
 
 const makeSelectors = (exploreId: string) => {
@@ -38,7 +39,7 @@ const makeSelectors = (exploreId: string) => {
   };
 };
 
-export const QueryRows = ({ exploreId, isOpen, changeCompactMode }: Props) => {
+export const QueryRows = ({ exploreId, isOpen, changeCompactMode, onReplaceQuery }: Props) => {
   const dispatch = useDispatch();
   const { openDrawer } = useQueryLibraryContext();
   const {
@@ -136,6 +137,7 @@ export const QueryRows = ({ exploreId, isOpen, changeCompactMode }: Props) => {
       onQueryToggled={onQueryToggled}
       onQueryReplacedFromLibrary={onQueryReplacedFromLibrary}
       onQueryOpenChanged={onQueryOpenChanged}
+      onReplaceQuery={onReplaceQuery}
       data={queryResponse}
       app={CoreApp.Explore}
       history={history}

@@ -64,6 +64,17 @@ export type QueryLibraryContextType = {
     onSelectQuery?: (query: DataQuery) => void
   ) => ReactNode;
 
+  /**
+   * Returns a toggletip wrapper component to show the number of saved queries for a given datasource.
+   * @param datasource
+   * @param children
+   */
+  renderSavedQueryToggletip: (
+    datasource: string,
+    children: JSX.Element,
+    onSelectQuery?: (query: DataQuery) => void
+  ) => ReactNode;
+
   queryLibraryEnabled: boolean;
   context: string;
   triggerAnalyticsEvent: (
@@ -103,6 +114,10 @@ export const QueryLibraryContext = createContext<QueryLibraryContextType>({
 
   renderQueryLibraryEditingHeader: () => {
     return null;
+  },
+
+  renderSavedQueryToggletip: (datasource: string, children: JSX.Element) => {
+    return children;
   },
 
   queryLibraryEnabled: false,
