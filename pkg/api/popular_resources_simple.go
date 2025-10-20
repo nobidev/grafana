@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -30,7 +29,15 @@ type PopularResourcesResponse struct {
 	TotalCount int               `json:"totalCount"`
 }
 
-type AlertRuleSummary struct {}
+type AlertRuleSummary struct{}
+
+// ListAllAlertsSimple returns a minimal list of alert rule summaries.
+func (hs *HTTPServer) ListAllAlertsSimple(c *contextmodel.ReqContext) response.Response {
+	return response.JSON(http.StatusOK, map[string]any{
+		"alerts":     []AlertRuleSummary{},
+		"totalCount": 0,
+	})
+}
 
 // GetPopularResourcesSimple returns most visited resources for the current user
 // Note: This queries the legacy dashboard table. For unified storage dashboards,
@@ -145,17 +152,17 @@ func (hs *HTTPServer) GetPopularResourcesSimple(c *contextmodel.ReqContext) resp
 				FirstVisited: row.FirstVisited,
 			}
 
-		// Generate URL based on type
-		switch row.ResourceType {
-		case "dashboard":
-			resource.URL = "/d/" + row.UID
-		case "folder":
-			resource.URL = "/dashboards/f/" + row.UID
-		case "alert":
-			resource.URL = "/alerting/grafana/" + row.UID + "/view"
-		default:
-			resource.URL = "/resource/" + row.UID
-		}
+			// Generate URL based on type
+			switch row.ResourceType {
+			case "dashboard":
+				resource.URL = "/d/" + row.UID
+			case "folder":
+				resource.URL = "/dashboards/f/" + row.UID
+			case "alert":
+				resource.URL = "/alerting/grafana/" + row.UID + "/view"
+			default:
+				resource.URL = "/resource/" + row.UID
+			}
 
 			resources = append(resources, resource)
 		}
@@ -340,17 +347,17 @@ func (hs *HTTPServer) GetRecentResourcesSimple(c *contextmodel.ReqContext) respo
 				FirstVisited: row.FirstVisited,
 			}
 
-		// Generate URL based on type
-		switch row.ResourceType {
-		case "dashboard":
-			resource.URL = "/d/" + row.UID
-		case "folder":
-			resource.URL = "/dashboards/f/" + row.UID
-		case "alert":
-			resource.URL = "/alerting/grafana/" + row.UID + "/view"
-		default:
-			resource.URL = "/resource/" + row.UID
-		}
+			// Generate URL based on type
+			switch row.ResourceType {
+			case "dashboard":
+				resource.URL = "/d/" + row.UID
+			case "folder":
+				resource.URL = "/dashboards/f/" + row.UID
+			case "alert":
+				resource.URL = "/alerting/grafana/" + row.UID + "/view"
+			default:
+				resource.URL = "/resource/" + row.UID
+			}
 
 			resources = append(resources, resource)
 		}
