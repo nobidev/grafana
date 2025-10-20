@@ -15,7 +15,7 @@ import {
   SceneDataQuery,
 } from '@grafana/scenes';
 import { DataQuery, DataSourceRef } from '@grafana/schema';
-import { Button, Stack, Tab, ButtonGroup, Dropdown, Menu, ToolbarButton } from '@grafana/ui';
+import { Button, Stack, Tab } from '@grafana/ui';
 import { addQuery } from 'app/core/utils/query';
 import { getSparkJoyEnabled, SPARK_JOY_LOCAL_STORAGE_KEY } from 'app/core/utils/sparkJoy';
 import { getLastUsedDatasourceFromStorage } from 'app/features/dashboard/utils/dashboard';
@@ -33,7 +33,6 @@ import { isSharedDashboardQuery } from 'app/plugins/datasource/dashboard/runShar
 import { QueryGroupOptions } from 'app/types/query';
 
 import { MIXED_DATASOURCE_NAME } from '../../../../plugins/datasource/mixed/MixedDataSource';
-import { useQueriesDrawerContext } from '../../../explore/QueriesDrawer/QueriesDrawerContext';
 import { useQueryLibraryContext } from '../../../explore/QueryLibrary/QueryLibraryContext';
 import { ExpressionDatasourceUID } from '../../../expressions/types';
 import { getDatasourceSrv } from '../../../plugins/datasource_srv';
@@ -340,7 +339,6 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
   const { datasource, dsSettings } = model.useState();
   const { data, queries } = model.queryRunner.useState();
   const { openDrawer: openQueryLibraryDrawer, queryLibraryEnabled } = useQueryLibraryContext();
-  const { setDrawerOpened } = useQueriesDrawerContext();
   const [sparkJoy, setSparkJoy] = useState(() => getSparkJoyEnabled(true));
 
   // Listen for sparkJoy changes in localStorage
@@ -357,7 +355,7 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
     // Also check for changes periodically in case the change happens in the same tab
     const interval = setInterval(() => {
       const currentValue = getSparkJoyEnabled(true);
-      setSparkJoy(prev => prev !== currentValue ? currentValue : prev);
+      setSparkJoy((prev) => (prev !== currentValue ? currentValue : prev));
     }, 1000);
 
     return () => {

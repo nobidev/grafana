@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/consistent-type-assertions */
+// Disables the consistent-type-assertions rule for this file
 import { css } from '@emotion/css';
 
 import { GrafanaTheme2 } from '@grafana/data';
