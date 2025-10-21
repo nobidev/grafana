@@ -1,3 +1,5 @@
+import tinycolor from 'tinycolor2';
+
 import { GrafanaTheme2 } from '@grafana/data';
 
 import { GaugeDimensions } from './utils';
@@ -41,12 +43,17 @@ export function SpotlightGradient({
   let x2 = dimensions.centerX + dimensions.radius * Math.cos(angleRadian);
   let y2 = dimensions.centerY + dimensions.radius * Math.sin(angleRadian);
 
-  if (theme.isLight) {
+  if (theme.isLight && !roundedBars) {
+    // In light theme with rounded bars render no spotlight effect
+    if (roundedBars) {
+      return null;
+    }
+
     return (
       <linearGradient x1={x1} y1={y1} x2={x2} y2={y2} id={id} gradientUnits="userSpaceOnUse">
         <stop offset="0%" stopColor={'black'} stopOpacity={0.0} />
         <stop offset="90%" stopColor={'black'} stopOpacity={0.0} />
-        <stop offset="91%" stopColor={'black'} stopOpacity={1} />
+        <stop offset="100%" stopColor={'black'} stopOpacity={1} />
       </linearGradient>
     );
   }
@@ -78,6 +85,7 @@ export interface CenterGlowProps {
 export function MiddleCircleGlow({ dimensions, gaugeId, color }: CenterGlowProps) {
   const gradientId = `circle-glow-${gaugeId}`;
 
+  const barWidth = dimensions.radius / 3;
   return (
     <>
       <defs>
@@ -85,9 +93,23 @@ export function MiddleCircleGlow({ dimensions, gaugeId, color }: CenterGlowProps
           <stop offset="0%" stopColor={color} stopOpacity={0.2} />
           <stop offset="90%" stopColor={color} stopOpacity={0} />
         </radialGradient>
+        <radialGradient
+          id={'inner-bar-gradient'}
+          // r={'50%'}
+          // fr={'0%'}
+          cx={dimensions.centerX}
+          cy={dimensions.centerY}
+          r={dimensions.radius - dimensions.barWidth}
+          fr={dimensions.radius - barWidth - barWidth / 2}
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0%" stopColor={color} stopOpacity={0} />
+          {/* <stop offset="50%" stopColor={color} stopOpacity={0.3} /> */}
+          <stop offset="100%" stopColor={color} stopOpacity={0.3} />
+        </radialGradient>
       </defs>
       <g>
-        <circle cx={dimensions.centerX} cy={dimensions.centerY} r={dimensions.radius} fill={`url(#${gradientId})`} />
+        {/* <circle cx={dimensions.centerX} cy={dimensions.centerY} r={dimensions.radius} fill={`url(#${gradientId})`} /> */}
       </g>
     </>
   );

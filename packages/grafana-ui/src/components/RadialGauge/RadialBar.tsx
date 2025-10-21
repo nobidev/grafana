@@ -49,7 +49,7 @@ export function RadialBar({
           glowFilter={glowFilter}
         />
         {spotlightStroke && angle > 8 && (
-          <SpotlightSquareEffect
+          <SpotlightArc
             dimensions={dimensions}
             angle={startAngle + angle}
             glowFilter={glowFilter}
@@ -73,7 +73,7 @@ interface SpotlightEffectProps {
   roundedBars?: boolean;
 }
 
-function SpotlightSquareEffect({ dimensions, angle, glowFilter, spotlightStroke, roundedBars }: SpotlightEffectProps) {
+function SpotlightArc({ dimensions, angle, glowFilter, spotlightStroke, roundedBars }: SpotlightEffectProps) {
   const { radius, centerX, centerY, barWidth } = dimensions;
 
   const angleRadian = toRad(angle);
