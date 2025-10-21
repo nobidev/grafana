@@ -445,6 +445,39 @@ func (d *dataStore) Delete(ctx context.Context, key DataKey) error {
 	return d.kv.Delete(ctx, dataSection, key.String())
 }
 
+// batchDelete deletes multiple data objects in batches.
+// Keys are processed in batches (default 50) to balance between efficiency and memory usage.
+func (d *dataStore) batchDelete(ctx context.Context, keys []DataKey) error {
+	// Validate all keys first
+	for _, key := range keys {
+		if err := key.Validate(); err != nil {
+			return fmt.Errorf("invalid data key %s: %w", key.String(), err)
+		}
+	}
+
+	// Process keys in batches
+	for i := 0; i < len(keys); i += dataBatchSize {
+		end := i + dataBatchSize
+		if end > len(keys) {
+			end = len(keys)
+		}
+		batch := keys[i:end]
+
+		// Convert DataKeys to string keys
+		stringKeys := make([]string, len(batch))
+		for j, key := range batch {
+			stringKeys[j] = key.String()
+		}
+
+		// Call kv.BatchDelete for this batch
+		if err := d.kv.BatchDelete(ctx, dataSection, stringKeys); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // ParseKey parses a string key into a DataKey struct
 func ParseKey(key string) (DataKey, error) {
 	parts := strings.Split(key, "/")

@@ -121,15 +121,13 @@ func (k *kvStorageBackend) runCleanupOldEvents(ctx context.Context) {
 // cleanupOldEvents performs the actual cleanup of old events
 func (k *kvStorageBackend) cleanupOldEvents(ctx context.Context) {
 	cutoff := time.Now().Add(-k.eventRetentionPeriod)
-	deletedCount, err := k.eventStore.CleanupOldEvents(ctx, cutoff)
+	err := k.eventStore.CleanupOldEvents(ctx, cutoff)
 	if err != nil {
 		k.log.Error("Failed to cleanup old events", "error", err)
 		return
 	}
 
-	if deletedCount == 0 {
-		k.log.Info("Cleaned up old events", "deleted_count", deletedCount, "retention_period", k.eventRetentionPeriod)
-	}
+	k.log.Debug("Cleaned up old events", "retention_period", k.eventRetentionPeriod)
 }
 
 func (k *kvStorageBackend) pruneEvents(ctx context.Context, key PruningKey) error {
