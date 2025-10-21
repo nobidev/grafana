@@ -103,9 +103,9 @@ export function RadialText({
   function calculateTextPosition() {
     // If name above value and unit below value
     if (nameAboveUnitBelow) {
-      const nameY = centerY - nameHeight - valueHeight / 1.7;
+      const nameY = centerY - nameHeight - valueHeight / 1.6;
       const valueY = centerY - valueHeight / 5;
-      const unitY = valueY + valueHeight / 1.2;
+      const unitY = valueY + valueHeight / 1;
       return { nameY, valueY, unitY };
     }
 
