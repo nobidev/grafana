@@ -23,6 +23,8 @@ import { backendSrv } from 'app/core/services/backend_srv';
 import { addQuery, queryIsEmpty } from 'app/core/utils/query';
 import { DataSourceModal } from 'app/features/datasources/components/picker/DataSourceModal';
 import { DataSourcePicker } from 'app/features/datasources/components/picker/DataSourcePicker';
+import { useQueryLibraryContext } from 'app/features/explore/QueryLibrary/QueryLibraryContext';
+import { SavedQueriesToggletip } from 'app/features/explore/QueryLibrary/SavedQueriesToggletip';
 import { dataSource as expressionDatasource } from 'app/features/expressions/ExpressionDatasource';
 import { isSharedDashboardQuery } from 'app/plugins/datasource/dashboard/runSharedRequest';
 import { GrafanaQuery } from 'app/plugins/datasource/grafana/types';
@@ -268,6 +270,7 @@ export class QueryGroup extends PureComponent<Props, State> {
           onAddQuery={this.onAddQuery}
           onRunQueries={onRunQueries}
           data={data}
+          onReplaceQuery={this.onReplaceQuery}
         />
       </div>
     );
@@ -395,6 +398,7 @@ interface QueryGroupTopSectionProps {
   onOpenQueryInspector?: () => void;
   onOptionsChange?: (options: QueryGroupOptions) => void;
   onDataSourceChange?: (ds: DataSourceInstanceSettings, defaultQueries?: DataQuery[] | GrafanaQuery[]) => Promise<void>;
+  onReplaceQuery: (query: DataQuery) => void;
 }
 
 export function QueryGroupTopSection({
@@ -405,9 +409,12 @@ export function QueryGroupTopSection({
   onDataSourceChange,
   onOptionsChange,
   onOpenQueryInspector,
+  onReplaceQuery,
 }: QueryGroupTopSectionProps) {
   const styles = getStyles();
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+
+  const { setShouldOpenToggletip } = useQueryLibraryContext();
 
   return (
     <>
@@ -417,13 +424,20 @@ export function QueryGroupTopSection({
             <Trans i18nKey="query.query-group-top-section.data-source">Data source</Trans>
           </InlineFormLabel>
           <div className={styles.dataSourceRowItem}>
-            <DataSourcePickerWithPrompt
-              options={options}
-              onChange={async (ds, defaultQueries) => {
-                return await onDataSourceChange?.(ds, defaultQueries);
-              }}
-              isDataSourceModalOpen={Boolean(locationService.getSearchObject().firstPanel)}
-            />
+            <SavedQueriesToggletip
+              datasourceUid={dsSettings.uid}
+              app={CoreApp.Dashboard}
+              onSelectQuery={onReplaceQuery}
+            >
+              <DataSourcePickerWithPrompt
+                options={options}
+                onChange={async (ds, defaultQueries) => {
+                  setShouldOpenToggletip(true);
+                  return await onDataSourceChange?.(ds, defaultQueries);
+                }}
+                isDataSourceModalOpen={Boolean(locationService.getSearchObject().firstPanel)}
+              />
+            </SavedQueriesToggletip>
           </div>
           {dataSource && (
             <>

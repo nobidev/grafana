@@ -30,6 +30,7 @@ export interface Props {
   datasourceInstanceSettings: DataSourceInstanceSettings;
   annotation: AnnotationQuery<DataQuery>;
   onChange: (annotation: AnnotationQuery<DataQuery>) => void;
+  onQueryReplace?: (query: DataQuery) => void;
 }
 
 interface State {
@@ -251,14 +252,11 @@ export default class StandardAnnotationQueryEditor extends PureComponent<Props, 
   };
 
   onQueryReplace = async (replacedQuery: DataQuery) => {
-    const { annotation, onChange } = this.props;
+    const { onQueryReplace } = this.props;
 
     try {
-      // Use new async updateAnnotationFromSavedQuery that returns properly prepared annotation
-      const preparedAnnotation = await updateAnnotationFromSavedQuery(annotation, replacedQuery);
-      // Set flag to skip next verification since updateAnnotationFromSavedQuery already prepared the annotation
+      onQueryReplace?.(replacedQuery);
       this.setState({ skipNextVerification: true });
-      onChange(preparedAnnotation);
     } catch (error) {
       console.error('Failed to replace annotation query:', error);
       // On error, reset the replacing state but don't change the annotation

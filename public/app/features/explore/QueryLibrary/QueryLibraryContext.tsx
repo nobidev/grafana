@@ -72,7 +72,8 @@ export type QueryLibraryContextType = {
   renderSavedQueryToggletip: (
     datasource: string,
     children: JSX.Element,
-    onSelectQuery?: (query: DataQuery) => void
+    app: CoreApp,
+    onSelectQuery: (query: DataQuery) => void
   ) => ReactNode;
 
   queryLibraryEnabled: boolean;

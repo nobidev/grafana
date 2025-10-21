@@ -342,6 +342,7 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
   }
 
   const showAddButton = !isSharedDashboardQuery(dsSettings.name);
+
   const onSelectQueryFromLibrary = async (query: DataQuery) => {
     // ensure all queries explicitly define a datasource
     const enrichedQueries = queries.map((q) =>
@@ -367,6 +368,28 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
     }
   };
 
+  const onReplaceQuery = async (query: DataQuery, index: number) => {
+    // Replace old query with new query, preserving the original refId
+    const newQueries = queries.map((item, itemIndex) => {
+      if (itemIndex === index) {
+        return { ...query, refId: item.refId };
+      }
+      return item;
+    });
+    model.onQueriesChange(newQueries);
+
+    if (query.datasource?.uid) {
+      const uniqueDatasources = new Set(
+        newQueries.map((q) => q.datasource?.uid).filter((uid) => uid !== ExpressionDatasourceUID)
+      );
+      const isMixed = uniqueDatasources.size > 1;
+      const newDatasourceRef = {
+        uid: isMixed ? MIXED_DATASOURCE_NAME : query.datasource.uid,
+      };
+      await model.updateDatasourceIfNeeded(newDatasourceRef);
+    }
+  };
+
   return (
     <div data-testid={selectors.components.QueryTab.content}>
       <QueryGroupTopSection
@@ -377,6 +400,7 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
         onDataSourceChange={model.onChangeDataSource}
         onOptionsChange={model.onQueryOptionsChange}
         onOpenQueryInspector={model.onOpenInspector}
+        onReplaceQuery={onSelectQueryFromLibrary}
       />
 
       <QueryEditorRows
@@ -388,6 +412,7 @@ export function PanelDataQueriesTabRendered({ model }: SceneComponentProps<Panel
         onRunQueries={model.onRunQueries}
         onUpdateDatasources={queryLibraryEnabled ? model.updateDatasourceIfNeeded : undefined}
         app={CoreApp.PanelEditor}
+        onReplaceQuery={onSelectQueryFromLibrary}
       />
 
       <Stack gap={2}>

@@ -5,6 +5,7 @@ import { useAsync } from 'react-use';
 
 import {
   AnnotationQuery,
+  CoreApp,
   DataSourceInstanceSettings,
   getDataSourceRef,
   GrafanaTheme2,
@@ -14,11 +15,15 @@ import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
 import { config, getDataSourceSrv } from '@grafana/runtime';
 import { VizPanel } from '@grafana/scenes';
+import { DataQuery } from '@grafana/schema';
 import { AnnotationPanelFilter } from '@grafana/schema/src/raw/dashboard/x/dashboard_types.gen';
 import { Button, Checkbox, Field, FieldSet, Input, MultiSelect, Select, useStyles2, Stack, Alert } from '@grafana/ui';
 import { ColorValueEditor } from 'app/core/components/OptionsUI/color';
 import StandardAnnotationQueryEditor from 'app/features/annotations/components/StandardAnnotationQueryEditor';
+import { updateAnnotationFromSavedQuery } from 'app/features/annotations/utils/savedQueryUtils';
 import { DataSourcePicker } from 'app/features/datasources/components/picker/DataSourcePicker';
+import { useQueryLibraryContext } from 'app/features/explore/QueryLibrary/QueryLibraryContext';
+import { SavedQueriesToggletip } from 'app/features/explore/QueryLibrary/SavedQueriesToggletip';
 
 import { getPanelIdForVizPanel } from '../../utils/utils';
 
@@ -35,6 +40,8 @@ export const newAnnotationName = 'New annotation';
 
 export const AnnotationSettingsEdit = ({ annotation, editIndex, panels, onUpdate, onBackToList, onDelete }: Props) => {
   const styles = useStyles2(getStyles);
+
+  const { setShouldOpenToggletip } = useQueryLibraryContext();
 
   const panelFilter = useMemo(() => {
     if (!annotation.filter) {
@@ -149,6 +156,11 @@ export const AnnotationSettingsEdit = ({ annotation, editIndex, panels, onUpdate
     return -1;
   };
 
+  const onQueryReplace = async (query: DataQuery) => {
+    const preparedAnnotation = await updateAnnotationFromSavedQuery(annotation, query);
+    onUpdate(preparedAnnotation, editIndex);
+  };
+
   const selectablePanels: Array<SelectableValue<number>> = useMemo(
     () =>
       panels
@@ -183,7 +195,21 @@ export const AnnotationSettingsEdit = ({ annotation, editIndex, panels, onUpdate
           label={t('dashboard-scene.annotation-settings-edit.label-data-source', 'Data source')}
           htmlFor="data-source-picker"
         >
-          <DataSourcePicker annotations variables current={annotation.datasource} onChange={onDataSourceChange} />
+          <SavedQueriesToggletip
+            datasourceUid={annotation.datasource?.uid ?? ''}
+            app={CoreApp.Dashboard}
+            onSelectQuery={onQueryReplace}
+          >
+            <DataSourcePicker
+              annotations
+              variables
+              current={annotation.datasource}
+              onChange={(ds) => {
+                setShouldOpenToggletip(true);
+                onDataSourceChange(ds);
+              }}
+            />
+          </SavedQueriesToggletip>
         </Field>
         {!ds?.meta.annotations && (
           <Alert
@@ -276,6 +302,7 @@ export const AnnotationSettingsEdit = ({ annotation, editIndex, panels, onUpdate
             datasourceInstanceSettings={dsi}
             annotation={annotation}
             onChange={(annotation) => onUpdate(annotation, editIndex)}
+            onQueryReplace={onQueryReplace}
           />
         )}
       </FieldSet>

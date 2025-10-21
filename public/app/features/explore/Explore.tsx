@@ -352,7 +352,7 @@ export class Explore extends PureComponent<Props, ExploreState> {
     changeQueries({ exploreId: this.props.exploreId, queries: newQueries, options });
   }
 
-  onReplaceQuery = (query: DataQuery, index: number, isFromLibrary = false) => {
+  onReplaceQuery = (query: DataQuery, index: number) => {
     const { queries, datasourceInstance, exploreId } = this.props;
 
     // Replace old query with new query, preserving the original refId
