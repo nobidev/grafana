@@ -1,12 +1,12 @@
 import * as React from 'react';
 
-import { DataQuery, DataSourceJsonData } from '@grafana/schema';
+import { DataQuery, DataSourceJsonData, Panel, TimeZone } from '@grafana/schema';
 
 import { ScopedVars } from './ScopedVars';
 import { DataSourcePluginMeta, DataSourceSettings } from './datasource';
 import { IconName } from './icon';
 import { PanelData } from './panel';
-import { AbsoluteTimeRange, RawTimeRange, TimeZone } from './time';
+import { AbsoluteTimeRange, RawTimeRange, TimeRange } from './time';
 
 // Plugin Extensions types
 // ---------------------------------------
@@ -218,6 +218,7 @@ export enum PluginExtensionPoints {
   LogsViewResourceAttributes = 'grafana/logsview/resource-attributes',
   AppChrome = 'grafana/app/chrome/v1',
   ExtensionSidebar = 'grafana/extension-sidebar/v0-alpha',
+  AppPanelMenu = 'grafana/app/panel/menu',
 }
 
 // Don't use directly in a plugin!
@@ -268,10 +269,7 @@ export type PluginExtensionDataSourceConfigContext<
   dataSourceMeta: DataSourcePluginMeta;
 
   // Testing status
-  testingStatus?: {
-    message?: string | null;
-    status?: string | null;
-  };
+  testingStatus?: { message?: string | null; status?: string | null };
 
   // Can be used to update the `jsonData` field on the datasource
   // (Only updates the form, it still needs to be saved by the user)
@@ -286,51 +284,29 @@ export type PluginExtensionResourceAttributesContext = {
   attributes: Record<string, string[]>;
   spanAttributes?: Record<string, string[]>;
   timeRange: AbsoluteTimeRange;
-  datasource: {
-    type: string;
-    uid: string;
-  };
+  datasource: { type: string; uid: string };
 };
 
 export type DataSourceConfigErrorStatusContext = {
-  dataSource: {
-    type: string;
-    uid: string;
-    name: string;
-  };
-  testingStatus: {
-    message?: string | null;
-    status?: string | null;
-    details?: Record<string, unknown>;
-  };
+  dataSource: { type: string; uid: string; name: string };
+  testingStatus: { message?: string | null; status?: string | null; details?: Record<string, unknown> };
 };
 
 export type PluginExtensionDataSourceConfigActionsContext = {
-  dataSource: {
-    type: string;
-    uid: string;
-    name: string;
-    typeName: string;
-  };
+  dataSource: { type: string; uid: string; name: string; typeName: string };
 };
 
 export type PluginExtensionDataSourceConfigStatusContext = {
-  dataSource: {
-    type: string;
-    uid: string;
-    name: string;
-    typeName: string;
-  };
-  testingStatus?: {
-    message?: string | null;
-    status?: string | null;
-    details?: Record<string, unknown>;
-  };
+  dataSource: { type: string; uid: string; name: string; typeName: string };
+  testingStatus?: { message?: string | null; status?: string | null; details?: Record<string, unknown> };
   severity: 'success' | 'error' | 'warning' | 'info';
 };
 
-type Dashboard = {
-  uid: string;
-  title: string;
-  tags: string[];
-};
+export interface PluginExtensionAppPanelContext {
+  // Panel configuration
+  panelData?: { panel: Panel; range: TimeRange };
+  // Source information
+  source?: { appId: string; appName: string };
+}
+
+type Dashboard = { uid: string; title: string; tags: string[] };

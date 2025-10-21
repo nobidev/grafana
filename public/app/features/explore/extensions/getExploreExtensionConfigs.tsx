@@ -50,12 +50,12 @@ export function getExploreExtensionConfigs(): PluginExtensionAddedLinkConfig[] {
         },
       }),
       createAddedLinkConfig<PluginExtensionDrilldownContext>({
-        // grafana-metricsdrilldown-app/add-to-dashboard/v1
         // This is called at the top level, so will break if we add a translation here 😱
         // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
-        title: 'Add metrics drilldown panel to dashboard',
-        description: 'Use the panel from metrics drilldown and create/add it to a dashboard',
-        targets: ['grafana-metricsdrilldown-app/add-to-dashboard/v1'],
+        title: 'Add to dashboard',
+        // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
+        description: 'Add this panel to a new or existing dashboard',
+        targets: [PluginExtensionPoints.AppPanelMenu],
         icon: 'apps',
         category: 'Dashboards',
         configure: configureAddToDashboard,
@@ -68,10 +68,7 @@ export function getExploreExtensionConfigs(): PluginExtensionAddedLinkConfig[] {
 
           openModal({
             title: getAddToDashboardTitle(),
-            body: ({ onDismiss }) => (
-              //ADD
-              <DrilldownAppToDashboardPanel onClose={onDismiss!} panelData={panelData} />
-            ),
+            body: ({ onDismiss }) => <DrilldownAppToDashboardPanel onClose={onDismiss!} panelData={panelData} />,
           });
         },
       }),
