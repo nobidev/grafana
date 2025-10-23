@@ -136,7 +136,7 @@ export function transformSceneToSaveModel(scene: DashboardScene, isSnapshot = fa
     version: state.version,
     timezone: timeRange.timeZone,
     fiscalYearStartMonth: timeRange.fiscalYearStartMonth,
-    weekStart: timeRange.weekStart,
+    weekStart: timeRange.weekStart || '',
     tags: state.tags,
     links: state.links,
     graphTooltip,
