@@ -33,7 +33,6 @@ import (
 // ProvideZanzana used to register ZanzanaClient.
 // It will also start an embedded ZanzanaSever if mode is set to "embedded".
 func ProvideZanzana(cfg *setting.Cfg, db db.DB, tracer tracing.Tracer, features featuremgmt.FeatureToggles, reg prometheus.Registerer) (zanzana.Client, error) {
-	//nolint:staticcheck // using deprecated FFS service for backward compatibility
 	if !features.IsEnabledGlobally(featuremgmt.FlagZanzana) {
 		return zanzana.NewNoopClient(), nil
 	}

@@ -7,6 +7,7 @@ on:
       - go.*
     branches:
       - main
+      - grambbledook/deprecate-ft-service-test
   pull_request:
 
 permissions:
