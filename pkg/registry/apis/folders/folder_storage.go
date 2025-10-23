@@ -3,6 +3,7 @@ package folders
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/internalversion"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,10 +69,12 @@ func (s *folderStorage) ConvertToTable(ctx context.Context, object runtime.Objec
 }
 
 func (s *folderStorage) List(ctx context.Context, options *internalversion.ListOptions) (runtime.Object, error) {
+	time.Sleep(10 * time.Second)
 	return s.store.List(ctx, options)
 }
 
 func (s *folderStorage) Get(ctx context.Context, name string, options *metav1.GetOptions) (runtime.Object, error) {
+	time.Sleep(10 * time.Second)
 	return s.store.Get(ctx, name, options)
 }
 
