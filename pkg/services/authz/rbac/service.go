@@ -122,7 +122,7 @@ func (s *Service) Check(ctx context.Context, req *authzv1.CheckRequest) (*authzv
 	allow := &authzv1.CheckResponse{Allowed: true}
 	deny := &authzv1.CheckResponse{Allowed: false}
 
-	checkReq, err := s.validateCheckRequest(ctx, req)
+	checkReq, err := s.validateCheckRequest(ctx, nil)
 	if err != nil {
 		ctxLogger.Error("invalid request", "error", err)
 		s.metrics.requestCount.WithLabelValues("true", "false", req.GetVerb(), req.GetGroup(), req.GetResource()).Inc()
