@@ -114,8 +114,9 @@ export class PanelPlugin<
   panel: ComponentType<PanelProps<TOptions>> | null;
   editor?: ComponentClass<PanelEditorProps<TOptions>>;
   onPanelMigration?: PanelMigrationHandler<TOptions>;
-  shouldMigrate?: (panel: PanelModel) => boolean;
   onPanelTypeChanged?: PanelTypeChangedHandler<TOptions>;
+
+  shouldMigrate?: (panel: PanelModel) => boolean;
   noPadding?: boolean;
   dataSupport: PanelPluginDataSupport = {
     annotations: false,

@@ -21,6 +21,7 @@ import { initializeDashboardAnalyticsAggregator } from 'app/features/dashboard/s
 import { dashboardLoaderSrv, DashboardLoaderSrvV2 } from 'app/features/dashboard/services/DashboardLoaderSrv';
 import { getDashboardSceneProfiler } from 'app/features/dashboard/services/DashboardProfiler';
 import { getDashboardSrv } from 'app/features/dashboard/services/DashboardSrv';
+import { setupFaroPerformanceIntegration } from 'app/features/dashboard/services/FaroPerformanceIntegration';
 import { initializeScenePerformanceLogger } from 'app/features/dashboard/services/ScenePerformanceLogger';
 import { emitDashboardViewEvent } from 'app/features/dashboard/state/analyticsProcessor';
 import { trackDashboardSceneLoaded } from 'app/features/dashboard-scene/utils/tracking';
@@ -50,6 +51,7 @@ import { processQueryParamsForDashboardLoad, updateNavModel } from './utils';
 function initializeDashboardPerformanceServices(): void {
   initializeScenePerformanceLogger();
   initializeDashboardAnalyticsAggregator();
+  setupFaroPerformanceIntegration();
 }
 
 export interface LoadError {
