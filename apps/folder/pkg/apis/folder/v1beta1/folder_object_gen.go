@@ -30,6 +30,7 @@ func (o *Folder) GetSpec() any {
 }
 
 func (o *Folder) SetSpec(spec any) error {
+	time.Sleep(10 * time.Second)
 	cast, ok := spec.(FolderSpec)
 	if !ok {
 		return fmt.Errorf("cannot set spec type %#v, not of type Spec", spec)
@@ -265,6 +266,7 @@ func (o *FolderList) Copy() resource.ListObject {
 }
 
 func (o *FolderList) GetItems() []resource.Object {
+	time.Sleep(10 * time.Second)
 	items := make([]resource.Object, len(o.Items))
 	for i := 0; i < len(o.Items); i++ {
 		items[i] = &o.Items[i]
