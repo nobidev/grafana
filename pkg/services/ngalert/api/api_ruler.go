@@ -64,6 +64,7 @@ type RulerSrv struct {
 	amConfigStore  AMConfigStore
 	amRefresher    AMRefresher
 	featureManager featuremgmt.FeatureToggles
+	cacheConfig    ETagCacheConfig
 }
 
 var (
@@ -188,6 +189,9 @@ func (srv RulerSrv) RouteDeleteAlertRules(c *contextmodel.ReqContext, namespaceU
 
 // RouteGetNamespaceRulesConfig returns all rules in a specific folder that user has access to
 func (srv RulerSrv) RouteGetNamespaceRulesConfig(c *contextmodel.ReqContext, namespaceUID string) response.Response {
+	// Parse field selection from query parameters
+	fieldSelection := ParseFieldSelection(c.Req.URL.Query())
+
 	namespace, err := srv.store.GetNamespaceByUID(c.Req.Context(), namespaceUID, c.GetOrgID(), c.SignedInUser)
 	if err != nil {
 		return toNamespaceErrorResponse(err)
@@ -200,6 +204,15 @@ func (srv RulerSrv) RouteGetNamespaceRulesConfig(c *contextmodel.ReqContext, nam
 	if err != nil {
 		return errorToResponse(err)
 	}
+
+	// Check if we can return a cached response
+	if HandleCachedGroupResponse(c, ruleGroups, srv.cacheConfig) {
+		return response.Empty(http.StatusNotModified)
+	}
+
+	// Apply field selection to reduce payload size
+	ApplyFieldSelectionToGroups(ruleGroups, fieldSelection)
+
 	provenanceRecords, err := srv.provenanceStore.GetProvenances(c.Req.Context(), c.GetOrgID(), (&ngmodels.AlertRule{}).ResourceType())
 	if err != nil {
 		return ErrResp(http.StatusInternalServerError, err, "failed to get provenance for rule group")
@@ -263,6 +276,9 @@ func (srv RulerSrv) RouteGetRulesGroupConfig(c *contextmodel.ReqContext, namespa
 
 // RouteGetRulesConfig returns all alert rules that are available to the current user
 func (srv RulerSrv) RouteGetRulesConfig(c *contextmodel.ReqContext) response.Response {
+	// Parse field selection from query parameters
+	fieldSelection := ParseFieldSelection(c.Req.URL.Query())
+
 	if strings.ToLower(c.Query("deleted")) == "true" {
 		if !srv.featureManager.IsEnabledGlobally(featuremgmt.FlagAlertRuleRestore) {
 			return ErrResp(http.StatusBadRequest, errors.New("restore of deleted rules is not enabled"), "")
@@ -274,6 +290,8 @@ func (srv RulerSrv) RouteGetRulesConfig(c *contextmodel.ReqContext) response.Res
 		if err != nil {
 			return ErrResp(http.StatusInternalServerError, err, "failed to get deleted rules")
 		}
+		// Apply field selection to reduce payload size
+		ApplyFieldSelectionToGroup(rules, fieldSelection)
 		result := apimodels.NamespaceConfigResponse{}
 		userUIDmapping := srv.getUserUIDmapping(c.Req.Context(), rules)
 		if len(rules) > 0 {
@@ -318,6 +336,15 @@ func (srv RulerSrv) RouteGetRulesConfig(c *contextmodel.ReqContext) response.Res
 	if err != nil {
 		return errorToResponse(err)
 	}
+
+	// Check if we can return a cached response
+	if HandleCachedGroupResponse(c, configs, srv.cacheConfig) {
+		return response.Empty(http.StatusNotModified)
+	}
+
+	// Apply field selection to reduce payload size
+	ApplyFieldSelectionToGroups(configs, fieldSelection)
+
 	provenanceRecords, err := srv.provenanceStore.GetProvenances(c.Req.Context(), c.GetOrgID(), (&ngmodels.AlertRule{}).ResourceType())
 	if err != nil {
 		return ErrResp(http.StatusInternalServerError, err, "failed to get alert rules")

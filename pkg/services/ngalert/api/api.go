@@ -151,6 +151,10 @@ func (api *API) RegisterAPIEndpoints(m *metrics.API) {
 			amRefresher:        api.MultiOrgAlertmanager,
 			featureManager:     api.FeatureManager,
 			userService:        api.UserService,
+			cacheConfig: ETagCacheConfig{
+				Enabled:    true,
+				TTLSeconds: DefaultCacheTTL,
+			},
 		},
 	), m)
 	api.RegisterTestingApiEndpoints(NewTestingApi(
