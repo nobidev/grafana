@@ -29,7 +29,7 @@ export function FolderFilter({ onChange }: FolderFilterProps): JSX.Element {
       onChange={onSelectOptionChange}
       isClearable
       placeholder={t('folder-filter.select-placeholder', 'Filter by folder')}
-      aria-label={t('folder-filter.select-aria-label', 'Folder filter')}
+      aria-label={t('folder-filter.select-aria-label', 'Filter by folder')}
     />
   );
 }

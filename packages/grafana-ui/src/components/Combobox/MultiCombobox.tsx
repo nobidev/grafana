@@ -49,6 +49,7 @@ export const MultiCombobox = <T extends string | number>(props: MultiComboboxPro
     isClearable,
     createCustomValue = false,
     'aria-labelledby': ariaLabelledBy,
+    'aria-label': ariaLabel,
     'data-testid': dataTestId,
     portalContainer,
     prefixIcon,
@@ -306,6 +307,7 @@ export const MultiCombobox = <T extends string | number>(props: MultiComboboxPro
             </Box>
           )}
           <input
+            aria-label={ariaLabel}
             className={multiStyles.input}
             {...getInputProps({
               ...getDropdownProps({
