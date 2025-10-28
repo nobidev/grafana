@@ -5,7 +5,6 @@ import {
   ScopedVars,
   TimeRange,
   getDefaultRelativeTimeRange,
-  getNextRefId,
   rangeUtil,
 } from '@grafana/data';
 import { PromQuery } from '@grafana/prometheus';
@@ -720,17 +719,6 @@ export const panelToRuleFormValues = async (
     return undefined;
   }
 
-  if (!queries.find((query) => query.datasourceUid === ExpressionDatasourceUID)) {
-    const [reduceExpression, _thresholdExpression] = getDefaultExpressions(getNextRefId(queries), '-');
-    queries.push(reduceExpression);
-
-    const [_reduceExpression, thresholdExpression] = getDefaultExpressions(
-      reduceExpression.refId,
-      getNextRefId(queries)
-    );
-    queries.push(thresholdExpression);
-  }
-
   const { folderTitle, folderUid } = dashboard.meta;
   const folder =
     folderUid && folderTitle
@@ -746,7 +734,8 @@ export const panelToRuleFormValues = async (
     folder,
     queries,
     name: panel.title,
-    condition: queries[queries.length - 1].refId,
+    // Condition left empty - expressions will be created in the alert rule form under advanced options
+    condition: '',
     annotations: [
       {
         key: Annotation.dashboardUID,
@@ -792,17 +781,6 @@ export const scenesPanelToRuleFormValues = async (vizPanel: VizPanel): Promise<P
     return undefined;
   }
 
-  if (!grafanaQueries.find((query) => query.datasourceUid === ExpressionDatasourceUID)) {
-    const [reduceExpression, _thresholdExpression] = getDefaultExpressions(getNextRefId(grafanaQueries), '-');
-    grafanaQueries.push(reduceExpression);
-
-    const [_reduceExpression, thresholdExpression] = getDefaultExpressions(
-      reduceExpression.refId,
-      getNextRefId(grafanaQueries)
-    );
-    grafanaQueries.push(thresholdExpression);
-  }
-
   const { folderTitle, folderUid } = dashboard.state.meta;
 
   const folder =
@@ -819,7 +797,8 @@ export const scenesPanelToRuleFormValues = async (vizPanel: VizPanel): Promise<P
     folder,
     queries: grafanaQueries,
     name: vizPanel.state.title,
-    condition: grafanaQueries[grafanaQueries.length - 1].refId,
+    // Condition left empty - expressions will be created in the alert rule form under advanced options
+    condition: '',
     annotations: [
       {
         key: Annotation.dashboardUID,
