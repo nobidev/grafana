@@ -109,3 +109,23 @@ export interface DetectedFieldsResult {
 }
 
 export type LokiGroupedRequest = { request: DataQueryRequest<LokiQuery>; partition: TimeRange[] };
+
+export type LokiConfig = {
+  limits: {
+    log_level_fields: string[];
+    max_entries_limit_per_query: number;
+    max_line_size_truncate: boolean;
+    max_query_bytes_read: string;
+    max_query_length: string;
+    max_query_lookback: string;
+    max_query_range: string;
+    max_query_series: number;
+    metric_aggregation_enabled: boolean;
+    pattern_persistence_enabled: boolean;
+    query_timeout: string;
+    retention_period: string;
+    volume_enabled: boolean;
+    volume_max_series: number;
+  };
+  version: 'unknown' | string;
+};

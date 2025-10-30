@@ -1240,4 +1240,8 @@ export interface FeatureToggles {
   * Enable template dashboards
   */
   dashboardTemplates?: boolean;
+  /**
+  * Used in Explore to prevent time and shard splitting from exceeding max_query_bytes_read (available in Loki 3.6+ only)
+  */
+  lokiConfigQueryLimits?: boolean;
 }

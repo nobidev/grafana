@@ -2151,6 +2151,13 @@ var (
 			Owner:        grafanaSharingSquad,
 			FrontendOnly: false,
 		},
+		{
+			Name:         "lokiConfigQueryLimits",
+			Description:  "Used in Explore to prevent time and shard splitting from exceeding max_query_bytes_read (available in Loki 3.6+ only)",
+			Stage:        FeatureStageExperimental,
+			FrontendOnly: true,
+			Owner:        grafanaObservabilityLogsSquad,
+		},
 	}
 )
 

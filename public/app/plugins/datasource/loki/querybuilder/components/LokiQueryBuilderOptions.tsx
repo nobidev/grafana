@@ -1,11 +1,20 @@
+import { css } from '@emotion/css';
 import { trim } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import * as React from 'react';
 
-import { CoreApp, isValidGrafanaDuration, LogSortOrderChangeEvent, LogsSortOrder, store } from '@grafana/data';
+import {
+  CoreApp,
+  getValueFormat,
+  GrafanaTheme2,
+  isValidGrafanaDuration,
+  LogSortOrderChangeEvent,
+  LogsSortOrder,
+  store,
+} from '@grafana/data';
 import { EditorField, EditorRow, QueryOptionGroup } from '@grafana/plugin-ui';
-import { getAppEvents } from '@grafana/runtime';
-import { AutoSizeInput, RadioButtonGroup } from '@grafana/ui';
+import { config, getAppEvents } from '@grafana/runtime';
+import { AutoSizeInput, Icon, RadioButtonGroup, Tooltip, useStyles2 } from '@grafana/ui';
 
 import {
   getQueryDirectionLabel,
@@ -30,6 +39,8 @@ export interface Props {
 export const LokiQueryBuilderOptions = React.memo<Props>(
   ({ app, query, onChange, onRunQuery, queryStats, datasource }) => {
     const maxLines = datasource.maxLines;
+
+    const styles = useStyles2(getStyles);
 
     useEffect(() => {
       if (app !== CoreApp.Explore && app !== CoreApp.Dashboard && app !== CoreApp.PanelEditor) {
@@ -133,70 +144,86 @@ export const LokiQueryBuilderOptions = React.memo<Props>(
     }, [query.step, datasource]);
 
     return (
-      <EditorRow>
-        <QueryOptionGroup
-          title="Options"
-          collapsedInfo={getCollapsedInfo(query, queryType, maxLines, isLogQuery, isValidStep, query.direction)}
-          queryStats={queryStats}
-        >
-          <EditorField
-            label="Legend"
-            tooltip="Series name override or template. Ex. {{hostname}} will be replaced with label value for hostname."
+      <div>
+        <EditorRow>
+          <QueryOptionGroup
+            title="Options"
+            collapsedInfo={getCollapsedInfo(query, queryType, maxLines, isLogQuery, isValidStep, query.direction)}
           >
-            <AutoSizeInput
-              placeholder="{{label}}"
-              type="string"
-              minWidth={14}
-              defaultValue={query.legendFormat}
-              onCommitChange={onLegendFormatChanged}
-            />
-          </EditorField>
-          {filteredQueryTypeOptions.length > 1 && (
-            <EditorField label="Type">
-              <RadioButtonGroup options={filteredQueryTypeOptions} value={queryType} onChange={onQueryTypeChange} />
+            <EditorField
+              label="Legend"
+              tooltip="Series name override or template. Ex. {{hostname}} will be replaced with label value for hostname."
+            >
+              <AutoSizeInput
+                placeholder="{{label}}"
+                type="string"
+                minWidth={14}
+                defaultValue={query.legendFormat}
+                onCommitChange={onLegendFormatChanged}
+              />
             </EditorField>
-          )}
-          {isLogQuery && (
-            <>
-              <EditorField label="Line limit" tooltip="Upper limit for number of log lines returned by query.">
-                <AutoSizeInput
-                  className="width-4"
-                  placeholder={maxLines.toString()}
-                  type="number"
-                  min={0}
-                  defaultValue={query.maxLines?.toString() ?? ''}
-                  onCommitChange={onMaxLinesChange}
-                />
+            {filteredQueryTypeOptions.length > 1 && (
+              <EditorField label="Type">
+                <RadioButtonGroup options={filteredQueryTypeOptions} value={queryType} onChange={onQueryTypeChange} />
               </EditorField>
-              <EditorField label="Direction" tooltip="Direction to search for logs.">
-                <RadioButtonGroup
-                  options={queryDirections}
-                  value={query.direction ?? getDefaultQueryDirection(app)}
-                  onChange={onQueryDirectionChange}
-                />
-              </EditorField>
-            </>
+            )}
+            {isLogQuery && (
+              <>
+                <EditorField label="Line limit" tooltip="Upper limit for number of log lines returned by query.">
+                  <AutoSizeInput
+                    className="width-4"
+                    placeholder={maxLines.toString()}
+                    type="number"
+                    min={0}
+                    defaultValue={query.maxLines?.toString() ?? ''}
+                    onCommitChange={onMaxLinesChange}
+                  />
+                </EditorField>
+                <EditorField label="Direction" tooltip="Direction to search for logs.">
+                  <RadioButtonGroup
+                    options={queryDirections}
+                    value={query.direction ?? getDefaultQueryDirection(app)}
+                    onChange={onQueryDirectionChange}
+                  />
+                </EditorField>
+              </>
+            )}
+            {!isLogQuery && (
+              <>
+                <EditorField
+                  label="Step"
+                  tooltip="Use the step parameter when making metric queries to Loki. If not filled, Grafana's calculated interval will be used. Example valid values: 1s, 5m, 10h, 1d."
+                  invalid={!isValidStep}
+                  error={'Invalid step. Example valid values: 1s, 5m, 10h, 1d.'}
+                >
+                  <AutoSizeInput
+                    className="width-6"
+                    placeholder={'auto'}
+                    type="string"
+                    value={query.step ?? ''}
+                    onCommitChange={onStepChange}
+                  />
+                </EditorField>
+              </>
+            )}
+          </QueryOptionGroup>
+
+          {/* @todo update https://github.com/grafana/plugin-ui/blob/main/src/components/VisualQueryBuilder/components/QueryOptionGroup.tsx so this can be inline */}
+          {queryStats && (
+            <span className={styles.queryStatsWrap}>
+              {config.featureToggles.lokiQuerySplitting && (
+                <Tooltip
+                  content={`Note: the query will be split into multiple parts and executed in sequence.${!config.featureToggles.lokiConfigQueryLimits ? ' Query limits will only apply each individual part.' : ''}`}
+                >
+                  <Icon className={styles.tooltip} tabIndex={0} name="info-circle" size="sm" />
+                </Tooltip>
+              )}
+
+              {<p className={styles.stats}>{generateQueryStats(queryStats)}</p>}
+            </span>
           )}
-          {!isLogQuery && (
-            <>
-              <EditorField
-                label="Step"
-                tooltip="Use the step parameter when making metric queries to Loki. If not filled, Grafana's calculated interval will be used. Example valid values: 1s, 5m, 10h, 1d."
-                invalid={!isValidStep}
-                error={'Invalid step. Example valid values: 1s, 5m, 10h, 1d.'}
-              >
-                <AutoSizeInput
-                  className="width-6"
-                  placeholder={'auto'}
-                  type="string"
-                  value={query.step ?? ''}
-                  onCommitChange={onStepChange}
-                />
-              </EditorField>
-            </>
-          )}
-        </QueryOptionGroup>
-      </EditorRow>
+        </EditorRow>
+      </div>
     );
   }
 );
@@ -246,5 +273,35 @@ function getDefaultQueryDirection(app?: CoreApp) {
   const storedOrder = store.get(key) || LogsSortOrder.Descending;
   return storedOrder === LogsSortOrder.Ascending ? LokiQueryDirection.Forward : LokiQueryDirection.Backward;
 }
+
+const generateQueryStats = (queryStats: QueryStats) => {
+  if (queryStats.message) {
+    return queryStats.message;
+  }
+
+  return `This query will process approximately ${convertUnits(queryStats)}.`;
+};
+
+const convertUnits = (queryStats: QueryStats): string => {
+  const { text, suffix } = getValueFormat('bytes')(queryStats.bytes, 1);
+  return text + suffix;
+};
+
+const getStyles = (theme: GrafanaTheme2) => {
+  return {
+    queryStatsWrap: css({
+      display: 'flex',
+      alignItems: 'center',
+    }),
+    stats: css({
+      margin: '0px',
+      color: theme.colors.text.secondary,
+      fontSize: theme.typography.bodySmall.fontSize,
+    }),
+    tooltip: css({
+      marginRight: theme.spacing(1),
+    }),
+  };
+};
 
 LokiQueryBuilderOptions.displayName = 'LokiQueryBuilderOptions';

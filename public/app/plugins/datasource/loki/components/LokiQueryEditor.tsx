@@ -12,7 +12,7 @@ import {
   QueryHeaderSwitch,
   QueryEditorMode,
 } from '@grafana/plugin-ui';
-import { reportInteraction } from '@grafana/runtime';
+import { config, reportInteraction } from '@grafana/runtime';
 import { Button, ConfirmModal, Space, Stack } from '@grafana/ui';
 
 import { LabelBrowserModal } from '../querybuilder/components/LabelBrowserModal';
@@ -22,7 +22,7 @@ import { LokiQueryCodeEditor } from '../querybuilder/components/LokiQueryCodeEdi
 import { QueryPatternsModal } from '../querybuilder/components/QueryPatternsModal';
 import { buildVisualQueryFromString } from '../querybuilder/parsing';
 import { changeEditorMode, getQueryWithDefaults } from '../querybuilder/state';
-import { LokiQuery, QueryStats } from '../types';
+import { LokiConfig, LokiQuery, QueryStats } from '../types';
 
 import { shouldUpdateStats } from './stats';
 import { LokiQueryEditorProps } from './types';
@@ -97,6 +97,35 @@ export const LokiQueryEditor = memo<LokiQueryEditorProps>((props) => {
 
     setLabelBrowserVisible((visible) => !visible);
   };
+
+  useEffect(() => {
+    if (
+      !datasource ||
+      !datasource.getResource ||
+      !config.featureToggles.lokiConfigQueryLimits ||
+      app !== CoreApp.Explore
+    ) {
+      return;
+    }
+    const makeAsyncRequest = async () => {
+      const config: LokiConfig = await datasource.getResource(
+        'drilldown-limits',
+        {},
+        {
+          // Don't show warnings if the endpoint doesn't exist
+          showErrorAlert: false,
+          // Cache for 1 day
+          headers: {
+            'X-Grafana-Cache': `private, max-age=86400`,
+          },
+        }
+      );
+
+      // @todo set config to state
+    };
+
+    makeAsyncRequest();
+  }, [datasource, app]);
 
   useEffect(() => {
     const shouldUpdate = shouldUpdateStats(

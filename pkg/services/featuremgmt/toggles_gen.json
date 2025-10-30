@@ -2513,6 +2513,19 @@
     },
     {
       "metadata": {
+        "name": "lokiConfigQueryLimits",
+        "resourceVersion": "1761831330531",
+        "creationTimestamp": "2025-10-30T13:35:30Z"
+      },
+      "spec": {
+        "description": "Used in Explore to prevent time and shard splitting from exceeding max_query_bytes_read (available in Loki 3.6+ only)",
+        "stage": "experimental",
+        "codeowner": "@grafana/observability-logs",
+        "frontend": true
+      }
+    },
+    {
+      "metadata": {
         "name": "lokiExperimentalStreaming",
         "resourceVersion": "1753448760331",
         "creationTimestamp": "2023-06-19T10:03:51Z"
