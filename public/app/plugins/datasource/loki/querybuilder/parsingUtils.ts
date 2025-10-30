@@ -2,6 +2,8 @@ import { SyntaxNode, TreeCursor } from '@lezer/common';
 
 import { QueryBuilderOperation, QueryBuilderOperationParamValue } from '@grafana/plugin-ui';
 
+import { LokiConfig, LokiConfigResponse } from '../types.ts';
+
 // Although 0 isn't explicitly provided in the @grafana/lezer-logql library as the error node ID, it does appear to be the ID of error nodes within lezer.
 export const ErrorId = 0;
 
@@ -138,3 +140,48 @@ export const regexifyLabelValuesQueryString = (query: string) => {
   const queryArray = query.split(' ');
   return queryArray.map((query) => `${query}.*`).join('');
 };
+
+export function parseLokiConfigResponse(rawConfig: LokiConfigResponse): LokiConfig {
+  return {
+    limits: {
+      max_query_bytes_read: convertLokiBytes(rawConfig.limits.max_query_bytes_read),
+    },
+  };
+}
+
+// @todo add tests
+export function convertLokiBytes(bytes: string): number {
+  // 0B means no limit is set
+  if (bytes === '0B') {
+    return Infinity;
+  }
+
+  const lastTwoChars = bytes.slice(-2);
+
+  let multiplier;
+  switch (lastTwoChars) {
+    case 'KB':
+      multiplier = 1024;
+      break;
+    case 'MB':
+      multiplier = 1024 ** 2;
+      break;
+    case 'GB':
+      multiplier = 1024 ** 3;
+      break;
+    case 'TB':
+      multiplier = 1024 ** 4;
+      break;
+    case 'PB':
+      multiplier = 1024 ** 5;
+      break;
+    case 'EB':
+      multiplier = 1024 ** 6;
+      break;
+    default:
+      multiplier = 1;
+      break;
+  }
+  const numericPart = bytes.replace(/[B]|[KB]|[MB]|[GB]|[TB]|[PB]|[EB]/, '');
+  return parseInt(numericPart, 10) * multiplier;
+}

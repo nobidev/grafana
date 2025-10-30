@@ -574,7 +574,7 @@ export class LokiDatasource
             start: start,
             end: end,
           },
-          { showErrorAlert: false, requestId: `${REF_ID_STARTER_STATS}${query.refId}` }
+          { showErrorAlert: false }
         );
 
         statsForAll = {

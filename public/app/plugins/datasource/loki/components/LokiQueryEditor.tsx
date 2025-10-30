@@ -21,8 +21,9 @@ import { LokiQueryBuilderOptions } from '../querybuilder/components/LokiQueryBui
 import { LokiQueryCodeEditor } from '../querybuilder/components/LokiQueryCodeEditor';
 import { QueryPatternsModal } from '../querybuilder/components/QueryPatternsModal';
 import { buildVisualQueryFromString } from '../querybuilder/parsing';
+import { parseLokiConfigResponse } from '../querybuilder/parsingUtils.ts';
 import { changeEditorMode, getQueryWithDefaults } from '../querybuilder/state';
-import { LokiConfig, LokiQuery, QueryStats } from '../types';
+import { LOKI_CONFIG_NOT_SUPPORTED, LokiConfigResponse, LokiConfigState, LokiQuery, QueryStats } from '../types';
 
 import { shouldUpdateStats } from './stats';
 import { LokiQueryEditorProps } from './types';
@@ -41,6 +42,7 @@ export const LokiQueryEditor = memo<LokiQueryEditorProps>((props) => {
   const [dataIsStale, setDataIsStale] = useState(false);
   const [labelBrowserVisible, setLabelBrowserVisible] = useState(false);
   const [queryStats, setQueryStats] = useState<QueryStats | null>(null);
+  const [lokiConfig, setLokiConfig] = useState<LokiConfigState>(null);
   const [explain, setExplain] = useState(window.localStorage.getItem(lokiQueryEditorExplainKey) === 'true');
 
   const previousTimeRange = usePrevious(timeRange);
@@ -103,29 +105,34 @@ export const LokiQueryEditor = memo<LokiQueryEditorProps>((props) => {
       !datasource ||
       !datasource.getResource ||
       !config.featureToggles.lokiConfigQueryLimits ||
-      app !== CoreApp.Explore
+      app !== CoreApp.Explore ||
+      lokiConfig !== null
     ) {
       return;
     }
     const makeAsyncRequest = async () => {
-      const config: LokiConfig = await datasource.getResource(
-        'drilldown-limits',
-        {},
-        {
-          // Don't show warnings if the endpoint doesn't exist
-          showErrorAlert: false,
-          // Cache for 1 day
-          headers: {
-            'X-Grafana-Cache': `private, max-age=86400`,
-          },
-        }
-      );
+      try {
+        const configResponse: LokiConfigResponse = await datasource.getResource(
+          'drilldown-limits',
+          {},
+          {
+            // Don't show warnings if the endpoint doesn't exist
+            showErrorAlert: false,
+            // Cache for 1 day
+            headers: {
+              'X-Grafana-Cache': `private, max-age=86400`,
+            },
+          }
+        );
 
-      // @todo set config to state
+        setLokiConfig(parseLokiConfigResponse(configResponse));
+      } catch (e) {
+        setLokiConfig(LOKI_CONFIG_NOT_SUPPORTED);
+      }
     };
 
     makeAsyncRequest();
-  }, [datasource, app]);
+  }, [datasource, app, lokiConfig]);
 
   useEffect(() => {
     const shouldUpdate = shouldUpdateStats(

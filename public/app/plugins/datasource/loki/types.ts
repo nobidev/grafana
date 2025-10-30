@@ -110,11 +110,21 @@ export interface DetectedFieldsResult {
 
 export type LokiGroupedRequest = { request: DataQueryRequest<LokiQuery>; partition: TimeRange[] };
 
-export type LokiConfig = {
+export const LOKI_CONFIG_NOT_SUPPORTED = 'NotSupported';
+export type LokiConfigNotSupported = typeof LOKI_CONFIG_NOT_SUPPORTED;
+// Note, this is a subset of the full response type
+export interface LokiConfigResponse {
   limits: {
     log_level_fields: string[];
     max_entries_limit_per_query: number;
     max_line_size_truncate: boolean;
+    /**
+     * max_query_bytes_read
+     * 0B means no limit
+     * valid units are: B, MB, EB, PB, TB, GB, MB, KB
+     * https://github.com/grafana/loki/blob/4feca2ef340a3f821037f3bb3539e7865a5cb58a/vendor/github.com/c2h5oh/datasize/datasize.go#L68-L87
+     * Examples: 1.1MB, 100.9GB
+     */
     max_query_bytes_read: string;
     max_query_length: string;
     max_query_lookback: string;
@@ -128,4 +138,15 @@ export type LokiConfig = {
     volume_max_series: number;
   };
   version: 'unknown' | string;
-};
+}
+export interface LokiConfig {
+  limits: {
+    max_query_bytes_read: number;
+  };
+}
+/**
+ * null: haven't received response yet
+ * LokiConfigNotSupported: The response was a 404, Loki is likely <3.6
+ * LokiConfig: We have valid config
+ */
+export type LokiConfigState = LokiConfig | LokiConfigNotSupported | null;
