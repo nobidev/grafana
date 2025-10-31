@@ -35,7 +35,7 @@ type LegacyStorageProvider interface {
 // In the rare case that that legacy needs to support the status subresource
 // Unlike resource storage, dual writing must be managed explicitly
 type LegacyStatusProvider interface {
-	GetLegacyStatus(schema.GroupVersionResource, *appsdkapiserver.StatusREST) rest.Storage
+	GetLegacyStatus(gvr schema.GroupVersionResource, status *appsdkapiserver.StatusREST, parent rest.Storage) rest.Storage
 }
 
 type AuthorizerProvider interface {

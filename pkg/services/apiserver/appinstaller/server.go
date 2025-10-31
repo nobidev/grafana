@@ -86,7 +86,7 @@ func (s *serverWrapper) InstallAPIGroup(apiGroupInfo *genericapiserver.APIGroupI
 						if _, isMode4or5 := parentStore.(*genericregistry.Store); !isMode4or5 {
 							// When legacy resources have status, the dual writing must be handled explicitly
 							if statusProvider, ok := s.installer.(LegacyStatusProvider); ok {
-								storage = statusProvider.GetLegacyStatus(gr.WithVersion(v), statusRest)
+								storage = statusProvider.GetLegacyStatus(gr.WithVersion(v), statusRest, parentStore)
 							} else {
 								log.Warn("skipped registering status sub-resource that does not support dual writing",
 									"resource", gr.String(), "version", v, "storagePath", storagePath)

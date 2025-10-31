@@ -88,10 +88,13 @@ func (s *ShortURLAppInstaller) GetLegacyStorage(requested schema.GroupVersionRes
 	return legacyStore
 }
 
-func (s *ShortURLAppInstaller) GetLegacyStatus(requested schema.GroupVersionResource, unified *appsdkapiserver.StatusREST) rest.Storage {
+func (s *ShortURLAppInstaller) GetLegacyStatus(requested schema.GroupVersionResource, unified *appsdkapiserver.StatusREST, parent rest.Storage) rest.Storage {
 	gvr := shorturl.ShortURLKind().GroupVersionResource()
 	if requested.String() != gvr.String() {
 		return nil
+	}
+	if _, isMode0 := parent.(*legacyStorage); isMode0 {
+		unified = nil
 	}
 	return &statusDualWriter{
 		gv:     gvr.GroupVersion(),

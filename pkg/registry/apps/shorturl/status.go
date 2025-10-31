@@ -61,7 +61,7 @@ func (s *statusDualWriter) Update(ctx context.Context, name string, objInfo rest
 
 	// This ignores the incoming and updates it directly
 	err = s.legacy.service.UpdateLastSeenAt(ctx, shortURL)
-	if err != nil {
+	if err != nil || s.status == nil { // in mode0 we are already done
 		return nil, false, err
 	}
 
