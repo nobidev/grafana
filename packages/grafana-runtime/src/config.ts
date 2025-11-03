@@ -203,6 +203,7 @@ export class GrafanaBootConfig {
   };
   applicationInsightsConnectionString?: string;
   applicationInsightsEndpointUrl?: string;
+  applicationInsightsAutoRouteTracking?: boolean;
   recordedQueries = {
     enabled: true,
   };
