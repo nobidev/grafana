@@ -101,19 +101,21 @@ func TestIntegrationTestDatasource(t *testing.T) {
 		require.Len(t, list.Items, 1, "expected a single connection")
 		require.Equal(t, "test", list.Items[0].GetName(), "with the test uid")
 
-		rsp, err := client.Get(ctx, "test", metav1.GetOptions{}, "health")
-		require.NoError(t, err)
-		body, err := rsp.MarshalJSON()
-		require.NoError(t, err)
-		//fmt.Printf("GOT: %v\n", string(body))
-		require.JSONEq(t, `{
-			"apiVersion": "testdata.datasource.grafana.app/v0alpha1",
-			"code": 1,
-			"kind": "HealthCheckResult",
-			"message": "Data source is working",
-			"status": "OK"
-		  }
-		`, string(body))
+		_, err = client.Get(ctx, "test", metav1.GetOptions{}, "health")
+		// endpoint is disabled currently
+		require.ErrorContains(t, err, "health: endpoint disabled")
+		// require.NoError(t, err)
+		// body, err := rsp.MarshalJSON()
+		// require.NoError(t, err)
+		// //fmt.Printf("GOT: %v\n", string(body))
+		// require.JSONEq(t, `{
+		// 	"apiVersion": "testdata.datasource.grafana.app/v0alpha1",
+		// 	"code": 1,
+		// 	"kind": "HealthCheckResult",
+		// 	"message": "Data source is working",
+		// 	"status": "OK"
+		//   }
+		// `, string(body))
 
 		// Test connecting to non-JSON marshaled data
 		raw := apis.DoRequest[any](helper, apis.RequestParams{
@@ -121,6 +123,9 @@ func TestIntegrationTestDatasource(t *testing.T) {
 			Method: "GET",
 			Path:   "/apis/testdata.datasource.grafana.app/v0alpha1/namespaces/default/datasources/test/resource",
 		}, nil)
-		require.Equal(t, `Hello world from test datasource!`, string(raw.Body))
+		// endpoint is disabled currently
+		require.Equal(t, int32(500), raw.Status.Code)
+		require.Contains(t, string(raw.Body), "resource: endpoint disabled")
+		// require.Equal(t, `Hello world from test datasource!`, string(raw.Body))
 	})
 }
