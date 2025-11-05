@@ -1123,3 +1123,371 @@ func TestList(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDescendantsPostorder(t *testing.T) {
+	mockCli := new(client.MockK8sHandler)
+	tracer := noop.NewTracerProvider().Tracer("TestGetDescendantsPostorder")
+	store := FolderUnifiedStoreImpl{
+		k8sclient:   mockCli,
+		userService: usertest.NewUserServiceFake(),
+		tracer:      tracer,
+	}
+
+	ctx := context.Background()
+	orgID := int64(1)
+
+	t.Run("returns empty list for folder with no descendants", func(t *testing.T) {
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "parent")
+		require.NoError(t, err)
+		require.Empty(t, descendants)
+	})
+
+	t.Run("returns single child in postorder", func(t *testing.T) {
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "child",
+							"uid":         "child",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "child",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "parent")
+		require.NoError(t, err)
+		require.Len(t, descendants, 1)
+		require.Equal(t, "child", descendants[0].UID)
+	})
+
+	t.Run("returns linear hierarchy in postorder", func(t *testing.T) {
+		// Structure: parent -> a -> b -> c
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "a",
+							"uid":         "a",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "a",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "b",
+							"uid":         "b",
+							"annotations": map[string]interface{}{"grafana.app/folder": "a"},
+						},
+						"spec": map[string]interface{}{
+							"title": "b",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "c",
+							"uid":         "c",
+							"annotations": map[string]interface{}{"grafana.app/folder": "b"},
+						},
+						"spec": map[string]interface{}{
+							"title": "c",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "parent")
+		require.NoError(t, err)
+		require.Len(t, descendants, 3)
+
+		// Postorder: deepest first (c, b, a)
+		require.Equal(t, "c", descendants[0].UID)
+		require.Equal(t, "b", descendants[1].UID)
+		require.Equal(t, "a", descendants[2].UID)
+	})
+
+	t.Run("returns branching hierarchy in postorder", func(t *testing.T) {
+		// Structure:
+		//     parent
+		//     /  |  \
+		//    a   b   c
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "a",
+							"uid":         "a",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "a",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "b",
+							"uid":         "b",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "b",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "c",
+							"uid":         "c",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "c",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "parent")
+		require.NoError(t, err)
+		require.Len(t, descendants, 3)
+
+		// All children should be in the result
+		childUIDs := []string{"a", "b", "c"}
+		for _, desc := range descendants {
+			require.Contains(t, childUIDs, desc.UID)
+		}
+	})
+
+	t.Run("returns complex hierarchy in postorder", func(t *testing.T) {
+		// Structure:
+		//       parent
+		//       /    \
+		//      a      b
+		//     / \     |
+		//    c   d    e
+		//    |
+		//    f
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "a",
+							"uid":         "a",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "a",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "b",
+							"uid":         "b",
+							"annotations": map[string]interface{}{"grafana.app/folder": "parent"},
+						},
+						"spec": map[string]interface{}{
+							"title": "b",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "c",
+							"uid":         "c",
+							"annotations": map[string]interface{}{"grafana.app/folder": "a"},
+						},
+						"spec": map[string]interface{}{
+							"title": "c",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "d",
+							"uid":         "d",
+							"annotations": map[string]interface{}{"grafana.app/folder": "a"},
+						},
+						"spec": map[string]interface{}{
+							"title": "d",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "e",
+							"uid":         "e",
+							"annotations": map[string]interface{}{"grafana.app/folder": "b"},
+						},
+						"spec": map[string]interface{}{
+							"title": "e",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "f",
+							"uid":         "f",
+							"annotations": map[string]interface{}{"grafana.app/folder": "c"},
+						},
+						"spec": map[string]interface{}{
+							"title": "f",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "parent")
+		require.NoError(t, err)
+		require.Len(t, descendants, 6)
+
+		// Build index map for checking ordering
+		indices := make(map[string]int)
+		for i, f := range descendants {
+			indices[f.UID] = i
+		}
+
+		// Verify postorder constraints: children must come before their parents
+		// f must come before c
+		require.Less(t, indices["f"], indices["c"], "f should come before c")
+		// c and d must come before a
+		require.Less(t, indices["c"], indices["a"], "c should come before a")
+		require.Less(t, indices["d"], indices["a"], "d should come before a")
+		// e must come before b
+		require.Less(t, indices["e"], indices["b"], "e should come before b")
+	})
+
+	t.Run("detects circular references", func(t *testing.T) {
+		// Create a circular reference: a -> b -> c, and when we try to traverse from 'a'
+		// we should detect if we visit 'a' again
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "b",
+							"uid":         "b",
+							"annotations": map[string]interface{}{"grafana.app/folder": "a"},
+						},
+						"spec": map[string]interface{}{
+							"title": "b",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "c",
+							"uid":         "c",
+							"annotations": map[string]interface{}{"grafana.app/folder": "b"},
+						},
+						"spec": map[string]interface{}{
+							"title": "c",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		// Try to get descendants of 'a'
+		// The tree will be: a -> b -> c, but if there was a cycle back to 'a', it would be detected
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "a")
+		require.NoError(t, err)
+		require.Len(t, descendants, 2)
+	})
+
+	t.Run("handles folders with empty parent (general folder)", func(t *testing.T) {
+		// Folders with empty ParentUID should be treated as children of "general"
+		mockCli.On("List", mock.Anything, orgID, metav1.ListOptions{
+			Limit:    folderListLimit,
+			TypeMeta: metav1.TypeMeta{},
+		}).Return(&unstructured.UnstructuredList{
+			Items: []unstructured.Unstructured{
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name": "a",
+							"uid":  "a",
+							// No folder annotation means it's under root/general
+						},
+						"spec": map[string]interface{}{
+							"title": "a",
+						},
+					},
+				},
+				{
+					Object: map[string]interface{}{
+						"metadata": map[string]interface{}{
+							"name":        "b",
+							"uid":         "b",
+							"annotations": map[string]interface{}{"grafana.app/folder": "a"},
+						},
+						"spec": map[string]interface{}{
+							"title": "b",
+						},
+					},
+				},
+			},
+		}, nil).Once()
+
+		descendants, err := store.GetDescendantsPostorder(ctx, orgID, "general")
+		require.NoError(t, err)
+		require.Len(t, descendants, 2)
+
+		// Build index map for checking ordering
+		indices := make(map[string]int)
+		for i, f := range descendants {
+			indices[f.UID] = i
+		}
+
+		// b must come before a (postorder)
+		require.Less(t, indices["b"], indices["a"], "b should come before a")
+	})
+}
