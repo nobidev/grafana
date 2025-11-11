@@ -30,10 +30,9 @@ func TestIntegrationTestDatasource(t *testing.T) {
 	testutil.SkipIntegrationTestInShortMode(t)
 
 	helper := apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
-		AppModeProduction: false, // dev mode required for datasource connections
-		DisableAnonymous:  true,
+		DisableAnonymous: true,
 		EnableFeatureToggles: []string{
-			featuremgmt.FlagGrafanaAPIServerWithExperimentalAPIs, // Required to start the example service
+			featuremgmt.FlagQueryServiceWithConnections,
 		},
 	})
 
