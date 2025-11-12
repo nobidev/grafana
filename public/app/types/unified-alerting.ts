@@ -181,17 +181,21 @@ export interface RuleWithLocation<T = RulerRuleDTO> {
 export const GrafanaRulesSourceSymbol = Symbol('grafana');
 export type RulesSourceUid = string | typeof GrafanaRulesSourceSymbol;
 
+// Rule source type constants
+export const GRAFANA_RULE_SOURCE_TYPE = 'grafana' as const;
+export const DATASOURCE_RULE_SOURCE_TYPE = 'datasource' as const;
+
 export interface DataSourceRulesSourceIdentifier {
   uid: string;
   name: string;
   // discriminator
-  ruleSourceType: 'datasource';
+  ruleSourceType: typeof DATASOURCE_RULE_SOURCE_TYPE;
 }
 export interface GrafanaRulesSourceIdentifier {
   uid: typeof GrafanaRulesSourceSymbol;
   name: 'grafana';
   // discriminator
-  ruleSourceType: 'grafana';
+  ruleSourceType: typeof GRAFANA_RULE_SOURCE_TYPE;
 }
 
 export type RulesSourceIdentifier = DataSourceRulesSourceIdentifier | GrafanaRulesSourceIdentifier;
@@ -215,14 +219,14 @@ export interface DataSourceNamespaceIdentifier {
 export interface GrafanaRuleGroupIdentifier {
   groupName: string;
   namespace: GrafanaNamespaceIdentifier;
-  groupOrigin: 'grafana';
+  groupOrigin: typeof GRAFANA_RULE_SOURCE_TYPE;
 }
 
 export interface DataSourceRuleGroupIdentifier {
   rulesSource: DataSourceRulesSourceIdentifier;
   groupName: string;
   namespace: DataSourceNamespaceIdentifier;
-  groupOrigin: 'datasource';
+  groupOrigin: typeof DATASOURCE_RULE_SOURCE_TYPE;
 }
 
 export type RuleGroupIdentifierV2 = GrafanaRuleGroupIdentifier | DataSourceRuleGroupIdentifier;

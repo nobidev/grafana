@@ -4,8 +4,10 @@ import { merge } from 'ix/asynciterable/merge';
 import { catchError, concatMap, withAbort } from 'ix/asynciterable/operators';
 
 import {
+  DATASOURCE_RULE_SOURCE_TYPE,
   DataSourceRuleGroupIdentifier,
   DataSourceRulesSourceIdentifier,
+  GRAFANA_RULE_SOURCE_TYPE,
   GrafanaRuleGroupIdentifier,
 } from 'app/types/unified-alerting';
 import {
@@ -15,6 +17,7 @@ import {
   PromRuleGroupDTO,
 } from 'app/types/unified-alerting-dto';
 
+import { shouldUseBackendFilters } from '../../featureToggles';
 import { RuleSource, RulesFilter } from '../../search/rulesSearchParser';
 import {
   getDataSourceByUid,
@@ -37,13 +40,13 @@ export interface GrafanaRuleWithOrigin {
    * groupIdentifier contains the uid of the namespace, but not the user-friendly display name
    */
   namespaceName: string;
-  origin: 'grafana';
+  origin: typeof GRAFANA_RULE_SOURCE_TYPE;
 }
 
 export interface PromRuleWithOrigin {
   rule: PromRuleDTO;
   groupIdentifier: DataSourceRuleGroupIdentifier;
-  origin: 'datasource';
+  origin: typeof DATASOURCE_RULE_SOURCE_TYPE;
   /**
    * Position hash encoding both the rule's index and the total number of rules in the group.
    * Format: "<index>:<totalRules>" (e.g., "0:3", "1:5")
@@ -79,12 +82,18 @@ export function useFilteredRulesIteratorProvider() {
 
     const normalizedFilterState = normalizeFilterState(filterState);
     const hasDataSourceFilterActive = Boolean(filterState.dataSourceNames.length);
+    const useBackendFilters = shouldUseBackendFilters();
+
+    const titleSearch = useBackendFilters
+      ? filterState.ruleName || (filterState.freeFormWords.length > 0 ? filterState.freeFormWords.join(' ') : undefined)
+      : undefined;
 
     const grafanaRulesGenerator: AsyncIterableX<RuleWithOrigin> = from(
       grafanaGroupsGenerator(groupLimit, {
         contactPoint: filterState.contactPoint ?? undefined,
         health: filterState.ruleHealth ? [filterState.ruleHealth] : [],
         state: filterState.ruleState ? [filterState.ruleState] : [],
+        title: titleSearch,
       })
     ).pipe(
       withAbort(abortController.signal),
@@ -92,7 +101,7 @@ export function useFilteredRulesIteratorProvider() {
         groups
           .filter((group) => groupFilter(group, normalizedFilterState))
           .flatMap((group) => group.rules.map((rule) => ({ group, rule })))
-          .filter(({ rule }) => ruleFilter(rule, normalizedFilterState))
+          .filter(({ rule }) => ruleFilter(rule, normalizedFilterState, useBackendFilters))
           .map(({ group, rule }) => mapGrafanaRuleToRuleWithOrigin(group, rule))
       ),
       catchError(() => empty())
@@ -117,7 +126,7 @@ export function useFilteredRulesIteratorProvider() {
             groups
               .filter((group) => groupFilter(group, normalizedFilterState))
               .flatMap((group) => group.rules.map((rule, index) => ({ group, rule, index })))
-              .filter(({ rule }) => ruleFilter(rule, normalizedFilterState))
+              .filter(({ rule }) => ruleFilter(rule, normalizedFilterState, false))
               .map(({ group, rule, index }) => mapRuleToRuleWithOrigin(dataSourceIdentifier, group, rule, index))
           ),
           catchError(() => empty())
@@ -128,7 +137,7 @@ export function useFilteredRulesIteratorProvider() {
     );
 
     const iterablesToMerge: Array<AsyncIterableX<RuleWithOrigin>> = [];
-    const includeGrafana = filterState.ruleSource !== 'datasource';
+    const includeGrafana = filterState.ruleSource !== DATASOURCE_RULE_SOURCE_TYPE;
     const includeExternal = true;
 
     if (includeGrafana) {
@@ -144,6 +153,24 @@ export function useFilteredRulesIteratorProvider() {
   };
 
   return getFilteredRulesIterable;
+}
+
+/**
+ * Determines if client-side filtering is needed for Grafana-managed rules.
+ */
+export function hasClientSideFilters(filterState: RulesFilter): boolean {
+  const useBackendFilters = shouldUseBackendFilters();
+
+  return (
+    // When backend filters are disabled, title search needs client-side filtering
+    (!useBackendFilters && (filterState.freeFormWords.length > 0 || Boolean(filterState.ruleName))) ||
+    // Client-side only filters:
+    Boolean(filterState.namespace) ||
+    filterState.dataSourceNames.length > 0 ||
+    filterState.labels.length > 0 ||
+    Boolean(filterState.dashboardUid) ||
+    filterState.ruleSource === RuleSource.DataSource
+  );
 }
 
 function mergeIterables(iterables: Array<AsyncIterableX<RuleWithOrigin>>): AsyncIterableX<RuleWithOrigin> {
@@ -172,7 +199,7 @@ function getRulesSourcesFromFilter(filter: RulesFilter): DataSourceRulesSourceId
       acc.push({
         name: dataSourceName,
         uid,
-        ruleSourceType: 'datasource',
+        ruleSourceType: DATASOURCE_RULE_SOURCE_TYPE,
       });
     } catch {}
 
@@ -192,9 +219,9 @@ function mapRuleToRuleWithOrigin(
       rulesSource,
       namespace: { name: group.file },
       groupName: group.name,
-      groupOrigin: 'datasource',
+      groupOrigin: DATASOURCE_RULE_SOURCE_TYPE,
     },
-    origin: 'datasource',
+    origin: DATASOURCE_RULE_SOURCE_TYPE,
     rulePositionHash: createRulePositionHash(ruleIndex, group.rules.length),
   };
 }
@@ -208,10 +235,10 @@ function mapGrafanaRuleToRuleWithOrigin(
     groupIdentifier: {
       namespace: { uid: group.folderUid },
       groupName: group.name,
-      groupOrigin: 'grafana',
+      groupOrigin: GRAFANA_RULE_SOURCE_TYPE,
     },
     namespaceName: group.file,
-    origin: 'grafana',
+    origin: GRAFANA_RULE_SOURCE_TYPE,
   };
 }
 
