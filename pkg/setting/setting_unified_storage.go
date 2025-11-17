@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/grafana/grafana/pkg/apiserver/rest"
+	"github.com/grafana/grafana/pkg/util/osutil"
 )
 
 // read storage configs from ini file. They look like:
@@ -51,8 +52,40 @@ func (cfg *Cfg) setUnifiedStorageConfig() {
 
 	// Set indexer config for unified storage
 	section := cfg.Raw.Section("unified_storage")
-
-	cfg.EnableSearch = section.Key("enable_search").MustBool(false)
+	// cfg.DisableDataMigrations = section.Key("disable_data_migrations").MustBool(false)
+	cfg.DisableDataMigrations = true // disable data migrations until we are sure it is not going to execute unintentionally
+	if !cfg.DisableDataMigrations {
+		// Get storage type without section/key creation and following overrides rules (env > ini > default)
+		storageType := (osutil.RealEnv{}).Getenv(EnvKey("grafana-apiserver", "storage_type"))
+		if storageType == "" {
+			if cfg.Raw.HasSection("grafana-apiserver") {
+				storageType = "unified" // default to unified if not set
+				if cfg.Raw.Section("grafana-apiserver").HasKey("storage_type") {
+					storageType = cfg.Raw.Section("grafana-apiserver").Key("storage_type").Value()
+				}
+			}
+		}
+		switch storageType {
+		case "unified":
+			migratedResources := []string{
+				//"playlists.playlist.grafana.app",
+				"folders.folder.grafana.app",
+				"dashboards.dashboard.grafana.app",
+			}
+			for _, resource := range migratedResources {
+				cfg.Logger.Info("Enforcing mode 5 for resource in unified storage", "resource", resource)
+				cfg.UnifiedStorage[resource] = UnifiedStorageConfig{
+					DualWriterMode:                      5,
+					DualWriterMigrationDataSyncDisabled: true,
+				}
+			}
+			cfg.EnableSearch = section.Key("enable_search").MustBool(true)
+		default:
+			cfg.EnableSearch = section.Key("enable_search").MustBool(false)
+		}
+	} else {
+		cfg.EnableSearch = section.Key("enable_search").MustBool(false)
+	}
 	cfg.MaxPageSizeBytes = section.Key("max_page_size_bytes").MustInt(0)
 	cfg.IndexPath = section.Key("index_path").String()
 	cfg.IndexWorkers = section.Key("index_workers").MustInt(10)

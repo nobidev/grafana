@@ -75,6 +75,10 @@ func RegisterMigrations(
 	ctx, span := tracer.Start(context.Background(), "storage.unified.RegisterMigrations")
 	defer span.End()
 	logger := log.New("storage.unified.migrations")
+	if cfg.DisableDataMigrations {
+		logger.Debug("Data migrations are disabled, skipping migrations")
+		return nil
+	}
 	mg := migrator.NewScopedMigrator(sqlStore.GetEngine(), cfg, "unified_storage")
 	mg.AddCreateMigration()
 
