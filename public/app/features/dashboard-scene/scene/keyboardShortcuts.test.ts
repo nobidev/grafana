@@ -1,4 +1,5 @@
 import { LegacyGraphHoverClearEvent } from '@grafana/data';
+import { config } from '@grafana/runtime';
 import { behaviors, sceneGraph, SceneTimeRange } from '@grafana/scenes';
 import { DashboardCursorSync } from '@grafana/schema';
 import { appEvents } from 'app/core/app_events';
@@ -251,6 +252,236 @@ describe('setupKeyboardShortcuts', () => {
       expect(modOBinding).toBeDefined();
       expect(vBinding).toBeDefined();
       expect(drBinding).toBeDefined();
+    });
+  });
+
+  describe('time range zoom shortcuts with feature toggle', () => {
+    describe('when newTimeRangeZoomShortcuts is enabled', () => {
+      beforeEach(() => {
+        config.featureToggles.newTimeRangeZoomShortcuts = true;
+        jest.clearAllMocks();
+      });
+
+      it('should setup t + zoom in shortcut', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tPlusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't +');
+        expect(tPlusBinding).toBeDefined();
+      });
+
+      it('should setup t - zoom out shortcut with keypress type', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tMinusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't -');
+        expect(tMinusBinding).toBeDefined();
+        expect(tMinusBinding![0].type).toBe('keypress');
+      });
+
+      it('should setup t 0 reset shortcut', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const t0Binding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't 0');
+        expect(t0Binding).toBeDefined();
+      });
+
+      it('should not setup t z shortcut when feature toggle is on', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tzBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't z');
+        expect(tzBinding).toBeUndefined();
+      });
+    });
+
+    describe('when newTimeRangeZoomShortcuts is disabled', () => {
+      beforeEach(() => {
+        config.featureToggles.newTimeRangeZoomShortcuts = false;
+        jest.clearAllMocks();
+      });
+
+      it('should setup legacy t z shortcut', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tzBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't z');
+        expect(tzBinding).toBeDefined();
+      });
+
+      it('should not setup new zoom shortcuts when feature toggle is off', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tPlusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't +');
+        const tMinusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't -');
+        const t0Binding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't 0');
+
+        expect(tPlusBinding).toBeUndefined();
+        expect(tMinusBinding).toBeUndefined();
+        expect(t0Binding).toBeUndefined();
+      });
+    });
+
+    describe('zoom handler logic', () => {
+      let mockTimeRange: ReturnType<typeof createMockTimeRange>;
+
+      function createMockTimeRange() {
+        return {
+          state: {
+            value: {
+              from: { valueOf: () => new Date('2024-01-01 12:00:00').getTime() },
+              to: { valueOf: () => new Date('2024-01-01 18:00:00').getTime() }, // 6 hour span
+              raw: { from: 'now-6h', to: 'now' },
+            },
+          },
+          onTimeRangeChange: jest.fn(),
+        } satisfies {
+          state: {
+            value: {
+              from: { valueOf: () => number };
+              to: { valueOf: () => number };
+              raw: { from: string; to: string };
+            };
+          };
+          onTimeRangeChange: jest.Mock;
+        };
+      }
+
+      beforeEach(() => {
+        config.featureToggles.newTimeRangeZoomShortcuts = true;
+        mockTimeRange = createMockTimeRange();
+
+        (sceneGraph.getTimeRange as jest.Mock).mockReturnValue(mockTimeRange);
+        jest.clearAllMocks();
+      });
+
+      it('should zoom in (scale 0.5) when t + is pressed', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tPlusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't +');
+        const handler = tPlusBinding![0].onTrigger;
+
+        handler();
+
+        // Scale 0.5 should result in 3 hour span (half of 6)
+        expect(mockTimeRange.onTimeRangeChange).toHaveBeenCalledWith(
+          expect.objectContaining({
+            from: expect.any(Object),
+            to: expect.any(Object),
+            raw: expect.any(Object),
+          })
+        );
+
+        const call = mockTimeRange.onTimeRangeChange.mock.calls[0][0];
+        const newSpan = call.to.valueOf() - call.from.valueOf();
+        expect(newSpan).toBe(3 * 60 * 60 * 1000); // 3 hours in milliseconds
+      });
+
+      it('should keep center point when zooming in', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const tPlusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't +');
+        const handler = tPlusBinding![0].onTrigger;
+
+        const originalCenter = (mockTimeRange.state.value.from.valueOf() + mockTimeRange.state.value.to.valueOf()) / 2;
+
+        handler();
+
+        const call = mockTimeRange.onTimeRangeChange.mock.calls[0][0];
+        const newCenter = (call.from.valueOf() + call.to.valueOf()) / 2;
+
+        expect(newCenter).toBe(originalCenter);
+      });
+
+      it('should handle zero timespan edge case', () => {
+        mockTimeRange.state.value.from.valueOf = () => new Date('2024-01-01 12:00:00').getTime();
+        mockTimeRange.state.value.to.valueOf = () => new Date('2024-01-01 12:00:00').getTime(); // Same time
+
+        setupKeyboardShortcuts(mockScene);
+
+        const tPlusBinding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't +');
+        const handler = tPlusBinding![0].onTrigger;
+
+        handler();
+
+        const call = mockTimeRange.onTimeRangeChange.mock.calls[0][0];
+        const newSpan = call.to.valueOf() - call.from.valueOf();
+
+        // Should default to 30 seconds when timespan is 0
+        expect(newSpan).toBe(30000 * 0.5); // 15 seconds (30s * 0.5 scale)
+      });
+    });
+
+    describe('zoom reset handler logic', () => {
+      let mockTimeRange: ReturnType<typeof createMockTimeRangeForReset>;
+      let initialFrom: { valueOf: () => number };
+      let initialTo: { valueOf: () => number };
+
+      function createMockTimeRangeForReset(from: { valueOf: () => number }, to: { valueOf: () => number }) {
+        return {
+          state: {
+            value: {
+              from,
+              to,
+              raw: { from: 'now-6h', to: 'now' },
+            },
+          },
+          onTimeRangeChange: jest.fn(),
+        } satisfies {
+          state: {
+            value: {
+              from: { valueOf: () => number };
+              to: { valueOf: () => number };
+              raw: { from: string; to: string };
+            };
+          };
+          onTimeRangeChange: jest.Mock;
+        };
+      }
+
+      beforeEach(() => {
+        config.featureToggles.newTimeRangeZoomShortcuts = true;
+
+        initialFrom = { valueOf: () => new Date('2024-01-01 12:00:00').getTime() };
+        initialTo = { valueOf: () => new Date('2024-01-01 18:00:00').getTime() };
+
+        mockTimeRange = createMockTimeRangeForReset(initialFrom, initialTo);
+
+        (sceneGraph.getTimeRange as jest.Mock).mockReturnValue(mockTimeRange);
+        jest.clearAllMocks();
+      });
+
+      it('should reset to saved time range when t 0 is pressed', () => {
+        // Setup captures initial state
+        setupKeyboardShortcuts(mockScene);
+
+        // Simulate time range being changed
+        const modifiedFrom = { valueOf: () => new Date('2024-01-01 15:00:00').getTime() };
+        const modifiedTo = { valueOf: () => new Date('2024-01-01 21:00:00').getTime() };
+        mockTimeRange.state.value.from = modifiedFrom;
+        mockTimeRange.state.value.to = modifiedTo;
+
+        // Get and trigger t 0 handler
+        const t0Binding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't 0');
+        const handler = t0Binding![0].onTrigger;
+
+        handler();
+
+        // Should restore to initial values
+        expect(mockTimeRange.onTimeRangeChange).toHaveBeenCalled();
+
+        const call = mockTimeRange.onTimeRangeChange.mock.calls[0][0];
+        expect(call.from.valueOf()).toBe(initialFrom.valueOf());
+        expect(call.to.valueOf()).toBe(initialTo.valueOf());
+      });
+
+      it('should preserve raw time range values on reset', () => {
+        setupKeyboardShortcuts(mockScene);
+
+        const t0Binding = mockKeybindingSet.addBinding.mock.calls.find((call) => call[0].key === 't 0');
+        const handler = t0Binding![0].onTrigger;
+
+        handler();
+
+        const call = mockTimeRange.onTimeRangeChange.mock.calls[0][0];
+        expect(call.raw).toEqual({ from: 'now-6h', to: 'now' });
+      });
     });
   });
 });
