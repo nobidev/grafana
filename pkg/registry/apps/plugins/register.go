@@ -1,14 +1,15 @@
 package plugins
 
 import (
+	"fmt"
 	"os"
 
-	"k8s.io/apiserver/pkg/authorization/authorizer"
-
+	authlib "github.com/grafana/authlib/types"
 	appsdkapiserver "github.com/grafana/grafana-app-sdk/k8s/apiserver"
 
 	pluginsapp "github.com/grafana/grafana/apps/plugins/pkg/app"
 	"github.com/grafana/grafana/apps/plugins/pkg/app/meta"
+	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/apiserver/appinstaller"
 )
 
@@ -18,10 +19,14 @@ var (
 )
 
 type AppInstaller struct {
-	appsdkapiserver.AppInstaller
+	*pluginsapp.PluginAppInstaller
 }
 
-func ProvideAppInstaller() (*AppInstaller, error) {
+func ProvideAppInstaller(accessControlService accesscontrol.Service, accessClient authlib.AccessClient) (*AppInstaller, error) {
+	if err := registerAccessControlRoles(accessControlService); err != nil {
+		return nil, fmt.Errorf("registering access control roles: %w", err)
+	}
+
 	grafanaComAPIURL := os.Getenv("GRAFANA_COM_API_URL")
 	if grafanaComAPIURL == "" {
 		grafanaComAPIURL = "https://grafana.com/api/plugins"
@@ -36,12 +41,9 @@ func ProvideAppInstaller() (*AppInstaller, error) {
 		return nil, err
 	}
 
-	return &AppInstaller{
-		AppInstaller: i,
-	}, nil
-}
+	i.WithAccessChecker(accessClient)
 
-// GetAuthorizer returns the authorizer for the plugins app.
-func (p *AppInstaller) GetAuthorizer() authorizer.Authorizer {
-	return pluginsapp.GetAuthorizer()
+	return &AppInstaller{
+		PluginAppInstaller: i,
+	}, nil
 }
