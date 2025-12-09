@@ -293,6 +293,108 @@ func TestIntegrationLegacySupport(t *testing.T) {
 	require.Equal(t, dashboardV0.VERSION, rsp.Result.Meta.APIVersion)
 }
 
+func TestIntegrationListPagination(t *testing.T) {
+	testutil.SkipIntegrationTestInShortMode(t)
+
+	gvr := schema.GroupVersionResource{
+		Group:    dashboardV0.GROUP,
+		Version:  dashboardV0.VERSION,
+		Resource: "dashboards",
+	}
+
+	modes := []rest.DualWriterMode{rest.Mode0, rest.Mode1, rest.Mode2, rest.Mode3, rest.Mode4, rest.Mode5}
+	for _, mode := range modes {
+		t.Run(fmt.Sprintf("pagination with dual writer mode %d", mode), func(t *testing.T) {
+			helper := apis.NewK8sTestHelper(t, testinfra.GrafanaOpts{
+				DisableAnonymous:      true,
+				DisableDataMigrations: true,
+				UnifiedStorageConfig: map[string]setting.UnifiedStorageConfig{
+					"dashboards.dashboard.grafana.app": {
+						DualWriterMode: mode,
+					},
+				},
+			})
+			t.Cleanup(helper.Shutdown)
+
+			ctx := context.Background()
+			client := helper.GetResourceClient(apis.ResourceClientArgs{
+				User: helper.Org1.Admin,
+				GVR:  gvr,
+			})
+
+			// Test 1: List with no dashboards
+			rsp, err := client.Resource.List(ctx, metav1.ListOptions{})
+			require.NoError(t, err)
+			require.Len(t, rsp.Items, 0)
+
+			// Create 5 dashboards to test pagination with small limits
+			const totalDashboards = 5
+			createdNames := make([]string, 0, totalDashboards)
+			for i := 0; i < totalDashboards; i++ {
+				obj := &unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"spec": map[string]any{
+							"title":         fmt.Sprintf("Pagination test dashboard %d", i),
+							"schemaVersion": 42,
+						},
+					},
+				}
+				obj.SetGenerateName("pag-")
+				obj.SetAPIVersion(gvr.GroupVersion().String())
+				obj.SetKind("Dashboard")
+				created, err := client.Resource.Create(ctx, obj, metav1.CreateOptions{})
+				require.NoError(t, err)
+				createdNames = append(createdNames, created.GetName())
+			}
+
+			// Test 2: List all without limit - should return all dashboards
+			rsp, err = client.Resource.List(ctx, metav1.ListOptions{})
+			require.NoError(t, err)
+			require.Len(t, rsp.Items, totalDashboards, "should return all %d dashboards", totalDashboards)
+
+			// Test 3: List with small limit (3) - should paginate
+			const pageSize = 2
+			allNames := make(map[string]bool)
+			continueToken := ""
+			pageCount := 0
+
+			for {
+				pageCount++
+				listOpts := metav1.ListOptions{
+					Limit:    pageSize,
+					Continue: continueToken,
+				}
+				rsp, err = client.Resource.List(ctx, listOpts)
+				require.NoError(t, err)
+
+				// Collect names from this page
+				for _, item := range rsp.Items {
+					name := item.GetName()
+					require.False(t, allNames[name], "duplicate item %s found across pages", name)
+					allNames[name] = true
+				}
+
+				// Check if there's more pages
+				continueToken = rsp.GetContinue()
+				if continueToken == "" {
+					break
+				}
+
+				// Safety check to prevent infinite loops
+				require.Less(t, pageCount, 10, "too many pages, possible infinite loop")
+			}
+
+			// Verify we got all dashboards across all pages
+			require.Len(t, allNames, totalDashboards, "should have collected all %d dashboards across pages", totalDashboards)
+
+			// Verify all created dashboards were found
+			for _, name := range createdNames {
+				require.True(t, allNames[name], "dashboard %s not found in paginated results", name)
+			}
+		})
+	}
+}
+
 func TestIntegrationSearchTypeFiltering(t *testing.T) {
 	testutil.SkipIntegrationTestInShortMode(t)
 
