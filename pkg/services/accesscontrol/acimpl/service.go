@@ -96,6 +96,8 @@ func ProvideOSSService(
 		roles:          accesscontrol.BuildBasicRoleDefinitions(),
 		store:          store,
 		permRegistry:   permRegistry,
+		sql:            db,
+		serverLock:     lock,
 	}
 
 	return s
@@ -114,6 +116,8 @@ type Service struct {
 	store          accesscontrol.Store
 	permRegistry   permreg.PermissionRegistry
 	isInitialized  bool
+	sql            db.DB
+	serverLock     *serverlock.ServerLockService
 }
 
 func (s *Service) GetUsageStats(_ context.Context) map[string]any {
@@ -431,14 +435,21 @@ func (s *Service) RegisterFixedRoles(ctx context.Context) error {
 	defer span.End()
 
 	s.rolesMu.Lock()
-	defer s.rolesMu.Unlock()
-
 	s.registrations.Range(func(registration accesscontrol.RoleRegistration) bool {
 		s.registerRolesLocked(registration)
 		return true
 	})
 
 	s.isInitialized = true
+
+	rolesSnapshot := s.getBasicRolePermissionsLocked()
+	s.rolesMu.Unlock()
+
+	// sync computed defaults to the db (basic role permissions are reset after restart. no-op if enterprise seeding is detected)
+	if err := s.refreshBasicRolePermissionsInDB(ctx, rolesSnapshot); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -474,6 +485,7 @@ func (s *Service) DeclarePluginRoles(ctx context.Context, ID, name string, regs 
 	defer span.End()
 
 	acRegs := pluginutils.ToRegistrations(ID, name, regs)
+	updatedBasicRoles := false
 	for _, r := range acRegs {
 		if err := pluginutils.ValidatePluginRole(ID, r.Role); err != nil {
 			return err
@@ -500,8 +512,20 @@ func (s *Service) DeclarePluginRoles(ctx context.Context, ID, name string, regs 
 		if initialized {
 			s.rolesMu.Lock()
 			s.registerRolesLocked(r)
+			updatedBasicRoles = true
 			s.rolesMu.Unlock()
 			s.cache.Flush()
+		}
+	}
+
+	if updatedBasicRoles {
+		s.rolesMu.RLock()
+		rolesSnapshot := s.getBasicRolePermissionsLocked()
+		s.rolesMu.RUnlock()
+
+		// plugin roles can be declared after startup - keep DB in sync
+		if err := s.refreshBasicRolePermissionsInDB(ctx, rolesSnapshot); err != nil {
+			return err
 		}
 	}
 
