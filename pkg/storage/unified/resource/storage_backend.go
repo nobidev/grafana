@@ -571,7 +571,9 @@ func (k *kvStorageBackend) ListIterator(ctx context.Context, req *resourcepb.Lis
 	listRV := k.snowflake.Generate().Int64()
 	if lastEventKey, err := k.eventStore.LastEventKey(ctx); err == nil {
 		listRV = lastEventKey.ResourceVersion
-	} else if !errors.Is(err, ErrNotFound) {
+	} else if errors.Is(err, ErrNotFound) {
+		listRV = 1
+	} else {
 		return 0, fmt.Errorf("failed to fetch last event: %w", err)
 	}
 
@@ -816,7 +818,7 @@ func (k *kvStorageBackend) ListModifiedSince(ctx context.Context, key Namespaced
 	}
 
 	// Generate a new resource version for the list
-	listRV := k.snowflake.Generate().Int64()
+	listRV := int64(1) //k.snowflake.Generate().Int64()
 
 	// Check if sinceRv is older than 1 hour
 	sinceRvTimestamp := snowflake.ID(sinceRv).Time()
