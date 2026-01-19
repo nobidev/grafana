@@ -33,14 +33,13 @@ require (
 	github.com/armon/go-radix v1.0.0 // @grafana/grafana-app-platform-squad
 	github.com/aws/aws-sdk-go v1.55.7 // @grafana/aws-datasources
 	github.com/aws/aws-sdk-go-v2 v1.40.0 // @grafana/aws-datasources
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.21 // @grafana/grafana-operator-experience-squad
+	github.com/aws/aws-sdk-go-v2/credentials v1.18.21 // indirect; @grafana/grafana-operator-experience-squad
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.45.3 // @grafana/aws-datasources
 	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.51.0 // @grafana/aws-datasources
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.225.2 // @grafana/aws-datasources
 	github.com/aws/aws-sdk-go-v2/service/oam v1.18.3 // @grafana/aws-datasources
 	github.com/aws/aws-sdk-go-v2/service/resourcegroupstaggingapi v1.26.6 // @grafana/aws-datasources
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.40.1 // @grafana/grafana-operator-experience-squad
-	github.com/aws/aws-sdk-go-v2/service/sts v1.39.1 // @grafana/grafana-operator-experience-squad
+	github.com/aws/aws-sdk-go-v2/service/sts v1.39.1 // indirect; @grafana/grafana-operator-experience-squad
 	github.com/aws/smithy-go v1.23.2 // @grafana/aws-datasources
 	github.com/beevik/etree v1.4.1 // @grafana/grafana-backend-group
 	github.com/benbjohnson/clock v1.3.5 // @grafana/alerting-backend
@@ -96,7 +95,7 @@ require (
 	github.com/grafana/dskit v0.0.0-20260108123158-1a1acfb6ef2e // @grafana/grafana-backend-group
 	github.com/grafana/e2e v0.1.1 // @grafana-app-platform-squad
 	github.com/grafana/gofpdf v0.0.0-20250307124105-3b9c5d35577f // @grafana/sharing-squad
-	github.com/grafana/gomemcache v0.0.0-20250318131618-74242eea118d // @grafana/grafana-operator-experience-squad
+	github.com/grafana/gomemcache v0.0.0-20251127154401-74f93547077b // @grafana/grafana-operator-experience-squad
 	github.com/grafana/grafana-api-golang-client v0.27.0 // @grafana/alerting-backend
 	github.com/grafana/grafana-app-sdk v0.48.7 // @grafana/grafana-app-platform-squad
 	github.com/grafana/grafana-app-sdk/logging v0.48.7 // @grafana/grafana-app-platform-squad
@@ -193,14 +192,14 @@ require (
 	go.opentelemetry.io/contrib/samplers/jaegerremote v0.33.0 // @grafana/grafana-backend-group
 	go.opentelemetry.io/otel v1.39.0 // @grafana/grafana-backend-group
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // @grafana/grafana-backend-group
-	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.15.0 // @grafana/grafana-operator-experience-squad
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.15.0 // indirect; @grafana/grafana-operator-experience-squad
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.39.0 // @grafana/grafana-backend-group
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.39.0 // @grafana/grafana-backend-group
-	go.opentelemetry.io/otel/log v0.15.0 // @grafana/grafana-operator-experience-squad
+	go.opentelemetry.io/otel/log v0.15.0 // indirect; @grafana/grafana-operator-experience-squad
 	go.opentelemetry.io/otel/sdk v1.39.0 // @grafana/grafana-backend-group
-	go.opentelemetry.io/otel/sdk/log v0.15.0 // @grafana/grafana-operator-experience-squad
+	go.opentelemetry.io/otel/sdk/log v0.15.0 // indirect; @grafana/grafana-operator-experience-squad
 	go.opentelemetry.io/otel/trace v1.39.0 // @grafana/grafana-backend-group
-	go.opentelemetry.io/proto/otlp v1.9.0 // @grafana/grafana-operator-experience-squad
+	go.opentelemetry.io/proto/otlp v1.9.0 // indirect; @grafana/grafana-operator-experience-squad
 	go.uber.org/atomic v1.11.0 // @grafana/alerting-backend
 	go.uber.org/goleak v1.3.0 // @grafana/grafana-search-and-storage
 	go.uber.org/mock v0.6.0 // @grafana/grafana-operator-experience-squad
@@ -690,6 +689,8 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
+require github.com/prometheus/otlptranslator v1.0.0 // indirect
+
 replace (
 	// Use fork of crewjam/saml with fixes for some issues until changes get merged into upstream
 	github.com/crewjam/saml => github.com/grafana/saml v0.4.15-0.20240917091248-ae3bbdad8a56
@@ -701,14 +702,14 @@ replace (
 	// lock for mysql tsdb compat
 	github.com/go-sql-driver/mysql => github.com/go-sql-driver/mysql v1.7.1
 
+	// Pin gomemcache to avoid breaking changes in newer versions (see exclude section)
+	github.com/grafana/gomemcache => github.com/grafana/gomemcache v0.0.0-20250318131618-74242eea118d
+
 	// Use our fork of memberlist which includes some fixes that haven't been merged upstream yet.
 	github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
 
 	// Use our fork of the upstream Alertmanager.
 	github.com/prometheus/alertmanager => github.com/grafana/prometheus-alertmanager v0.25.1-0.20260112162805-d29cc9cf7f0f
-
-	// Pin gomemcache to avoid breaking changes in newer versions (see exclude section)
-	github.com/grafana/gomemcache => github.com/grafana/gomemcache v0.0.0-20250318131618-74242eea118d
 )
 
 exclude (
