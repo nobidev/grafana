@@ -689,7 +689,10 @@ require (
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
-require github.com/prometheus/otlptranslator v1.0.0 // indirect
+require (
+	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.35.7 // indirect
+	github.com/prometheus/otlptranslator v1.0.0 // indirect
+)
 
 replace (
 	// Use fork of crewjam/saml with fixes for some issues until changes get merged into upstream
