@@ -87,7 +87,7 @@ func ProvideZanzanaClient(cfg *setting.Cfg, db db.DB, tracer tracing.Tracer, fea
 		}))
 
 		openfgav1.RegisterOpenFGAServiceServer(channel, openfga)
-		authzv1.RegisterAuthzServiceServer(channel, srv.AsAuthzV1Server())
+		authzv1.RegisterAuthzServiceServer(channel, srv)
 		authzextv1.RegisterAuthzExtentionServiceServer(channel, srv)
 
 		client, err := zClient.New(channel, reg)
@@ -271,7 +271,7 @@ func (z *Zanzana) start(ctx context.Context) error {
 
 	grpcServer := z.handle.GetServer()
 	openfgav1.RegisterOpenFGAServiceServer(grpcServer, openfgaServer)
-	authzv1.RegisterAuthzServiceServer(grpcServer, zanzanaServer.AsAuthzV1Server())
+	authzv1.RegisterAuthzServiceServer(grpcServer, zanzanaServer)
 	authzextv1.RegisterAuthzExtentionServiceServer(grpcServer, zanzanaServer)
 
 	// register grpc health server
