@@ -32,23 +32,34 @@ export const getStyles = (theme: GrafanaTheme2) => {
     dashlistCard: css({
       display: 'flex',
       flexDirection: 'column',
-      '&:hover a': {
-        color: theme.colors.text.link,
-        textDecoration: 'underline',
-      },
       height: '100%',
       paddingTop: theme.spacing(1.5),
 
-      '&:hover': {
+      '&:has(a:hover)': {
         backgroundImage: gradient,
         color: theme.colors.text.primary,
+      },
+
+      a: {
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        flex: 1,
+        height: '100%',
+        paddingTop: theme.spacing(0.5),
+
+        '&:hover': {
+          '> p': {
+            '&:first-child': {
+              color: theme.colors.text.link,
+              textDecoration: 'underline',
+            },
+          },
+        },
       },
     }),
     dashlistCardIcon: css({
       marginRight: theme.spacing(0.5),
-    }),
-    dashlistCardLink: css({
-      paddingTop: theme.spacing(0.5),
     }),
   };
 };
