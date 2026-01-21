@@ -12578,6 +12578,7 @@
       "other-queries": "Other queries",
       "query-with-assistant": "Query with Assistant",
       "remove-query": "Remove query",
+      "save-to-query-library": "Save query",
       "selected-datasource-label": "Selected data source:",
       "show-response": "Show response"
     },
