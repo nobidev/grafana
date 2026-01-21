@@ -152,6 +152,16 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 	}, nil
 }
 
+// GenerateConnectionToken generates a JWT token for GitHub App authentication.
+// Implements the connection.TokenGenerator interface.
+func (c *Connection) GenerateConnectionToken(ctx context.Context) (common.RawSecureValue, error) {
+	if c.obj.Spec.GitHub == nil {
+		return "", errors.New("connection is not a GitHub connection")
+	}
+
+	return GenerateJWTToken(c.obj.Spec.GitHub.AppID, c.secrets.PrivateKey)
+}
+
 // GenerateRepositoryToken generates a repository-scoped access token.
 func (c *Connection) GenerateRepositoryToken(ctx context.Context, repo *provisioning.Repository) (*connection.ExpirableSecureValue, error) {
 	if repo == nil {
@@ -185,5 +195,6 @@ func (c *Connection) GenerateRepositoryToken(ctx context.Context, repo *provisio
 }
 
 var (
-	_ connection.Connection = (*Connection)(nil)
+	_ connection.Connection      = (*Connection)(nil)
+	_ connection.TokenGenerator = (*Connection)(nil)
 )
