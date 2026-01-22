@@ -20,8 +20,15 @@ const (
 const (
 	// ReasonAvailable indicates the resource is available and ready for use.
 	ReasonAvailable = "Available"
-	// ReasonUnavailable indicates the resource is unavailable and not ready.
-	ReasonUnavailable = "Unavailable"
+
+	// ReasonConfigurationError indicates the resource has a configuration issue
+	// that requires user action (invalid spec, bad credentials, secret errors).
+	// Automation should NOT automatically retry - wait for user to fix configuration.
+	ReasonConfigurationError = "ConfigurationError"
+
+	// ReasonExternalError indicates an external service issue (API down, network error, rate limit).
+	// Automation CAN retry - the issue is transient and outside user control.
+	ReasonExternalError = "ExternalError"
 )
 
 type HealthStatus struct {
