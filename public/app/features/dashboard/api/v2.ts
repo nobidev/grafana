@@ -48,7 +48,13 @@ export class K8sDashboardV2API
       // being saved for v2 resources that's been client-side converted to v2 and then PUT to the API server.
       // This could come as conversion error from v0 or v2 to V1.
       if (dashboard.status?.conversion?.failed && isV0V1StoredVersion(dashboard.status.conversion.storedVersion)) {
-        throw new DashboardVersionError(dashboard.status.conversion.storedVersion, dashboard.status.conversion.error);
+        throw new DashboardVersionError(
+          dashboard.status.conversion.storedVersion,
+          dashboard.status.conversion.error,
+          dashboard.status.conversion.source,
+          dashboard.access,
+          dashboard.kind
+        );
       }
 
       // load folder info if available

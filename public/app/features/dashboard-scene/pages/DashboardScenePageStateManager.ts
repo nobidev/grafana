@@ -1077,7 +1077,25 @@ export class UnifiedDashboardScenePageStateManager extends DashboardScenePageSta
       if (error instanceof DashboardVersionError) {
         const manager = isV2StoredVersion(error.data.storedVersion) ? this.v2Manager : this.v1Manager;
         this.activeManager = manager;
-        return await operation(manager);
+
+        if (error.data.source && error.data.access && error.data.kind) {
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          const source = error.data.source as Record<string, unknown>;
+
+          const result = {
+            ...source,
+            kind: error.data.kind,
+            access: error.data.access,
+          };
+
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          console.log('result of the source', result);
+          // return result as T;
+        }
+
+        const result = await operation(manager);
+        console.log('result of the fallback call', result);
+        return result;
       } else {
         throw error;
       }

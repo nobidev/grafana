@@ -140,7 +140,13 @@ export class K8sDashboardAPI implements DashboardAPI<DashboardDTO, Dashboard> {
 
       // This could come as conversion error from v0 or v2 to V1.
       if (dash.status?.conversion?.failed && isV2StoredVersion(dash.status.conversion.storedVersion)) {
-        throw new DashboardVersionError(dash.status.conversion.storedVersion, dash.status.conversion.error);
+        throw new DashboardVersionError(
+          dash.status.conversion.storedVersion,
+          dash.status.conversion.error,
+          dash.status.conversion.source,
+          dash.access,
+          dash.kind
+        );
       }
 
       const result: DashboardDTO = {
