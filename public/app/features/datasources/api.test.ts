@@ -1,9 +1,10 @@
 import { of } from 'rxjs';
 
+import { DataSourceSettings } from '@grafana/data';
 import { BackendSrvRequest, FetchResponse } from '@grafana/runtime';
 import { getBackendSrv } from 'app/core/services/backend_srv';
 
-import { getDataSourceByUid } from './api';
+import { getDataSourceByUid, convertK8sDatasourceSettingsToLegacyDatasourceSettings, DataSourceSettingsK8s, K8sMetadata, DatasourceInstanceK8sSpec } from './api';
 
 jest.mock('app/core/services/backend_srv');
 jest.mock('@grafana/runtime', () => ({
@@ -32,6 +33,58 @@ describe('Datasources / API', () => {
       mockResponse(response);
 
       expect(await getDataSourceByUid(response.data.uid)).toBe(response.data);
+    });
+  });
+  describe('convertLegacyDatasourceToK8sDatasource()', () => {
+    it('should convert legacy datasource to k8s datasource', () => {
+      let dsLegacySettings: DataSourceSettings = {
+        id: 42,
+        uid: 'fortytwo',
+        orgId: 1,
+        name: 'slartybartfast',
+        typeLogoUrl: '',
+        type: 'marvin',
+        typeName: '',
+        access: 'all areas',
+        url: 'example.com',
+        user: '',
+        database: '',
+        basicAuth: true,
+        basicAuthUser: 'zaphod',
+        isDefault: true,
+        jsonData: {},
+        secureJsonFields: {},
+        readOnly: false,
+        withCredentials: false,
+      };
+
+      let labels = new Map<string, string>();
+      labels.set('grafana.app/deprecatedInternalID', '42');
+      let k8sMetadata: K8sMetadata = {
+        name: 'fortytwo',
+        namespace: 'default',
+        uid: 'fortytwo',
+        resourceVersion: 'fortytwo',
+        generation: 42,
+        creationTimestamp: '1234',
+        labels: labels,
+      };
+      let k8sSpec: DatasourceInstanceK8sSpec = {
+        access: 'all areas',
+        jsonData: {},
+        title: 'slartybartfast',
+        url: 'example.com',
+        basicAuth: true,
+        basicAuthUser: 'zaphod',
+        isDefault: true,
+      };
+      let dsK8sSettings: DataSourceSettingsK8s = {
+        kind: 'thingie',
+        metadata: k8sMetadata,
+        spec: k8sSpec,
+        apiVersion: 'marvin.datasource.grafana.app/v0alpha1',
+      };
+      expect(convertK8sDatasourceSettingsToLegacyDatasourceSettings(dsK8sSettings)).toEqual(dsLegacySettings);
     });
   });
 });

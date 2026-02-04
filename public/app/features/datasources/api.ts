@@ -27,6 +27,7 @@ export interface DatasourceInstanceK8sSpec {
   url: string;
   basicAuth: boolean;
   basicAuthUser: string;
+  isDefault?: boolean;
 }
 
 export interface DatasourceAccessK8s {
@@ -54,6 +55,38 @@ export const getDataSourceK8sGroup = (uid: string): string => {
   return '';
 };
 
+export const convertK8sDatasourceSettingsToLegacyDatasourceSettings = (dsK8sSettings: DataSourceSettingsK8s): DataSourceSettings => {
+  let labels = new Map<string, string>;
+  if (dsK8sSettings.metadata.labels instanceof Object) {
+    labels = new Map(Object.entries(dsK8sSettings.metadata.labels));
+  }
+  if (dsK8sSettings.metadata.labels instanceof Map<string, string>) {
+    labels = dsK8sSettings.metadata.labels;
+  }
+  let id = parseInt(labels.get('grafana.app/deprecatedInternalID') || '', 10);
+  let dsSettings: DataSourceSettings = {
+    id: id,
+    uid: dsK8sSettings.metadata.name,
+    orgId: 1,
+    name: dsK8sSettings.spec.title,
+    typeLogoUrl: '',
+    type: dsK8sSettings.apiVersion.replace(/\.datasource\.grafana\.app\/[a-z0-9]+$/, ''),
+    typeName: '',
+    access: dsK8sSettings.spec.access,
+    url: dsK8sSettings.spec.url,
+    user: '',
+    database: '',
+    basicAuth: dsK8sSettings.spec.basicAuth,
+    basicAuthUser: dsK8sSettings.spec.basicAuthUser,
+    isDefault: dsK8sSettings.spec.isDefault ? true : false,
+    jsonData: dsK8sSettings.spec.jsonData,
+    secureJsonFields: {},
+    readOnly: false,
+    withCredentials: false,
+  };
+  return dsSettings;
+}
+
 export const getDataSourceFromK8sAPI = async (k8sName: string, stackId: string) => {
   // TODO: read this from backend.
   let k8sVersion = 'v0alpha1';
@@ -73,30 +106,7 @@ export const getDataSourceFromK8sAPI = async (k8sName: string, stackId: string) 
     throw Error(`Could not find data source by group-version-name: "${k8sGroup}" "${k8sVersion}" "${k8sName}"`);
   }
 
-  let dsK8sSettings = response.data;
-  let labels = new Map(Object.entries(dsK8sSettings.metadata.labels));
-  let id = parseInt(labels.get('grafana.app/deprecatedInternalID') || '', 10);
-  let dsSettings: DataSourceSettings = {
-    id: id,
-    uid: dsK8sSettings.metadata.name,
-    orgId: 1,
-    name: dsK8sSettings.spec.title,
-    typeLogoUrl: '',
-    type: dsK8sSettings.apiVersion.replace(/\.datasource\.grafana\.app\/[a-z0-9]+$/, ''),
-    typeName: '',
-    access: dsK8sSettings.spec.access,
-    url: dsK8sSettings.spec.url,
-    user: '',
-    database: '',
-    basicAuth: dsK8sSettings.spec.basicAuth,
-    basicAuthUser: dsK8sSettings.spec.basicAuthUser,
-    isDefault: false,
-    jsonData: dsK8sSettings.spec.jsonData,
-    secureJsonFields: {},
-    readOnly: false,
-    withCredentials: false,
-  };
-
+  let dsSettings = convertK8sDatasourceSettingsToLegacyDatasourceSettings(response.data);
   const accessResponse = await lastValueFrom(
     getBackendSrv().fetch<DatasourceAccessK8s>({
       method: 'GET',
