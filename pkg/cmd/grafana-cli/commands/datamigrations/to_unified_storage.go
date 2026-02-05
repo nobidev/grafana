@@ -21,7 +21,9 @@ import (
 	"github.com/grafana/grafana/pkg/cmd/grafana-cli/utils"
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/infra/tracing"
+	dashboardpkg "github.com/grafana/grafana/pkg/registry/apis/dashboard"
 	"github.com/grafana/grafana/pkg/registry/apis/dashboard/legacy"
+	playlistpkg "github.com/grafana/grafana/pkg/registry/apps/playlist"
 	"github.com/grafana/grafana/pkg/services/accesscontrol/acimpl"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	"github.com/grafana/grafana/pkg/services/provisioning"
@@ -79,13 +81,15 @@ func ToUnifiedStorage(c utils.CommandLine, cfg *setting.Cfg, sqlStore db.DB) err
 		return err
 	}
 
-	dashboardAccess := legacy.ProvideMigratorDashboardAccessor(
-		legacysql.NewDatabaseProvider(sqlStore),
-		provisioning,
-		acimpl.ProvideAccessControl(featuremgmt.WithFeatures()),
-	)
+	dbProvider := legacysql.NewDatabaseProvider(sqlStore)
+	ac := acimpl.ProvideAccessControl(featuremgmt.WithFeatures())
 
-	registry := migrations.ProvideMigrationRegistry(dashboardAccess)
+	dashboardAccess := legacy.ProvideMigratorDashboardAccessor(dbProvider, provisioning, ac)
+	playlistMigrator := legacy.ProvidePlaylistMigrator(dbProvider, provisioning, ac)
+	registry := migrations.BuildMigrationRegistry(
+		dashboardpkg.NewDashboardFolderRegistrar(dashboardAccess),
+		playlistpkg.NewPlaylistRegistrar(playlistMigrator),
+	)
 
 	if c.Bool("non-interactive") {
 		return runNonInteractiveMigration(ctx, opts, dashboardAccess, grpcClient, registry, start)
