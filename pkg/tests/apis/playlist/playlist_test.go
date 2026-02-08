@@ -94,6 +94,47 @@ func TestIntegrationPlaylist(t *testing.T) {
               }
             ],
             "version": "v0alpha1"
+          },
+		  {
+            "freshness": "Current",
+            "resources": [
+              {
+                "resource": "playlists",
+                "responseKind": {
+                  "group": "",
+                  "kind": "Playlist",
+                  "version": ""
+                },
+                "scope": "Namespaced",
+                "singularResource": "playlist",
+                "subresources": [
+                  {
+                    "responseKind": {
+                      "group": "",
+                      "kind": "Playlist",
+                      "version": ""
+                    },
+                    "subresource": "status",
+                    "verbs": [
+                      "get",
+                      "patch",
+                      "update"
+                    ]
+                  }
+                ],
+                "verbs": [
+                  "create",
+                  "delete",
+                  "deletecollection",
+                  "get",
+                  "list",
+                  "patch",
+                  "update",
+                  "watch"
+                ]
+              }
+            ],
+            "version": "v1"
           }
         ]`, disco)
 	})
