@@ -1557,4 +1557,9 @@ export interface FeatureToggles {
   * @default false
   */
   functionalSharedPreferences?: boolean;
+  /**
+  * Remember the last viewed organization for users using SSO
+  * @default true
+  */
+  rememberUserOrgForSso?: boolean;
 }
