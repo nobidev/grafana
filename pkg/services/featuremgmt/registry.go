@@ -2466,6 +2466,14 @@ var (
 			Owner:        grafanaFrontendPlatformSquad,
 			Expression:   "false",
 		},
+		{
+			Name:         "dsAbstractionApp",
+			Description:  "Registers the dsabstraction app for querying datasources via unified SQL",
+			Stage:        FeatureStageExperimental,
+			Owner:        grafanaDatasourcesCoreServicesSquad,
+			HideFromDocs: true,
+			Expression:   "false",
+		},
 	}
 )
 

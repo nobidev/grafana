@@ -1557,4 +1557,9 @@ export interface FeatureToggles {
   * @default false
   */
   functionalSharedPreferences?: boolean;
+  /**
+  * Registers the dsabstraction app for querying datasources via unified SQL
+  * @default false
+  */
+  dsAbstractionApp?: boolean;
 }
