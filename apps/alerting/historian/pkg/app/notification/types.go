@@ -24,5 +24,3 @@ const (
 )
 
 type Entry = v0alpha1.CreateNotificationqueryNotificationEntry
-
-type EntryAlert = v0alpha1.CreateNotificationqueryNotificationEntryAlert

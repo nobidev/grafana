@@ -253,17 +253,10 @@ var appManifestData = app.ManifestData{
 						SchemaProps: spec.SchemaProps{
 							Type: []string{"object"},
 							Properties: map[string]spec.Schema{
-								"alerts": {
+								"alertCount": {
 									SchemaProps: spec.SchemaProps{
-										Type:        []string{"array"},
-										Description: "Alerts are the alerts grouped into the notification.",
-										Items: &spec.SchemaOrArray{
-											Schema: &spec.Schema{
-												SchemaProps: spec.SchemaProps{
-
-													Ref: spec.MustCreateRef("#/components/schemas/createNotificationqueryNotificationEntryAlert"),
-												}},
-										},
+										Type:        []string{"integer"},
+										Description: "AlertCount is the total number of alerts included in the notification.",
 									},
 								},
 								"duration": {
@@ -297,6 +290,18 @@ var appManifestData = app.ManifestData{
 										},
 									},
 								},
+								"integration": {
+									SchemaProps: spec.SchemaProps{
+										Type:        []string{"string"},
+										Description: "Integration is the integration (contact point type) name.",
+									},
+								},
+								"integrationIndex": {
+									SchemaProps: spec.SchemaProps{
+										Type:        []string{"integer"},
+										Description: "IntegrationIndex is the index of the integration within the receiver.",
+									},
+								},
 								"outcome": {
 									SchemaProps: spec.SchemaProps{
 
@@ -323,6 +328,18 @@ var appManifestData = app.ManifestData{
 										Description: "Retry indicates if the attempt was a retried attempt.",
 									},
 								},
+								"ruleUIDs": {
+									SchemaProps: spec.SchemaProps{
+										Type:        []string{"array"},
+										Description: "RuleUIDs are the unique identifiers of the alert rules included in the notification.",
+										Items: &spec.SchemaOrArray{
+											Schema: &spec.Schema{
+												SchemaProps: spec.SchemaProps{
+													Type: []string{"string"},
+												}},
+										},
+									},
+								},
 								"status": {
 									SchemaProps: spec.SchemaProps{
 
@@ -337,83 +354,28 @@ var appManifestData = app.ManifestData{
 										Description: "Timestamp is the time at which the notification attempt completed.",
 									},
 								},
+								"uuid": {
+									SchemaProps: spec.SchemaProps{
+										Type:        []string{"string"},
+										Description: "Uuid is a unique identifier for the notification attempt.",
+									},
+								},
 							},
 							Required: []string{
 								"timestamp",
+								"uuid",
 								"receiver",
+								"integration",
+								"integrationIndex",
 								"status",
 								"outcome",
 								"groupLabels",
-								"alerts",
+								"ruleUIDs",
+								"alertCount",
 								"retry",
 								"duration",
 								"pipelineTime",
 								"groupKey",
-							},
-						},
-					},
-					"createNotificationqueryNotificationEntryAlert": {
-						SchemaProps: spec.SchemaProps{
-							Type: []string{"object"},
-							Properties: map[string]spec.Schema{
-								"annotations": {
-									SchemaProps: spec.SchemaProps{
-										Type: []string{"object"},
-										AdditionalProperties: &spec.SchemaOrBool{
-											Schema: &spec.Schema{
-												SchemaProps: spec.SchemaProps{
-													Type: []string{"string"},
-												},
-											},
-										},
-									},
-								},
-								"endsAt": {
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "date-time",
-									},
-								},
-								"enrichments": {
-									SchemaProps: spec.SchemaProps{
-										Type: []string{"object"},
-										AdditionalProperties: &spec.SchemaOrBool{
-											Schema: &spec.Schema{
-												SchemaProps: spec.SchemaProps{},
-											},
-										},
-									},
-								},
-								"labels": {
-									SchemaProps: spec.SchemaProps{
-										Type: []string{"object"},
-										AdditionalProperties: &spec.SchemaOrBool{
-											Schema: &spec.Schema{
-												SchemaProps: spec.SchemaProps{
-													Type: []string{"string"},
-												},
-											},
-										},
-									},
-								},
-								"startsAt": {
-									SchemaProps: spec.SchemaProps{
-										Type:   []string{"string"},
-										Format: "date-time",
-									},
-								},
-								"status": {
-									SchemaProps: spec.SchemaProps{
-										Type: []string{"string"},
-									},
-								},
-							},
-							Required: []string{
-								"status",
-								"labels",
-								"annotations",
-								"startsAt",
-								"endsAt",
 							},
 						},
 					},
