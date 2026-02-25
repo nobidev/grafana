@@ -1,5 +1,6 @@
 import { lastValueFrom } from 'rxjs';
 
+import { useBooleanFlagValue } from '@openfeature/react-sdk';
 import { DataSourceSettings, DataSourceJsonData } from '@grafana/data';
 import { config } from '@grafana/runtime';
 import { getBackendSrv } from 'app/core/services/backend_srv';
@@ -208,7 +209,7 @@ export const getDataSourceFromK8sAPI = async (k8sName: string, namespace: string
 };
 
 export const getDataSourceByUid = async (uid: string) => {
-  if (config.featureToggles.useNewAPIsForDatasourceCRUD) {
+  if (useBooleanFlagValue('useNewAPIsForDatasourceCRUD', false)) {
     return getDataSourceFromK8sAPI(uid, config.namespace);
   }
 
@@ -257,7 +258,7 @@ export const createDataSource = (dataSource: Partial<DataSourceSettings>) =>
 export const getDataSourcePlugins = () => getBackendSrv().get('/api/plugins', { enabled: 1, type: 'datasource' });
 
 export const updateDataSource = async (dataSource: DataSourceSettings) => {
-  if (config.featureToggles.useNewAPIsForDatasourceCRUD) {
+  if (useBooleanFlagValue('useNewAPIsForDatasourceCRUD', false)) {
     let k8sVersion = 'v0alpha1';
     let dsK8sSettings = convertLegacyDatasourceSettingsToK8sDatasourceSettings(
       dataSource,
@@ -312,7 +313,7 @@ export const updateDataSource = async (dataSource: DataSourceSettings) => {
 
 export const deleteDataSource = (uid: string) => {
   let deleteUrl = `/api/datasources/uid/${uid}`;
-  if (config.featureToggles.useNewAPIsForDatasourceCRUD) {
+  if (useBooleanFlagValue('useNewAPIsForDatasourceCRUD', false)) {
     let namespace = config.namespace;
     let apiVersion = `${getDataSourceK8sGroup(uid)}/v0alpha1`;
     deleteUrl = `/apis/${apiVersion}/namespaces/${namespace}/datasources/${uid}`;
