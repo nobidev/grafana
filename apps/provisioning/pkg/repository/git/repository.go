@@ -92,7 +92,7 @@ func (r *gitRepository) GetDefaultBranch(ctx context.Context) (string, error) {
 	// Get all refs to find the default branch
 	refs, err := r.client.ListRefs(ctx)
 	if err != nil {
-		return "", fmt.Errorf("list refs: %w", err)
+		return "", fmt.Errorf("list refs: %w", mapNanogitError(err))
 	}
 
 	var hasMain, hasMaster bool
@@ -188,7 +188,7 @@ func (r *gitRepository) Test(ctx context.Context) (*provisioning.TestResults, er
 	if ok, err := r.client.IsAuthorized(ctx); err != nil || !ok {
 		detail := "not authorized"
 		if err != nil {
-			detail = fmt.Sprintf("failed check if authorized: %v", err)
+			detail = fmt.Sprintf("failed check if authorized: %v", mapNanogitError(err))
 		}
 
 		return &provisioning.TestResults{
@@ -205,7 +205,7 @@ func (r *gitRepository) Test(ctx context.Context) (*provisioning.TestResults, er
 	if ok, err := r.client.RepoExists(ctx); err != nil || !ok {
 		detail := "repository not found"
 		if err != nil {
-			detail = fmt.Sprintf("failed check if repository exists: %v", err)
+			detail = fmt.Sprintf("failed check if repository exists: %v", mapNanogitError(err))
 		}
 
 		return &provisioning.TestResults{
@@ -235,7 +235,7 @@ func (r *gitRepository) Test(ctx context.Context) (*provisioning.TestResults, er
 			}, nil
 		}
 
-		detail = fmt.Sprintf("failed to check if branch exists: %v", err)
+		detail = fmt.Sprintf("failed to check if branch exists: %v", mapNanogitError(err))
 
 		return &provisioning.TestResults{
 			Code:    http.StatusBadRequest,
@@ -269,7 +269,7 @@ func (r *gitRepository) Read(ctx context.Context, filePath, ref string) (*reposi
 	// TODO: Fix GetTree in nanogit as it does not work commit hash
 	commit, err := r.client.GetCommit(ctx, refHash)
 	if err != nil {
-		return nil, fmt.Errorf("get commit: %w", err)
+		return nil, fmt.Errorf("get commit: %w", mapNanogitError(err))
 	}
 
 	// Check if the path represents a directory
@@ -282,7 +282,7 @@ func (r *gitRepository) Read(ctx context.Context, filePath, ref string) (*reposi
 				return nil, repository.ErrFileNotFound
 			}
 
-			return nil, fmt.Errorf("get tree by path: %w", err)
+			return nil, fmt.Errorf("get tree by path: %w", mapNanogitError(err))
 		}
 
 		return &repository.FileInfo{
@@ -298,7 +298,7 @@ func (r *gitRepository) Read(ctx context.Context, filePath, ref string) (*reposi
 			return nil, repository.ErrFileNotFound
 		}
 
-		return nil, fmt.Errorf("read blob: %w", err)
+		return nil, fmt.Errorf("read blob: %w", mapNanogitError(err))
 	}
 
 	return &repository.FileInfo{
@@ -324,7 +324,7 @@ func (r *gitRepository) ReadTree(ctx context.Context, ref string) ([]repository.
 		if errors.Is(err, nanogit.ErrObjectNotFound) {
 			return nil, repository.ErrRefNotFound
 		}
-		return nil, fmt.Errorf("get flat tree: %w", err)
+		return nil, fmt.Errorf("get flat tree: %w", mapNanogitError(err))
 	}
 
 	entries := make([]repository.FileTreeEntry, 0, len(tree.Entries))
@@ -366,7 +366,7 @@ func (r *gitRepository) Create(ctx context.Context, path, ref string, data []byt
 
 	writer, err := r.client.NewStagedWriter(ctx, branchRef)
 	if err != nil {
-		return fmt.Errorf("create staged writer: %w", err)
+		return fmt.Errorf("create staged writer: %w", mapNanogitError(err))
 	}
 
 	if err := r.create(ctx, path, data, writer); err != nil {
@@ -393,7 +393,7 @@ func (r *gitRepository) create(ctx context.Context, path string, data []byte, wr
 			return repository.ErrFileAlreadyExists
 		}
 
-		return fmt.Errorf("create blob: %w", err)
+		return fmt.Errorf("create blob: %w", mapNanogitError(err))
 	}
 
 	return nil
@@ -417,7 +417,7 @@ func (r *gitRepository) Update(ctx context.Context, path, ref string, data []byt
 	// Create a staged writer
 	writer, err := r.client.NewStagedWriter(ctx, branchRef)
 	if err != nil {
-		return fmt.Errorf("create staged writer: %w", err)
+		return fmt.Errorf("create staged writer: %w", mapNanogitError(err))
 	}
 
 	if err := r.update(ctx, path, data, writer); err != nil {
@@ -439,7 +439,7 @@ func (r *gitRepository) update(ctx context.Context, path string, data []byte, wr
 			return repository.ErrFileNotFound
 		}
 
-		return fmt.Errorf("update blob: %w", err)
+		return fmt.Errorf("update blob: %w", mapNanogitError(err))
 	}
 
 	return nil
@@ -479,7 +479,7 @@ func (r *gitRepository) Delete(ctx context.Context, path, ref, comment string) e
 	// Create a staged writer
 	writer, err := r.client.NewStagedWriter(ctx, branchRef)
 	if err != nil {
-		return fmt.Errorf("create staged writer: %w", err)
+		return fmt.Errorf("create staged writer: %w", mapNanogitError(err))
 	}
 
 	if err := r.delete(ctx, path, writer); err != nil {
@@ -503,7 +503,7 @@ func (r *gitRepository) Move(ctx context.Context, oldPath, newPath, ref, comment
 	// Create a staged writer
 	writer, err := r.client.NewStagedWriter(ctx, branchRef)
 	if err != nil {
-		return fmt.Errorf("create staged writer: %w", err)
+		return fmt.Errorf("create staged writer: %w", mapNanogitError(err))
 	}
 
 	if err := r.move(ctx, oldPath, newPath, writer); err != nil {
@@ -522,14 +522,14 @@ func (r *gitRepository) delete(ctx context.Context, path string, writer nanogit.
 			if errors.Is(err, nanogit.ErrObjectNotFound) {
 				return repository.ErrFileNotFound
 			}
-			return fmt.Errorf("delete tree: %w", err)
+			return fmt.Errorf("delete tree: %w", mapNanogitError(err))
 		}
 	} else {
 		if _, err := writer.DeleteBlob(ctx, finalPath); err != nil {
 			if errors.Is(err, nanogit.ErrObjectNotFound) {
 				return repository.ErrFileNotFound
 			}
-			return fmt.Errorf("delete blob: %w", err)
+			return fmt.Errorf("delete blob: %w", mapNanogitError(err))
 		}
 	}
 
@@ -553,7 +553,7 @@ func (r *gitRepository) move(ctx context.Context, oldPath, newPath string, write
 			if errors.Is(err, nanogit.ErrObjectAlreadyExists) {
 				return repository.ErrFileAlreadyExists
 			}
-			return fmt.Errorf("move tree: %w", err)
+			return fmt.Errorf("move tree: %w", mapNanogitError(err))
 		}
 	} else if !safepath.IsDir(oldPath) && !safepath.IsDir(newPath) {
 		// For files, use MoveBlob operation
@@ -564,7 +564,7 @@ func (r *gitRepository) move(ctx context.Context, oldPath, newPath string, write
 			if errors.Is(err, nanogit.ErrObjectAlreadyExists) {
 				return repository.ErrFileAlreadyExists
 			}
-			return fmt.Errorf("move blob: %w", err)
+			return fmt.Errorf("move blob: %w", mapNanogitError(err))
 		}
 	} else {
 		// Mismatched types (file to directory or vice versa)
@@ -587,7 +587,7 @@ func (r *gitRepository) ListRefs(ctx context.Context) ([]provisioning.RefItem, e
 	ctx, _ = r.withGitContext(ctx, "")
 	refs, err := r.client.ListRefs(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list refs: %w", err)
+		return nil, fmt.Errorf("list refs: %w", mapNanogitError(err))
 	}
 	refItems := make([]provisioning.RefItem, 0, len(refs))
 	for _, ref := range refs {
@@ -609,7 +609,7 @@ func (r *gitRepository) LatestRef(ctx context.Context) (string, error) {
 	ctx, _ = r.withGitContext(ctx, "")
 	branchRef, err := r.client.GetRef(ctx, fmt.Sprintf("refs/heads/%s", r.gitConfig.Branch))
 	if err != nil {
-		return "", fmt.Errorf("get branch ref: %w", err)
+		return "", fmt.Errorf("get branch ref: %w", mapNanogitError(err))
 	}
 
 	return branchRef.Hash.String(), nil
@@ -645,7 +645,7 @@ func (r *gitRepository) CompareFiles(ctx context.Context, base, ref string) ([]r
 	// Compare commits using nanogit
 	files, err := r.client.CompareCommits(ctx, baseHash, refHash)
 	if err != nil {
-		return nil, fmt.Errorf("compare commits: %w", err)
+		return nil, fmt.Errorf("compare commits: %w", mapNanogitError(err))
 	}
 
 	changes := make([]repository.VersionedFileChange, 0)
@@ -741,7 +741,7 @@ func (r *gitRepository) resolveRefToHash(ctx context.Context, ref string) (hash.
 		if errors.Is(err, nanogit.ErrObjectNotFound) {
 			return hash.Zero, fmt.Errorf("ref not found: %s: %w", ref, repository.ErrRefNotFound)
 		}
-		return hash.Zero, fmt.Errorf("get ref %s: %w", ref, err)
+		return hash.Zero, fmt.Errorf("get ref %s: %w", ref, mapNanogitError(err))
 	}
 
 	return branchRef.Hash, nil
@@ -771,14 +771,14 @@ func (r *gitRepository) ensureBranchExists(ctx context.Context, branchName strin
 
 	// If error is not "ref not found", return the error
 	if !errors.Is(err, nanogit.ErrObjectNotFound) {
-		return nanogit.Ref{}, fmt.Errorf("check branch exists: %w", err)
+		return nanogit.Ref{}, fmt.Errorf("check branch exists: %w", mapNanogitError(err))
 	}
 
 	// Branch doesn't exist, create it based on the configured branch
 	srcBranch := r.gitConfig.Branch
 	srcRef, err := r.client.GetRef(ctx, fmt.Sprintf("refs/heads/%s", srcBranch))
 	if err != nil {
-		return nanogit.Ref{}, fmt.Errorf("get source branch ref: %w", err)
+		return nanogit.Ref{}, fmt.Errorf("get source branch ref: %w", mapNanogitError(err))
 	}
 
 	// Create the new branch reference
@@ -788,7 +788,7 @@ func (r *gitRepository) ensureBranchExists(ctx context.Context, branchName strin
 	}
 
 	if err := r.client.CreateRef(ctx, newRef); err != nil {
-		return nanogit.Ref{}, fmt.Errorf("create branch: %w", err)
+		return nanogit.Ref{}, fmt.Errorf("create branch: %w", mapNanogitError(err))
 	}
 
 	return newRef, nil
@@ -842,7 +842,7 @@ func (r *gitRepository) commitAndPush(ctx context.Context, writer nanogit.Staged
 	}
 
 	if err := writer.Push(ctx); err != nil {
-		return fmt.Errorf("push changes: %w", err)
+		return fmt.Errorf("push changes: %w", mapNanogitError(err))
 	}
 
 	return nil
@@ -918,4 +918,26 @@ func (r *gitRepository) withGitContext(ctx context.Context, ref string) (context
 	ctx = log.ToContext(ctx, logger)
 
 	return ctx, logger
+}
+
+// mapNanogitError maps nanogit client HTTP authentication errors to repository errors
+func mapNanogitError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Check for structured HTTP errors from nanogit v0.4.0+
+	// Map specific HTTP error types to repository errors
+	if errors.Is(err, nanogit.ErrUnauthorized) {
+		return repository.ErrUnauthorized
+	}
+	if errors.Is(err, nanogit.ErrPermissionDenied) {
+		return repository.ErrPermissionDenied
+	}
+	if errors.Is(err, nanogit.ErrServerUnavailable) {
+		return repository.ErrServerUnavailable
+	}
+
+	// Return original error if not a known HTTP error type
+	return err
 }

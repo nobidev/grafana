@@ -44,6 +44,30 @@ var ErrFileAlreadyExists error = &apierrors.StatusError{ErrStatus: metav1.Status
 	Message: "file already exists",
 }}
 
+// ErrUnauthorized indicates authentication failed with the Git provider
+var ErrUnauthorized error = &apierrors.StatusError{ErrStatus: metav1.Status{
+	Status:  metav1.StatusFailure,
+	Code:    http.StatusUnauthorized,
+	Reason:  metav1.StatusReasonUnauthorized,
+	Message: "authentication failed",
+}}
+
+// ErrPermissionDenied indicates insufficient permissions to access the Git repository
+var ErrPermissionDenied error = &apierrors.StatusError{ErrStatus: metav1.Status{
+	Status:  metav1.StatusFailure,
+	Code:    http.StatusForbidden,
+	Reason:  metav1.StatusReasonForbidden,
+	Message: "permission denied",
+}}
+
+// ErrServerUnavailable indicates the Git server is unreachable or returned a server error
+var ErrServerUnavailable error = &apierrors.StatusError{ErrStatus: metav1.Status{
+	Status:  metav1.StatusFailure,
+	Code:    http.StatusServiceUnavailable,
+	Reason:  metav1.StatusReasonServiceUnavailable,
+	Message: "git server unavailable",
+}}
+
 type FileInfo struct {
 	// Path to the file on disk.
 	// No leading or trailing slashes will be contained within.
