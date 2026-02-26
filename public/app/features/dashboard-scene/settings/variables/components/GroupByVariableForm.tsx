@@ -83,12 +83,7 @@ export function GroupByVariableForm({
       ) : null}
 
       {datasourceSupported && onDefaultValueChange && (
-        <DefaultValueEditor
-          values={defaultValue ?? []}
-          options={defaultValueOptions}
-          onChange={onDefaultValueChange}
-          data-testid={selectors.pages.Dashboard.Settings.Variables.Edit.GroupByVariable.defaultValueSection}
-        />
+        <DefaultValueEditor values={defaultValue ?? []} options={defaultValueOptions} onChange={onDefaultValueChange} />
       )}
 
       {datasourceSupported && (
