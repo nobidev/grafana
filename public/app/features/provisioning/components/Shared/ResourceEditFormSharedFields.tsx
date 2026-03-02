@@ -164,7 +164,7 @@ export const ResourceEditFormSharedFields = memo<DashboardEditFormSharedFieldsPr
                     label={t('provisioned-resource-form.save-or-delete-resource-shared-fields.label-folder', 'Folder')}
                     description={t(
                       'provisioned-resource-form.save-or-delete-resource-shared-fields.description-folder',
-                      'Folder inside the repository'
+                      'Folder inside the repository. Leave empty for the repository root.'
                     )}
                   >
                     <Combobox
