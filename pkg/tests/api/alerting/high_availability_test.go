@@ -387,24 +387,65 @@ func waitForClusterSettled(t *testing.T, grafanas []*haGrafana) {
 func assertPosition0IsEvaluator(t *testing.T, grafanas []*haGrafana) {
 	t.Helper()
 
-	baselines := make([]int, len(grafanas))
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		before := sampleNodeEvalState(t, c, grafanas)
+		if before == nil {
+			return
+		}
+
+		// Wait for evaluations to happen
+		time.Sleep(3 * time.Second)
+
+		after := sampleNodeEvalState(t, c, grafanas)
+		if after == nil {
+			return
+		}
+
+		assertOnlyPosition0Evaluates(c, before, after)
+	}, 45*time.Second, 1*time.Second)
+}
+
+type nodeEvalSample struct {
+	position int
+	evals    int
+}
+
+func sampleNodeEvalState(t *testing.T, c *assert.CollectT, grafanas []*haGrafana) []nodeEvalSample {
+	t.Helper()
+
+	samples := make([]nodeEvalSample, len(grafanas))
 	for i, g := range grafanas {
-		baselines[i] = getEvalTotal(t, g.Addr)
+		position := getPeerPosition(t, g.Addr)
+		evals := getEvalTotal(t, g.Addr)
+		if !assert.GreaterOrEqual(c, position, 0, "failed to read peer position for node %d", i+1) {
+			return nil
+		}
+		if !assert.GreaterOrEqual(c, evals, 0, "failed to read evaluation counter for node %d", i+1) {
+			return nil
+		}
+		samples[i] = nodeEvalSample{position: position, evals: evals}
+	}
+	return samples
+}
+
+func assertOnlyPosition0Evaluates(c *assert.CollectT, before, after []nodeEvalSample) {
+	primaryCount := 0
+	for i := range before {
+		// Cluster position is expected to be stable for this short observation window.
+		if !assert.Equal(c, before[i].position, after[i].position, "node %d position changed during observation window", i+1) {
+			continue
+		}
+
+		delta := after[i].evals - before[i].evals
+		if after[i].position == 0 {
+			primaryCount++
+			assert.Greater(c, delta, 0, "Position 0 node should be evaluating")
+		} else {
+			assert.Equal(c, 0, delta, "position %d node should not be evaluating", after[i].position)
+		}
 	}
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		for i, g := range grafanas {
-			pos := getPeerPosition(t, g.Addr)
-			evals := getEvalTotal(t, g.Addr)
-			isEvaluating := evals > baselines[i]
-
-			if pos == 0 {
-				assert.True(c, isEvaluating, "Position 0 node should be evaluating")
-			} else {
-				assert.False(c, isEvaluating, "position %d node should not be evaluating", pos)
-			}
-		}
-	}, 30*time.Second, 1*time.Second)
+	assert.Equal(c, 1, primaryCount, "exactly one node should have position 0")
 }
 
 // assertIdenticalAlertGroups verifies that all nodes have identical alert groups.
