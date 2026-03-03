@@ -42,9 +42,10 @@ type RepositoryResources interface {
 }
 
 type repositoryResourcesFactory struct {
-	parsers ParserFactory
-	clients ClientFactory
-	lister  ResourceLister
+	parsers               ParserFactory
+	clients               ClientFactory
+	lister                ResourceLister
+	folderMetadataEnabled bool
 }
 type repositoryResources struct {
 	*FolderManager
@@ -98,8 +99,13 @@ func (r *repositoryResources) FindResourcePath(ctx context.Context, name string,
 	return sourcePath, nil
 }
 
-func NewRepositoryResourcesFactory(parsers ParserFactory, clients ClientFactory, lister ResourceLister) RepositoryResourcesFactory {
-	return &repositoryResourcesFactory{parsers, clients, lister}
+func NewRepositoryResourcesFactory(parsers ParserFactory, clients ClientFactory, lister ResourceLister, folderMetadataEnabled bool) RepositoryResourcesFactory {
+	return &repositoryResourcesFactory{
+		parsers:               parsers,
+		clients:               clients,
+		lister:                lister,
+		folderMetadataEnabled: folderMetadataEnabled,
+	}
 }
 
 func (r *repositoryResourcesFactory) Client(ctx context.Context, repo repository.ReaderWriter) (RepositoryResources, error) {
@@ -117,7 +123,7 @@ func (r *repositoryResourcesFactory) Client(ctx context.Context, repo repository
 		return nil, fmt.Errorf("create parser: %w", err)
 	}
 
-	folders := NewFolderManager(repo, folderClient, NewEmptyFolderTree())
+	folders := NewFolderManager(repo, folderClient, NewEmptyFolderTree(), r.folderMetadataEnabled)
 	resources := NewResourcesManager(repo, folders, parser, clients)
 
 	return &repositoryResources{
