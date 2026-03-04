@@ -251,14 +251,14 @@ jobs:
         with:
           name: grafana-server-log-${{ matrix.shard }}
           path: grafana-server/grafana.log
-          retention-days: 3
+          retention-days: 7
 
       - uses: actions/upload-artifact@v7
         if: success() || failure()
         with:
           name: playwright-blob-${{ matrix.shard }}
           path: blob-report
-          retention-days: 3
+          retention-days: 1
 
   required-playwright-tests:
     needs:
@@ -312,10 +312,12 @@ jobs:
         run: |
           docker run --rm \
             --volume="/tmp/playwright-results.json:/home/bench/tests/playwright-results.json" \
-            us-docker.pkg.dev/grafanalabs-global/docker-grafana-bench-prod/grafana-bench:v0.5.1 report \
-              --grafana-url "http://localhost:3000" \
-              --grafana-version "CI- ${{ github.sha }}" \
-              --test-suite-name "FrontendCore" \
+            us-docker.pkg.dev/grafanalabs-global/docker-grafana-bench-prod/grafana-bench:v1.0.1 report \
+              --service grafana \
+              --service-url "http://localhost:3000" \
+              --service-version "CI-${{ github.sha }}" \
+              --suite-name "FrontendCore" \
+              --run-stage ci \
               --report-input playwright \
               --report-output log \
               --log-level DEBUG \
