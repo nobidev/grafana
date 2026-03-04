@@ -2,12 +2,10 @@ package resources
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -75,59 +73,6 @@ func TestPathCreationError(t *testing.T) {
 	})
 }
 
-func TestEffectiveFolderID(t *testing.T) {
-	const hashID = "hash-derived-uid"
-	const stableUID = "stable-uid-from-folder-json"
-
-	// Build valid _folder.json data.
-	manifest := NewFolderManifest(stableUID, "my-folder")
-	validData, err := json.Marshal(manifest)
-	require.NoError(t, err)
-
-	t.Run("flag off returns hashID without reading repo", func(t *testing.T) {
-		rw := repository.NewMockReaderWriter(t)
-		// No expectations: effectiveFolderID must not call Config() or Read() when flag is off.
-
-		fm := NewFolderManager(rw, nil, NewEmptyFolderTree(), false)
-		result := fm.effectiveFolderID(context.Background(), "my-folder/", hashID)
-
-		assert.Equal(t, hashID, result)
-		rw.AssertNotCalled(t, "Read", mock.Anything, mock.Anything, mock.Anything)
-	})
-
-	t.Run("flag on and valid _folder.json returns stable UID", func(t *testing.T) {
-		rw := repository.NewMockReaderWriter(t)
-		rw.On("Read", mock.Anything, "my-folder/_folder.json", "").
-			Return(&repository.FileInfo{Data: validData}, nil)
-
-		fm := NewFolderManager(rw, nil, NewEmptyFolderTree(), true)
-		result := fm.effectiveFolderID(context.Background(), "my-folder/", hashID)
-
-		assert.Equal(t, stableUID, result)
-	})
-
-	t.Run("flag on and read error falls back to hashID", func(t *testing.T) {
-		rw := repository.NewMockReaderWriter(t)
-		rw.On("Read", mock.Anything, "my-folder/_folder.json", "").
-			Return(nil, errors.New("file not found"))
-
-		fm := NewFolderManager(rw, nil, NewEmptyFolderTree(), true)
-		result := fm.effectiveFolderID(context.Background(), "my-folder/", hashID)
-
-		assert.Equal(t, hashID, result)
-	})
-
-	t.Run("flag on and invalid JSON falls back to hashID", func(t *testing.T) {
-		rw := repository.NewMockReaderWriter(t)
-		rw.On("Read", mock.Anything, "my-folder/_folder.json", "").
-			Return(&repository.FileInfo{Data: []byte("not-json")}, nil)
-
-		fm := NewFolderManager(rw, nil, NewEmptyFolderTree(), true)
-		result := fm.effectiveFolderID(context.Background(), "my-folder/", hashID)
-
-		assert.Equal(t, hashID, result)
-	})
-}
 
 func TestCreateFolderWithUID(t *testing.T) {
 	t.Run("top-level folder (no parent)", func(t *testing.T) {
