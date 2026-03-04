@@ -73,7 +73,6 @@ func TestPathCreationError(t *testing.T) {
 	})
 }
 
-
 func TestCreateFolderWithUID(t *testing.T) {
 	t.Run("top-level folder (no parent)", func(t *testing.T) {
 		ctx := context.Background()
