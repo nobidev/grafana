@@ -91,9 +91,9 @@ export const useComboboxFloat = (items: Array<ComboboxOption<string | number>>, 
       }
     }
 
-    const labelWidth = measureText(longestLabel, MENU_ITEM_FONT_SIZE, MENU_ITEM_FONT_WEIGHT).width;
+    const labelWidth = Math.ceil(measureText(longestLabel, MENU_ITEM_FONT_SIZE, MENU_ITEM_FONT_WEIGHT).width);
     const descriptionWidth = longestDescription
-      ? measureText(longestDescription, MENU_ITEM_DESCRIPTION_FONT_SIZE).width
+      ? Math.ceil(measureText(longestDescription, MENU_ITEM_DESCRIPTION_FONT_SIZE).width)
       : 0;
     const iconSize = longestLabelIndex > -1 && items[longestLabelIndex].icon ? ICON_WIDTH : 0;
 
@@ -101,7 +101,8 @@ export const useComboboxFloat = (items: Array<ComboboxOption<string | number>>, 
     const itemWidth = textWidth + SCROLL_CONTAINER_PADDING + MENU_ITEM_PADDING * 2 + scrollbarWidth;
 
     const noOptionsText = t(NO_OPTIONS_I18N_KEY, 'No options found.');
-    const noOptionsWidth = measureText(noOptionsText, MENU_ITEM_FONT_SIZE).width + MESSAGE_ROW_PADDING + scrollbarWidth;
+    const noOptionsWidth =
+      Math.ceil(measureText(noOptionsText, MENU_ITEM_FONT_SIZE).width) + MESSAGE_ROW_PADDING + scrollbarWidth;
 
     return Math.max(itemWidth, noOptionsWidth);
   }, [items, scrollbarWidth]);
