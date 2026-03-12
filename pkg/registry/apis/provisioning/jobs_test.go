@@ -33,10 +33,15 @@ func newTestRepo(name, namespace string) *provisioning.Repository {
 	}
 }
 
-func TestPullRequestJobRejected(t *testing.T) {
+func TestAuthorizeJob(t *testing.T) {
+	ctx := context.Background()
 	cfg := newTestRepo("my-repo", "default")
 
 	t.Run("PullRequest action returns bad request", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock}
 		spec := provisioning.JobSpec{
 			Action: provisioning.JobActionPullRequest,
 			PullRequest: &provisioning.PullRequestJobOptions{
@@ -45,19 +50,36 @@ func TestPullRequestJobRejected(t *testing.T) {
 			},
 		}
 
-		err := validateJobAction(spec, cfg)
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
 		require.Error(t, err)
 		assert.True(t, apierrors.IsBadRequest(err))
 		assert.Contains(t, err.Error(), "pull request jobs cannot be created via the API")
 	})
 
-	t.Run("Pull action is not rejected", func(t *testing.T) {
+	t.Run("Pull action is allowed", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock}
 		spec := provisioning.JobSpec{
 			Action: provisioning.JobActionPull,
 			Pull:   &provisioning.SyncJobOptions{},
 		}
 
-		err := validateJobAction(spec, cfg)
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
+		require.NoError(t, err)
+	})
+
+	t.Run("FixFolderMetadata action is allowed", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock}
+		spec := provisioning.JobSpec{
+			Action: provisioning.JobActionFixFolderMetadata,
+		}
+
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
 		require.NoError(t, err)
 	})
 }
