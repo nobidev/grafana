@@ -141,6 +141,11 @@ func (c *jobsConnector) Connect(
 		}
 		spec.Repository = name
 
+		if err := validateJobAction(spec, cfg); err != nil {
+			responder.Error(err)
+			return
+		}
+
 		// Validate write operations before queueing the job
 		requiresWrite := spec.Action == provisioning.JobActionDelete ||
 			spec.Action == provisioning.JobActionMove ||
@@ -223,6 +228,16 @@ var (
 	_ rest.Storage         = (*jobsConnector)(nil)
 	_ rest.StorageMetadata = (*jobsConnector)(nil)
 )
+
+// validateJobAction checks that the job action is allowed to be created via the API.
+// Some job types are only triggered internally (e.g., by webhooks) and should not be
+// user-creatable.
+func validateJobAction(spec provisioning.JobSpec, _ *provisioning.Repository) error {
+	if spec.Action == provisioning.JobActionPullRequest {
+		return apierrors.NewBadRequest("pull request jobs cannot be created via the API; they are triggered by webhooks")
+	}
+	return nil
+}
 
 // authorizeResourceJob checks that the requesting user has the required permissions
 // for operations that read and write all supported resource types (export and migrate).
