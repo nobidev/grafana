@@ -141,47 +141,9 @@ func (c *jobsConnector) Connect(
 		}
 		spec.Repository = name
 
-		// Validate write operations before queueing the job
-		requiresWrite := spec.Action == provisioning.JobActionDelete ||
-			spec.Action == provisioning.JobActionMove ||
-			spec.Action == provisioning.JobActionPush ||
-			spec.Action == provisioning.JobActionMigrate
-
-		if requiresWrite {
-			var targetRef string
-			switch spec.Action {
-			case provisioning.JobActionDelete:
-				if spec.Delete != nil {
-					targetRef = spec.Delete.Ref
-				}
-			case provisioning.JobActionMove:
-				if spec.Move != nil {
-					targetRef = spec.Move.Ref
-				}
-			case provisioning.JobActionPush:
-				if spec.Push != nil {
-					targetRef = spec.Push.Branch
-				}
-			case provisioning.JobActionMigrate:
-				// Migrate operates on the default branch (no ref)
-				targetRef = ""
-			default:
-				// Read-only operations (Pull, PullRequest, FixFolderMetadata) don't reach here
-				// due to requiresWrite check, but include default for exhaustive linter
-				targetRef = ""
-			}
-
-			if err := repository.IsWriteAllowed(cfg, targetRef); err != nil {
-				responder.Error(err)
-				return
-			}
-		}
-
-		if spec.Action == provisioning.JobActionPush || spec.Action == provisioning.JobActionMigrate {
-			if err := c.authorizeResourceJob(r.Context(), repo, cfg, spec); err != nil {
-				responder.Error(err)
-				return
-			}
+		if err := c.authorizeJob(r.Context(), repo, cfg, spec); err != nil {
+			responder.Error(err)
+			return
 		}
 
 		job, err := c.jobs.GetJobQueue().Insert(ctx, cfg.Namespace, spec)
@@ -223,6 +185,58 @@ var (
 	_ rest.Storage         = (*jobsConnector)(nil)
 	_ rest.StorageMetadata = (*jobsConnector)(nil)
 )
+
+// authorizeJob consolidates pre-flight validation and authorization for all job types.
+func (c *jobsConnector) authorizeJob(ctx context.Context, repo repository.Repository, cfg *provisioning.Repository, spec provisioning.JobSpec) error {
+	if spec.Action == provisioning.JobActionFixFolderMetadata && !c.folderMetadataEnabled {
+		return apierrors.NewBadRequest("fixFolderMetadata jobs require the provisioningFolderMetadata feature flag")
+	}
+
+	if err := c.authorizeWriteJob(cfg, spec); err != nil {
+		return err
+	}
+
+	if spec.Action == provisioning.JobActionPush || spec.Action == provisioning.JobActionMigrate {
+		return c.authorizeResourceJob(ctx, repo, cfg, spec)
+	}
+
+	return nil
+}
+
+// authorizeWriteJob validates that write operations are allowed for the repository
+// and the targeted ref.
+func (c *jobsConnector) authorizeWriteJob(cfg *provisioning.Repository, spec provisioning.JobSpec) error {
+	requiresWrite := spec.Action == provisioning.JobActionDelete ||
+		spec.Action == provisioning.JobActionMove ||
+		spec.Action == provisioning.JobActionPush ||
+		spec.Action == provisioning.JobActionMigrate
+
+	if !requiresWrite {
+		return nil
+	}
+
+	var targetRef string
+	switch spec.Action {
+	case provisioning.JobActionDelete:
+		if spec.Delete != nil {
+			targetRef = spec.Delete.Ref
+		}
+	case provisioning.JobActionMove:
+		if spec.Move != nil {
+			targetRef = spec.Move.Ref
+		}
+	case provisioning.JobActionPush:
+		if spec.Push != nil {
+			targetRef = spec.Push.Branch
+		}
+	case provisioning.JobActionMigrate:
+		targetRef = ""
+	default:
+		targetRef = ""
+	}
+
+	return repository.IsWriteAllowed(cfg, targetRef)
+}
 
 // authorizeResourceJob checks that the requesting user has the required permissions
 // for operations that read and write all supported resource types (export and migrate).

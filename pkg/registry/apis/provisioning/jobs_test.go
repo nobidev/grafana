@@ -212,3 +212,50 @@ func TestAuthorizeResourceJob(t *testing.T) {
 		assert.True(t, apierrors.IsBadRequest(err))
 	})
 }
+
+func TestAuthorizeJob(t *testing.T) {
+	ctx := context.Background()
+	cfg := newTestRepo("my-repo", "default")
+
+	t.Run("fixFolderMetadata rejected when flag is disabled", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock, folderMetadataEnabled: false}
+		spec := provisioning.JobSpec{
+			Action: provisioning.JobActionFixFolderMetadata,
+		}
+
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
+		require.Error(t, err)
+		assert.True(t, apierrors.IsBadRequest(err))
+		assert.Contains(t, err.Error(), "provisioningFolderMetadata feature flag")
+	})
+
+	t.Run("fixFolderMetadata allowed when flag is enabled", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock, folderMetadataEnabled: true}
+		spec := provisioning.JobSpec{
+			Action: provisioning.JobActionFixFolderMetadata,
+		}
+
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
+		require.NoError(t, err)
+	})
+
+	t.Run("pull action passes through", func(t *testing.T) {
+		accessMock := auth.NewMockAccessChecker(t)
+		mockReader := repository.NewMockReader(t)
+
+		c := &jobsConnector{access: accessMock, folderMetadataEnabled: false}
+		spec := provisioning.JobSpec{
+			Action: provisioning.JobActionPull,
+			Pull:   &provisioning.SyncJobOptions{},
+		}
+
+		err := c.authorizeJob(ctx, mockReader, cfg, spec)
+		require.NoError(t, err)
+	})
+}
