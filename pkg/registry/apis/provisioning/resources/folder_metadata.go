@@ -140,52 +140,6 @@ func FindDuplicateFolderUIDs(ctx context.Context, reader repository.Reader, sour
 	return duplicates, nil
 }
 
-// FolderMetadataIssueType classifies the kind of inconsistency found during validation.
-type FolderMetadataIssueType string
-
-const (
-	FolderMetadataIssueDuplicateUID FolderMetadataIssueType = "duplicate_uid"
-)
-
-// FolderMetadataIssue represents a single inconsistency found during validation.
-type FolderMetadataIssue struct {
-	Path    string
-	Type    FolderMetadataIssueType
-	Message string
-}
-
-// ValidateFolderMetadata scans _folder.json files in the tree and returns
-// all detected inconsistencies (empty UIDs and duplicate UIDs).
-func ValidateFolderMetadata(ctx context.Context, reader repository.Reader, source []repository.FileTreeEntry, ref string) ([]FolderMetadataIssue, error) {
-	seen := make(map[string]string) 
-	var issues []FolderMetadataIssue
-
-	for _, entry := range source {
-		if !entry.Blob || !IsFolderMetadataFile(entry.Path) {
-			continue
-		}
-
-		folderPath := safepath.Dir(entry.Path)
-		meta, err := ReadFolderMetadata(ctx, reader, folderPath, ref)
-		if err != nil {
-			return nil, fmt.Errorf("read folder metadata for %s: %w", folderPath, err)
-		}
-
-		uid := meta.Name
-		if firstPath, exists := seen[uid]; exists {
-			issues = append(issues, FolderMetadataIssue{
-				Path:    folderPath,
-				Type:    FolderMetadataIssueDuplicateUID,
-				Message: fmt.Sprintf("folder %q has duplicate UID %q (first seen in %q)", folderPath, uid, firstPath),
-			})
-		} else {
-			seen[uid] = folderPath
-		}
-	}
-
-	return issues, nil
-}
-
 // IsFolderMetadataEnabled reports whether the provisioningFolderMetadata feature flag is on.
 func IsFolderMetadataEnabled(cfg *setting.Cfg) bool {
 	//nolint:staticcheck // The usage of this function is deprecated, but we don't plan to keep it for long.
