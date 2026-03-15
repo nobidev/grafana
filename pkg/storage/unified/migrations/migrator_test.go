@@ -287,7 +287,6 @@ func runMigrationTestSuite(t *testing.T, testCases []testcases.ResourceMigratorT
 		}
 		helper := apis.NewK8sTestHelperWithOpts(t, apis.K8sTestHelperOpts{
 			GrafanaOpts: testinfra.GrafanaOpts{
-				//EnableLog:              true,
 				AppModeProduction:      true,
 				DisableAnonymous:       true,
 				DisableDataMigrations:  false,
