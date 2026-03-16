@@ -589,9 +589,12 @@ function resolveInputDatasource(
   form: ImportDashboardDTO
 ): Panel['datasource'] {
   if (datasource && hasUid(datasource) && datasource.uid.startsWith('$')) {
-    const match = checkUserInputMatch(datasource.uid, inputs.dataSources, form.dataSources);
-    if (match) {
-      return { ...datasource, uid: match.uid };
+    const userInput = checkUserInputMatch(datasource.uid, inputs.dataSources, form.dataSources);
+    if (userInput) {
+      return {
+        ...datasource,
+        uid: userInput.uid,
+      };
     }
   }
   return datasource;
@@ -604,9 +607,15 @@ function resolveInputTargets(
 ): Panel['targets'] {
   return targets?.map((target) => {
     if (target.datasource && hasUid(target.datasource) && target.datasource.uid.startsWith('$')) {
-      const match = checkUserInputMatch(target.datasource.uid, inputs.dataSources, form.dataSources);
-      if (match) {
-        return { ...target, datasource: { ...target.datasource, uid: match.uid } };
+      const userInput = checkUserInputMatch(target.datasource.uid, inputs.dataSources, form.dataSources);
+      if (userInput) {
+        return {
+          ...target,
+          datasource: {
+            ...target.datasource,
+            uid: userInput.uid,
+          },
+        };
       }
     }
     return target;
