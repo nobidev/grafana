@@ -630,7 +630,7 @@ function processPanel(
     return {
       ...panel,
       ...(panel.datasource && { datasource: resolveInputDatasource(panel.datasource, inputs, form) }),
-      panels: panel.panels.map((nestedPanel) => ({
+      panels: panel.panels?.map((nestedPanel) => ({
         ...nestedPanel,
         ...(nestedPanel.datasource && { datasource: resolveInputDatasource(nestedPanel.datasource, inputs, form) }),
         ...(nestedPanel.targets && { targets: resolveInputTargets(nestedPanel.targets, inputs, form) }),
