@@ -630,19 +630,19 @@ function processPanel(
   if ('panels' in panel) {
     return {
       ...panel,
-      datasource: resolveInputDatasource(panel.datasource, inputs, form),
+      ...(panel.datasource && { datasource: resolveInputDatasource(panel.datasource, inputs, form) }),
       panels: panel.panels.map((nestedPanel) => ({
         ...nestedPanel,
-        datasource: resolveInputDatasource(nestedPanel.datasource, inputs, form),
-        targets: resolveInputTargets(nestedPanel.targets, inputs, form),
+        ...(nestedPanel.datasource && { datasource: resolveInputDatasource(nestedPanel.datasource, inputs, form) }),
+        ...(nestedPanel.targets && { targets: resolveInputTargets(nestedPanel.targets, inputs, form) }),
       })),
     };
   }
 
   return {
     ...panel,
-    datasource: resolveInputDatasource(panel.datasource, inputs, form),
-    targets: resolveInputTargets(panel.targets, inputs, form),
+    ...(panel.datasource && { datasource: resolveInputDatasource(panel.datasource, inputs, form) }),
+    ...(panel.targets && { targets: resolveInputTargets(panel.targets, inputs, form) }),
   };
 }
 
