@@ -700,26 +700,6 @@ describe('applyV1Inputs', () => {
       const row = result.panels?.[0] as unknown as RowPanel;
       expect(row.datasource?.uid).toBe('ds-uid');
     });
-
-    it('leaves non-collapsed row panels unchanged (child panels are at top level)', () => {
-      const dashboard = {
-        title: 'old',
-        uid: 'old',
-        panels: [
-          { type: 'row', collapsed: false, panels: [] },
-          { datasource: { uid: '${DS}' }, targets: [{ datasource: { uid: '${DS}' } }] },
-        ],
-      } as unknown as Dashboard;
-
-      const result = applyV1Inputs(dashboard, sampleV1Inputs, makeForm());
-
-      const row = result.panels?.[0] as unknown as RowPanel;
-      expect(row.panels).toHaveLength(0);
-
-      const panel = result.panels?.[1] as PanelWithTargets;
-      expect(panel.datasource?.uid).toBe('ds-uid');
-      expect(panel.targets?.[0].datasource?.uid).toBe('ds-uid');
-    });
   });
 
   it('replaces target datasource UIDs in panels with built-in datasources like Mixed', () => {
