@@ -366,7 +366,7 @@ export function createSceneVariableFromVariableModel(variable: TypedVariableMode
         getDataSourceSrv().getInstanceSettings({ type: ds?.type })?.meta.multiValueFilterOperators
       ),
       collapsible: config.featureToggles.dashboardAdHocAndGroupByWrapper,
-      supportsGroupByOperator: config.featureToggles.dashboardUnifiedDrilldownControls
+      enableGroupBy: config.featureToggles.dashboardUnifiedDrilldownControls
         ? (variable.spec.enableGroupBy ?? false)
         : false,
     };
@@ -592,7 +592,7 @@ export function createVariablesForSnapshot(dashboard: DashboardV2Spec): SceneVar
             supportsMultiValueOperators: Boolean(
               getDataSourceSrv().getInstanceSettings({ type: ds?.type })?.meta.multiValueFilterOperators
             ),
-            supportsGroupByOperator: config.featureToggles.dashboardUnifiedDrilldownControls
+            enableGroupBy: config.featureToggles.dashboardUnifiedDrilldownControls
               ? (v.spec.enableGroupBy ?? false)
               : false,
           });
