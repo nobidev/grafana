@@ -6,10 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	provisioning "github.com/grafana/grafana/apps/provisioning/pkg/apis/provisioning/v0alpha1"
@@ -157,33 +154,6 @@ func folderMetadataJSON(uid, title string) []byte {
 	return data
 }
 
-// requireRepoFolderTitle lists all folders managed by repoName and asserts that
-// exactly one has the given title, returning its K8s name (UID).
-func requireRepoFolderTitle(t *testing.T, h *gitTestHelper, ctx context.Context, repoName, expectedTitle string) string {
-	t.Helper()
-	var folderUID string
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		list, err := h.FoldersV1.Resource.List(ctx, metav1.ListOptions{})
-		if !assert.NoError(c, err, "failed to list folders") {
-			return
-		}
-		for _, f := range list.Items {
-			mgr, _, _ := unstructured.NestedString(f.Object, "metadata", "annotations", "grafana.app/managerId")
-			if mgr != repoName {
-				continue
-			}
-			title, _, _ := unstructured.NestedString(f.Object, "spec", "title")
-			if title == expectedTitle {
-				folderUID = f.GetName()
-				return
-			}
-		}
-		c.Errorf("no folder managed by %q with title %q found", repoName, expectedTitle)
-	}, waitTimeoutDefault, waitIntervalDefault,
-		"expected folder with title %q for repo %q", expectedTitle, repoName)
-	return folderUID
-}
-
 // TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle verifies that
 // incremental sync uses spec.title from _folder.json when creating folders.
 func TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle(t *testing.T) {
@@ -215,7 +185,7 @@ func TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle(t *testing.
 		helper.syncAndWaitIncremental(t, repoName)
 
 		// Verify the Grafana folder was created with the metadata title, not the directory name.
-		requireRepoFolderTitle(t, helper, ctx, repoName, "My Team Display Name")
+		common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "My Team Display Name")
 	})
 
 	t.Run("folder falls back to directory name when spec.title is empty", func(t *testing.T) {
@@ -242,7 +212,7 @@ func TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle(t *testing.
 		helper.syncAndWaitIncremental(t, repoName)
 
 		// Should use directory name "reports" as the title.
-		requireRepoFolderTitle(t, helper, ctx, repoName, "reports")
+		common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "reports")
 	})
 
 	t.Run("folder uses directory name when no _folder.json exists", func(t *testing.T) {
@@ -268,7 +238,7 @@ func TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle(t *testing.
 		helper.syncAndWaitIncremental(t, repoName)
 
 		// Should use directory name "analytics" as the title.
-		requireRepoFolderTitle(t, helper, ctx, repoName, "analytics")
+		common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "analytics")
 	})
 
 	t.Run("nested folders use respective spec.title from _folder.json", func(t *testing.T) {
@@ -296,8 +266,83 @@ func TestIntegrationProvisioning_IncrementalSync_FolderMetadataTitle(t *testing.
 		helper.syncAndWaitIncremental(t, repoName)
 
 		// Both folders should use their metadata titles.
-		requireRepoFolderTitle(t, helper, ctx, repoName, "Parent Display")
-		requireRepoFolderTitle(t, helper, ctx, repoName, "Child Display")
+		common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "Parent Display")
+		common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "Child Display")
+	})
+}
+
+func TestIntegrationProvisioning_IncrementalSync_FolderMetadataCreation(t *testing.T) {
+	testutil.SkipIntegrationTestInShortMode(t)
+
+	t.Run("new _folder.json transitions existing folder to stable uid", func(t *testing.T) {
+		helper := runGrafanaWithGitServer(t, common.WithProvisioningFolderMetadata)
+		ctx := context.Background()
+
+		const repoName = "incr-meta-create-existing"
+
+		_, local := helper.createGitRepo(t, repoName, map[string][]byte{
+			"myfolder/dash.json": dashboardJSON("my-dash", "My Dashboard", 1),
+		})
+
+		helper.syncAndWait(t, repoName)
+
+		oldUID := common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "myfolder")
+		require.NotEqual(t, "stable-uid", oldUID, "folder should start with a hash-based UID")
+		common.RequireRepoDashboardParent(t, helper.DashboardsV1, ctx, repoName, "myfolder/dash.json", oldUID)
+
+		require.NoError(t, local.CreateFile("myfolder/_folder.json", string(folderMetadataJSON("stable-uid", "My Folder"))))
+		_, err := local.Git("add", ".")
+		require.NoError(t, err)
+		_, err = local.Git("commit", "-m", "add folder metadata")
+		require.NoError(t, err)
+		_, err = local.Git("push")
+		require.NoError(t, err)
+
+		helper.syncAndWaitIncremental(t, repoName)
+
+		common.RequireRepoFolderUID(t, helper.FoldersV1, ctx, repoName, "stable-uid")
+		requireRepoFolderCount(t, helper, ctx, repoName, 1)
+		requireRepoDashboardCount(t, helper, ctx, repoName, 1)
+		common.RequireRepoDashboardParent(t, helper.DashboardsV1, ctx, repoName, "myfolder/dash.json", "stable-uid")
+	})
+
+	t.Run("new _folder.json transitions existing folder to stable uid and re-parents children", func(t *testing.T) {
+		helper := runGrafanaWithGitServer(t, common.WithProvisioningFolderMetadata)
+		ctx := context.Background()
+
+		const repoName = "incr-meta-create-existing"
+
+		_, local := helper.createGitRepo(t, repoName, map[string][]byte{
+			"myfolder/dash.json":       dashboardJSON("my-dash", "My Dashboard", 1),
+			"myfolder/child/dash.json": dashboardJSON("child-dash", "Child Dashboard", 1),
+		})
+
+		helper.syncAndWait(t, repoName)
+
+		oldUID := common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "myfolder")
+		require.NotEqual(t, "stable-uid", oldUID, "folder should start with a hash-based UID")
+		common.RequireRepoDashboardParent(t, helper.DashboardsV1, ctx, repoName, "myfolder/dash.json", oldUID)
+
+		childUID := common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "child")
+		common.RequireRepoDashboardParent(t, helper.DashboardsV1, ctx, repoName, "myfolder/child/dash.json", childUID)
+
+		require.NoError(t, local.CreateFile("myfolder/_folder.json", string(folderMetadataJSON("stable-uid", "My Folder"))))
+		_, err := local.Git("add", ".")
+		require.NoError(t, err)
+		_, err = local.Git("commit", "-m", "add folder metadata")
+		require.NoError(t, err)
+		_, err = local.Git("push")
+		require.NoError(t, err)
+
+		helper.syncAndWaitIncremental(t, repoName)
+
+		common.RequireRepoFolderUID(t, helper.FoldersV1, ctx, repoName, "stable-uid")
+		childUID = common.RequireRepoFolderTitle(t, helper.FoldersV1, ctx, repoName, "child")
+		common.RequireFolderState(t, helper.FoldersV1, childUID, "child", "myfolder/child", "stable-uid")
+
+		requireRepoFolderCount(t, helper, ctx, repoName, 2)
+		requireRepoDashboardCount(t, helper, ctx, repoName, 2)
+		common.RequireRepoDashboardParent(t, helper.DashboardsV1, ctx, repoName, "myfolder/dash.json", "stable-uid")
 	})
 }
 
