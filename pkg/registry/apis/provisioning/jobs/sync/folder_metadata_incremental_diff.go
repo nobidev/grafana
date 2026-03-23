@@ -219,6 +219,9 @@ func (d *folderMetadataIncrementalDiffBuilder) rewriteDeletedMetadataChange(
 	return nil, nil
 }
 
+// collectInvalidRenamedMetadataChange inspects the destination metadata file of
+// a rename and converts invalid folder metadata into an action-aware warning.
+// Renamed metadata entries themselves do not produce replayed diff entries.
 func (d *folderMetadataIncrementalDiffBuilder) collectInvalidRenamedMetadataChange(
 	ctx context.Context,
 	currentRef string,
@@ -227,6 +230,10 @@ func (d *folderMetadataIncrementalDiffBuilder) collectInvalidRenamedMetadataChan
 	return d.collectInvalidMetadataErrors(ctx, folderPathForMetadataChange(change.Path), currentRef, change.Action)
 }
 
+// collectInvalidMetadataErrors reads `_folder.json` for the given folder path
+// and returns a warning only for invalid metadata. Missing metadata is ignored
+// here because callers decide separately whether that action should be replayed
+// or left to the normal folder fallback logic.
 func (d *folderMetadataIncrementalDiffBuilder) collectInvalidMetadataErrors(
 	ctx context.Context,
 	folderPath string,
