@@ -2752,6 +2752,14 @@ var (
 			HideFromDocs: true,
 			Expression:   "false",
 		},
+		{
+			Name:         "frontendServiceSSOAutoLogin",
+			Description:  "Returns SSO auto-login information in /bootdata to automatically log in users with SSO when they access Grafana",
+			Stage:        FeatureStageExperimental,
+			Owner:        grafanaFrontendPlatformSquad,
+			HideFromDocs: true,
+			Expression:   "false",
+		},
 	}
 )
 
