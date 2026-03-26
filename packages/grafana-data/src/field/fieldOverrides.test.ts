@@ -23,6 +23,7 @@ import {
   FieldOverrideEnv,
   findNumericFieldMinMax,
   getLinksSupplier,
+  getFieldDataContextClone,
   setDynamicConfigValue,
   setFieldConfigDefaults,
 } from './fieldOverrides';
@@ -1067,6 +1068,89 @@ describe('setDynamicConfigValue', () => {
     expect(config.mappings![0]).toEqual({ type: MappingType.ValueToText, options: { second: { text: 'second' } } });
     expect(config.mappings![1]).toEqual({ type: MappingType.ValueToText, options: { first: { text: 'first' } } });
     expect(config.mappings![2]).toEqual({ type: MappingType.ValueToText, options: { existing: { text: 'existing' } } });
+  });
+});
+
+describe('getFieldDataContextClone', () => {
+  it('should create a new data context when no existing context', () => {
+    const frame = createDataFrame({
+      name: 'TestFrame',
+      fields: [{ name: 'value', type: FieldType.number, values: [1, 2, 3] }],
+    });
+    const field = frame.fields[0];
+
+    const result = getFieldDataContextClone(frame, field, {});
+
+    expect(result.value.frame).toBe(frame);
+    expect(result.value.field).toBe(field);
+    expect(result.value.data).toEqual([frame]);
+  });
+
+  it('should clone existing context but always use passed frame and field', () => {
+    const parentFrame = createDataFrame({
+      name: 'ParentFrame',
+      fields: [{ name: 'parentValue', type: FieldType.string, values: ['Up', 'Down'] }],
+    });
+    const parentField = parentFrame.fields[0];
+
+    const nestedFrame = createDataFrame({
+      name: 'NestedFrame',
+      fields: [{ name: 'nestedValue', type: FieldType.string, values: ['NestedUp', 'NestedDown'] }],
+    });
+    const nestedField = nestedFrame.fields[0];
+
+    // Simulate existing scopedVars with parent context
+    const existingScopedVars: ScopedVars = {
+      __dataContext: {
+        value: {
+          data: [parentFrame],
+          frame: parentFrame,
+          field: parentField,
+          frameIndex: 0,
+        },
+      },
+    };
+
+    // Call with nested frame/field but existing parent context
+    const result = getFieldDataContextClone(nestedFrame, nestedField, existingScopedVars);
+
+    // Should use the nested frame and field, not the parent ones
+    expect(result.value.frame).toBe(nestedFrame);
+    expect(result.value.field).toBe(nestedField);
+    // Other properties from existing context should be preserved
+    expect(result.value.frameIndex).toBe(0);
+  });
+
+  it('should preserve rowIndex when cloning context with different field', () => {
+    const frame = createDataFrame({
+      name: 'TestFrame',
+      fields: [
+        { name: 'status', type: FieldType.string, values: ['Up', 'Down', 'Up'] },
+        { name: 'value', type: FieldType.number, values: [100, 200, 300] },
+      ],
+    });
+    const statusField = frame.fields[0];
+    const valueField = frame.fields[1];
+
+    const existingScopedVars: ScopedVars = {
+      __dataContext: {
+        value: {
+          data: [frame],
+          frame: frame,
+          field: statusField,
+          frameIndex: 0,
+          rowIndex: 1,
+        },
+      },
+    };
+
+    // Clone for the value field but with existing status field context
+    const result = getFieldDataContextClone(frame, valueField, existingScopedVars);
+
+    // Should use the value field
+    expect(result.value.field).toBe(valueField);
+    // rowIndex should be preserved from existing context
+    expect(result.value.rowIndex).toBe(1);
   });
 });
 

@@ -689,6 +689,11 @@ export function getFieldDataContextClone(frame: DataFrame, field: Field, fieldSc
     return {
       value: {
         ...fieldScopedVars.__dataContext.value,
+        // Always use the frame and field passed to this function.
+        // This is important for nested frames where the field in the existing
+        // dataContext may be from a different (parent) context.
+        frame,
+        field,
       },
     };
   }
