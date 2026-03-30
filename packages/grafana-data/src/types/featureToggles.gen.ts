@@ -1771,4 +1771,9 @@ export interface FeatureToggles {
   * @default false
   */
   cacheConfigUnifiedStorageMigration?: boolean;
+  /**
+  * Boots the frontend using the boot.js script built from TS instead of the embedded boot script
+  * @default false
+  */
+  inlinedBootScript?: boolean;
 }
