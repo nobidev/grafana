@@ -29,7 +29,11 @@ function canViewContactPoints(): boolean {
  * Check if user has permission to view notification policies
  */
 function canViewNotificationPolicies(): boolean {
-  return contextSrv.hasPermission(AccessControlAction.AlertingRoutesRead);
+  return (
+    contextSrv.hasPermission(AccessControlAction.AlertingNotificationsRead) ||
+    contextSrv.hasPermission(AccessControlAction.AlertingRoutesRead) ||
+    contextSrv.hasPermission(AccessControlAction.ActionAlertingManagedRoutesRead)
+  );
 }
 
 /**
