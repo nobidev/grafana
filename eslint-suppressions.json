@@ -574,6 +574,11 @@
       "count": 1
     }
   },
+  "packages/grafana-ui/src/components/FormLabel/FormLabel.tsx": {
+    "@grafana/no-gf-form": {
+      "count": 3
+    }
+  },
   "packages/grafana-ui/src/components/Forms/Form.story.tsx": {
     "react-hooks/rules-of-hooks": {
       "count": 9
@@ -585,6 +590,9 @@
     }
   },
   "packages/grafana-ui/src/components/Forms/Legacy/Input/Input.tsx": {
+    "@grafana/no-gf-form": {
+      "count": 1
+    },
     "@typescript-eslint/consistent-type-assertions": {
       "count": 2
     }
@@ -596,7 +604,7 @@
   },
   "packages/grafana-ui/src/components/Forms/Legacy/Select/Select.tsx": {
     "@grafana/no-gf-form": {
-      "count": 2
+      "count": 6
     }
   },
   "packages/grafana-ui/src/components/Forms/Legacy/Select/SelectOption.tsx": {
@@ -606,7 +614,7 @@
   },
   "packages/grafana-ui/src/components/Forms/Legacy/Switch/Switch.tsx": {
     "@grafana/no-gf-form": {
-      "count": 1
+      "count": 3
     }
   },
   "packages/grafana-ui/src/components/Icon/Icon.story.tsx": {
@@ -883,6 +891,16 @@
     },
     "@typescript-eslint/no-explicit-any": {
       "count": 1
+    }
+  },
+  "packages/grafana-ui/src/themes/GlobalStyles/forms.ts": {
+    "@grafana/no-gf-form": {
+      "count": 25
+    }
+  },
+  "packages/grafana-ui/src/themes/GlobalStyles/legacySelect.ts": {
+    "@grafana/no-gf-form": {
+      "count": 28
     }
   },
   "packages/grafana-ui/src/themes/ThemeContext.tsx": {
@@ -1970,6 +1988,11 @@
       "count": 1
     }
   },
+  "public/app/features/dashboard/components/SubMenu/AnnotationPicker.tsx": {
+    "@grafana/no-gf-form": {
+      "count": 1
+    }
+  },
   "public/app/features/dashboard/components/SubMenu/DashboardLinksDashboard.tsx": {
     "@typescript-eslint/consistent-type-assertions": {
       "count": 1
@@ -1980,6 +2003,11 @@
   },
   "public/app/features/dashboard/components/SubMenu/SubMenu.tsx": {
     "react-prefer-function-component/react-prefer-function-component": {
+      "count": 1
+    }
+  },
+  "public/app/features/dashboard/components/SubMenu/SubMenuItems.tsx": {
+    "@grafana/no-gf-form": {
       "count": 1
     }
   },
@@ -2599,6 +2627,9 @@
   },
   "public/app/features/query/components/QueryEditorRow.tsx": {
     "@grafana/no-aria-label-selectors": {
+      "count": 1
+    },
+    "@grafana/no-gf-form": {
       "count": 1
     },
     "@typescript-eslint/consistent-type-assertions": {
@@ -3405,7 +3436,7 @@
   },
   "public/app/plugins/datasource/influxdb/components/editor/query/influxql/visual/PartListSection.tsx": {
     "@grafana/no-gf-form": {
-      "count": 1
+      "count": 2
     }
   },
   "public/app/plugins/datasource/influxdb/components/editor/query/influxql/visual/TagsSection.tsx": {
