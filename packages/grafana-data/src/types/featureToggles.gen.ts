@@ -249,11 +249,6 @@ export interface FeatureToggles {
   */
   useKubernetesShortURLsAPI?: boolean;
   /**
-  * Adds support for Kubernetes alerting and recording rules
-  * @default false
-  */
-  kubernetesAlertingRules?: boolean;
-  /**
   * Adds support for Kubernetes correlations
   * @default false
   */
