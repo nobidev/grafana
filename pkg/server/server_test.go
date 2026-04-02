@@ -20,9 +20,10 @@ import (
 )
 
 type testService struct {
-	started    chan struct{}
-	runErr     error
-	isDisabled bool
+	started        chan struct{}
+	runErr         error
+	isDisabled     bool
+	failAfterReady <-chan struct{} // if set with runErr, wait until this is closed before failing
 }
 
 func newTestService(runErr error, disabled bool) *testService {
@@ -33,12 +34,30 @@ func newTestService(runErr error, disabled bool) *testService {
 	}
 }
 
+// newTestServiceFailsAfterPeerRunning returns a service that returns runErr only after peer
+// has reached its steady Run() state (peer closes started). Avoids dskit races when one
+// service fails while another is still starting.
+func newTestServiceFailsAfterPeerRunning(peer *testService, runErr error) *testService {
+	return &testService{
+		started:        make(chan struct{}),
+		runErr:         runErr,
+		failAfterReady: peer.started,
+	}
+}
+
 func (s *testService) Run(ctx context.Context) error {
 	if s.isDisabled {
 		return fmt.Errorf("Shouldn't run disabled service")
 	}
 
 	if s.runErr != nil {
+		if s.failAfterReady != nil {
+			select {
+			case <-s.failAfterReady:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
 		return s.runErr
 	}
 	close(s.started)
@@ -66,7 +85,9 @@ func testServer(t *testing.T, services ...registry.BackgroundService) *Server {
 
 func TestServer_Run_Error(t *testing.T) {
 	testErr := errors.New("boom")
-	s := testServer(t, newTestService(nil, false), newTestService(testErr, false))
+	stable := newTestService(nil, false)
+	failing := newTestServiceFailsAfterPeerRunning(stable, testErr)
+	s := testServer(t, stable, failing)
 	err := s.Run()
 	require.Error(t, err)
 	require.Contains(t, err.Error(), testErr.Error())
