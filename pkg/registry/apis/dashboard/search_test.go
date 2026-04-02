@@ -37,7 +37,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode0},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode1},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -91,7 +91,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode2},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -118,7 +118,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode3},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -145,7 +145,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode4},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -172,7 +172,7 @@ func TestSearchFallback(t *testing.T) {
 				"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode5},
 			},
 		}
-		dual := dualwrite.ProvideStaticServiceForTests(cfg)
+		dual := dualwrite.ProvideServiceForTests(cfg)
 		searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockLegacyClient, mockClient, nil)
 
 		rr := httptest.NewRecorder()
@@ -256,7 +256,7 @@ func TestSearchHandlerPagination(t *testing.T) {
 					"dashboards.dashboard.grafana.app": {DualWriterMode: rest.Mode0},
 				},
 			}
-			dual := dualwrite.ProvideStaticServiceForTests(cfg)
+			dual := dualwrite.ProvideServiceForTests(cfg)
 			searchHandler := NewSearchHandler(tracing.NewNoopTracerService(), dual, mockClient, mockClient, nil)
 
 			rr := httptest.NewRecorder()
