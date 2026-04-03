@@ -102,7 +102,7 @@ var (
 			Name:        "lokiShardSplitting",
 			Description: "Use stream shards to split queries into smaller subqueries",
 			Stage:       FeatureStageExperimental,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Owner:       grafanaObservabilityLogsSquad,
 			Expression:  "false",
 		},
@@ -257,7 +257,7 @@ var (
 			RequiresRestart: true,
 			Owner:           grafanaAppPlatformSquad,
 			Expression:      "true",
-			Generate:        GenerateLegacyGo | GenerateLegacyFrontend,
+			Generate:        GenerateLegacyGo | GenerateReact,
 		},
 		{
 			Name:            "provisioningExport",
@@ -1027,10 +1027,9 @@ var (
 			Generate:    GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-			Name:        "disableNumericMetricsSortingInExpressions",
-			Description: "In server-side expressions, disable the sorting of numeric-kind metrics by their metric name or labels.",
-			Stage:       FeatureStageExperimental,
-
+			Name:            "disableNumericMetricsSortingInExpressions",
+			Description:     "In server-side expressions, disable the sorting of numeric-kind metrics by their metric name or labels.",
+			Stage:           FeatureStageExperimental,
 			Generate:        GenerateLegacyGo | GenerateLegacyFrontend,
 			Owner:           grafanaDataSourcesPlugins,
 			RequiresRestart: true,
@@ -1122,7 +1121,7 @@ var (
 			Description: "Enables the Assistant button in the dashboard templates card",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaSharingSquad,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -1130,7 +1129,7 @@ var (
 			Description: "Enables the 'Customize with Assistant' button on suggested dashboard cards",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaSharingSquad,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -1342,7 +1341,6 @@ var (
 			Generate:     GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-
 			Name:        "alertingQueryAndExpressionsStepMode",
 			Description: "Enables step mode for alerting queries and expressions",
 			Stage:       FeatureStageGeneralAvailability,
@@ -1441,7 +1439,6 @@ var (
 			Generate:        GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-
 			Name:        "prometheusSpecialCharsInLabelValues",
 			Description: "Adds support for quotes and special characters in label values for Prometheus queries",
 			Generate:    GenerateLegacyFrontend,
@@ -1667,7 +1664,7 @@ var (
 			Name:        "newLogsPanel",
 			Description: "Enables the new logs panel",
 			Stage:       FeatureStageGeneralAvailability,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Owner:       grafanaObservabilityLogsSquad,
 			Expression:  "true",
 		},
@@ -1762,7 +1759,6 @@ var (
 			Generate:    GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-
 			Name:        "infinityRunQueriesInParallel",
 			Description: "Enables running Infinity queries in parallel",
 			Stage:       FeatureStagePrivatePreview,
@@ -2005,7 +2001,7 @@ var (
 			Description: "Enables recently viewed dashboards section in the browsing dashboard page",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaFrontendNavigation,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -2022,7 +2018,7 @@ var (
 			Description: "Enables the created by me search filter on the browse dashboards page",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaFrontendNavigation,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -2134,7 +2130,7 @@ var (
 			Name:        "otelLogsFormatting",
 			Description: "Applies OTel formatting templates to displayed logs",
 			Stage:       FeatureStageExperimental,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Owner:       grafanaObservabilityLogsSquad,
 			Expression:  "false",
 		},
@@ -2195,7 +2191,7 @@ var (
 			Description: "New Log Context component",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaObservabilityLogsSquad,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -2527,7 +2523,7 @@ var (
 			Name:        "dashboardSectionVariables",
 			Description: "Enables support for section level variables (rows and tabs)",
 			Stage:       FeatureStageExperimental,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Owner:       grafanaDashboardsSquad,
 			Expression:  "false",
 		},
@@ -2567,7 +2563,6 @@ var (
 			Generate:        GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-
 			Name:        "queryWithAssistant",
 			Description: "Enables the Query with Assistant button in the query editor",
 			Stage:       FeatureStageExperimental,
@@ -2579,7 +2574,7 @@ var (
 			Name:        "queryEditorNext",
 			Description: "Enables next generation query editor experience",
 			Stage:       FeatureStagePrivatePreview,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateLegacyFrontend | GenerateReact,
 			Owner:       grafanaDataProSquad,
 			Expression:  "false",
 		},
@@ -2775,7 +2770,7 @@ var (
 			Name:        "functionalSharedPreferences",
 			Description: "Whether to use the new SharedPreferences functional component",
 			Stage:       FeatureStageExperimental,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Owner:       grafanaFrontendPlatformSquad,
 			Expression:  "false",
 		},
@@ -2822,7 +2817,7 @@ var (
 			Owner:        grafanaFrontendPlatformSquad,
 			HideFromDocs: true,
 			Expression:   "false",
-			Generate:     GenerateLegacyGo | GenerateLegacyFrontend,
+			Generate:     GenerateReact,
 		},
 		{
 			Name:            "datasourcesApiServerEnableHealthEndpointFrontend",
@@ -2847,7 +2842,7 @@ var (
 			Description: "Enables the new Flame Graph UI containing the Call Tree view",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaObservabilityTracesAndProfilingSquad,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "false",
 		},
 		{
@@ -2864,7 +2859,7 @@ var (
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaObservabilityLogsSquad,
 			Expression:  "false",
-			Generate:    GenerateLegacyGo | GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 		},
 		{
 			Name:            "colorblindThemes",
@@ -2915,7 +2910,7 @@ var (
 			Description: "Enables the splash screen modal for introducing new Grafana features on first session",
 			Stage:       FeatureStagePublicPreview,
 			Owner:       grafanaFrontendPlatformSquad,
-			Generate:    GenerateLegacyFrontend,
+			Generate:    GenerateReact,
 			Expression:  "true",
 		},
 		{
@@ -2973,16 +2968,16 @@ var (
 			Description: "Enables loading datasource plugins from the MetaAPI instead of bootData settings",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaFrontendPlatformSquad,
-			Expression:  "false",
 			Generate:    GenerateLegacyFrontend,
+			Expression:  "false",
 		},
 		{
 			Name:        "enableColorblindSafePanelOptions",
 			Description: "Enables new colorblind safe palette and line fill patterns for panels",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaDatavizSquad,
-			Expression:  "false",
 			Generate:    GenerateLegacyFrontend,
+			Expression:  "false",
 		},
 		{
 			Name:            "cacheConfigUnifiedStorageMigration",
