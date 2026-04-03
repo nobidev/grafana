@@ -2767,7 +2767,7 @@ var (
 			Generate:     GenerateLegacyGo | GenerateLegacyFrontend,
 		},
 		{
-			Name:        "functionalSharedPreferences",
+			Name:        "grafana.newPreferencesPage",
 			Description: "Whether to use the new SharedPreferences functional component",
 			Stage:       FeatureStageExperimental,
 			Generate:    GenerateReact,
