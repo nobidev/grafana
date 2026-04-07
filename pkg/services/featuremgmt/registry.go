@@ -925,14 +925,6 @@ var (
 			Expression:   "false",
 		},
 		{
-			Name:         "dashboardAdHocAndGroupByWrapper",
-			Description:  "Wraps the ad hoc and group by variables in a single wrapper, with all other variables below it",
-			Stage:        FeatureStageExperimental,
-			Owner:        grafanaDashboardsSquad,
-			HideFromDocs: true,
-			Expression:   "false",
-		},
-		{
 			Name:         "dashboardUnifiedDrilldownControls",
 			Description:  "Renders ad hoc filters and group by in a single unified control",
 			Stage:        FeatureStagePrivatePreview,
