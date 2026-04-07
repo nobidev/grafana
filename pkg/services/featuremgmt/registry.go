@@ -3013,6 +3013,10 @@ var (
 			HideFromDocs: true,
 			Expression:   "false",
 		},
+		//
+		// Adding a new feature toggle? Be sure to check out the updated docs at contribute/feature-toggles.md#Steps-to-adding-a-feature-toggle
+		// to follow new naming conventions and usage!
+		//
 	}
 )
 
