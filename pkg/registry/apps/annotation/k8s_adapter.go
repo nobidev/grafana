@@ -15,6 +15,7 @@ import (
 
 	authtypes "github.com/grafana/authlib/types"
 	annotationV0 "github.com/grafana/grafana/apps/annotation/pkg/apis/annotation/v0alpha1"
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/apimachinery/utils"
 	"github.com/grafana/grafana/pkg/util"
 )
@@ -208,6 +209,10 @@ func (s *k8sRESTAdapter) Create(ctx context.Context,
 
 	if annotation.Name == "" && annotation.GenerateName != "" {
 		annotation.Name = annotation.GenerateName + util.GenerateShortUID()
+	}
+
+	if user, err := identity.GetRequester(ctx); err == nil {
+		annotation.SetCreatedBy(user.GetUID())
 	}
 
 	return s.store.Create(ctx, annotation)
