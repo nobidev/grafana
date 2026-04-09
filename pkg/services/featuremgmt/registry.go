@@ -2996,6 +2996,7 @@ var (
 			Owner:        grafanaDataSourcesPlugins,
 			HideFromDocs: true,
 			Expression:   "false",
+			Generate:     Generate{LegacyGo: true, LegacyFrontend: true},
 		},
 		{
 			Name:         "clickHouseConfigValidation",
@@ -3004,6 +3005,7 @@ var (
 			Owner:        grafanaDataSourcesPlugins,
 			HideFromDocs: true,
 			Expression:   "false",
+			Generate:     Generate{LegacyGo: true, LegacyFrontend: true},
 		},
 		{
 			Name:        "grafana.newPreferencesPage",
