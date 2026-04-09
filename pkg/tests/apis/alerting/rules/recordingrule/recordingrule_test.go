@@ -693,3 +693,135 @@ func TestIntegrationFolderLabelSyncAndValidation(t *testing.T) {
 		require.Nil(t, created)
 	})
 }
+
+func TestIntegrationListWithLabelSelectors(t *testing.T) {
+	testutil.SkipIntegrationTestInShortMode(t)
+
+	ctx := context.Background()
+	helper := common.GetTestHelper(t)
+	client := common.NewRecordingRuleClient(t, helper.Org1.Admin)
+
+	common.CreateTestFolder(t, helper, "rr-folder-alpha")
+	common.CreateTestFolder(t, helper, "rr-folder-beta")
+
+	makeRule := func(folder, group string) *v0alpha1.RecordingRule {
+		rule := ngmodels.RuleGen.With(
+			ngmodels.RuleMuts.WithUniqueUID(),
+			ngmodels.RuleMuts.WithUniqueTitle(),
+			ngmodels.RuleMuts.WithNamespaceUID(folder),
+			ngmodels.RuleMuts.WithGroupName(group),
+			ngmodels.RuleMuts.WithAllRecordingRules(),
+			ngmodels.RuleMuts.WithIntervalMatching(time.Duration(10)*time.Second),
+		).Generate()
+		return &v0alpha1.RecordingRule{
+			ObjectMeta: v1.ObjectMeta{
+				Namespace: "default",
+				Annotations: map[string]string{
+					"grafana.app/folder": folder,
+				},
+			},
+			Spec: v0alpha1.RecordingRuleSpec{
+				Title:  rule.Title,
+				Metric: rule.Record.Metric,
+				Expressions: v0alpha1.RecordingRuleExpressionMap{
+					"A": {
+						QueryType:     util.Pointer(rule.Data[0].QueryType),
+						DatasourceUID: util.Pointer(v0alpha1.RecordingRuleDatasourceUID(rule.Data[0].DatasourceUID)),
+						Model:         rule.Data[0].Model,
+						Source:        util.Pointer(true),
+						RelativeTimeRange: &v0alpha1.RecordingRuleRelativeTimeRange{
+							From: v0alpha1.RecordingRulePromDurationWMillis("5m"),
+							To:   v0alpha1.RecordingRulePromDurationWMillis("0s"),
+						},
+					},
+				},
+				Trigger: v0alpha1.RecordingRuleIntervalTrigger{
+					Interval: v0alpha1.RecordingRulePromDuration(fmt.Sprintf("%ds", rule.IntervalSeconds)),
+				},
+			},
+		}
+	}
+
+	// Create 2 rules in rr-folder-alpha / group-one
+	alpha1, err := client.Create(ctx, makeRule("rr-folder-alpha", "group-one"), v1.CreateOptions{})
+	require.NoError(t, err)
+	alpha2, err := client.Create(ctx, makeRule("rr-folder-alpha", "group-one"), v1.CreateOptions{})
+	require.NoError(t, err)
+
+	// Create 2 rules in rr-folder-beta / group-two
+	beta1, err := client.Create(ctx, makeRule("rr-folder-beta", "group-two"), v1.CreateOptions{})
+	require.NoError(t, err)
+	beta2, err := client.Create(ctx, makeRule("rr-folder-beta", "group-two"), v1.CreateOptions{})
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		_ = client.Delete(ctx, alpha1.Name, v1.DeleteOptions{})
+		_ = client.Delete(ctx, alpha2.Name, v1.DeleteOptions{})
+		_ = client.Delete(ctx, beta1.Name, v1.DeleteOptions{})
+		_ = client.Delete(ctx, beta2.Name, v1.DeleteOptions{})
+	})
+
+	t.Run("filter by group label include", func(t *testing.T) {
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "grafana.com/group=group-one"})
+		require.NoError(t, err)
+		require.Len(t, list.Items, 2)
+		for _, item := range list.Items {
+			require.Equal(t, "group-one", item.Labels[v0alpha1.GroupLabelKey])
+		}
+	})
+
+	t.Run("filter by folder label include", func(t *testing.T) {
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "grafana.app/folder=rr-folder-alpha"})
+		require.NoError(t, err)
+		require.Len(t, list.Items, 2)
+		for _, item := range list.Items {
+			require.Equal(t, "rr-folder-alpha", item.Labels[v0alpha1.FolderLabelKey])
+		}
+	})
+
+	t.Run("filter by group label exclude", func(t *testing.T) {
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "grafana.com/group!=group-one"})
+		require.NoError(t, err)
+		require.Len(t, list.Items, 2)
+		for _, item := range list.Items {
+			require.Equal(t, "group-two", item.Labels[v0alpha1.GroupLabelKey])
+		}
+	})
+
+	t.Run("filter by folder label exclude", func(t *testing.T) {
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "grafana.app/folder!=rr-folder-alpha"})
+		require.NoError(t, err)
+		require.Len(t, list.Items, 2)
+		for _, item := range list.Items {
+			require.Equal(t, "rr-folder-beta", item.Labels[v0alpha1.FolderLabelKey])
+		}
+	})
+
+	t.Run("filter by group label exists", func(t *testing.T) {
+		// Rules created via the legacy API are not assigned to a group, so none of our
+		// rules should be returned when filtering for rules that have a group label.
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "grafana.com/group"})
+		require.NoError(t, err)
+		for _, item := range list.Items {
+			require.Contains(t, item.Labels, v0alpha1.GroupLabelKey, "every returned rule must have the group label set")
+		}
+		createdNames := map[string]struct{}{alpha1.Name: {}, alpha2.Name: {}, beta1.Name: {}, beta2.Name: {}}
+		for _, item := range list.Items {
+			require.NotContains(t, createdNames, item.Name, "ungrouped rules must not appear in exists filter results")
+		}
+	})
+
+	t.Run("filter by group label does not exist", func(t *testing.T) {
+		// Rules created via the legacy API have no group, so all four should appear.
+		list, err := client.List(ctx, v1.ListOptions{LabelSelector: "!grafana.com/group"})
+		require.NoError(t, err)
+		for _, item := range list.Items {
+			require.NotContains(t, item.Labels, v0alpha1.GroupLabelKey, "every returned rule must not have the group label set")
+		}
+		createdNames := map[string]struct{}{alpha1.Name: {}, alpha2.Name: {}, beta1.Name: {}, beta2.Name: {}}
+		for _, item := range list.Items {
+			delete(createdNames, item.Name)
+		}
+		require.Empty(t, createdNames, "all four created rules must appear in does-not-exist filter results")
+	})
+}
