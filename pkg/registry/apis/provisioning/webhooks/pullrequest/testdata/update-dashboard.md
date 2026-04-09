@@ -5,5 +5,4 @@ Grafana spotted some changes to your dashboard.
 |----------|---------|
 | ![Before](https://cdn2.thecatapi.com/images/99c.jpg) | ![Preview](https://cdn2.thecatapi.com/images/99c.jpg) |
 
-
 See the [original](http://grafana/d/uid) and [preview](http://grafana/admin/preview) of file.json.
