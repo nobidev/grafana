@@ -3000,4 +3000,164 @@ func TestService_BatchCheck(t *testing.T) {
 		// Should have made additional calls because one item required fresh data
 		assert.Greater(t, fStore.calls, initialCalls, "Should skip cache for entire group if any item requires fresh data")
 	})
+
+	t.Run("should share folder tree across groups including subresources", func(t *testing.T) {
+		s := setupService()
+		fStore := &fakeStore{
+			disableNsCheck: true,
+			userID:         &store.UserIdentifiers{UID: "test-uid"},
+			basicRole:      &store.BasicRole{Role: "Viewer", IsAdmin: false},
+			userPermissions: []accesscontrol.Permission{
+				{Action: "dashboards:read", Scope: "folders:uid:fold1"},
+				{Action: "dashboards:write", Scope: "folders:uid:fold1"},
+				{Action: "dashboards:delete", Scope: "folders:uid:fold1"},
+				{Action: "annotations:create", Scope: "folders:uid:fold1"},
+			},
+			folders: []store.Folder{
+				{UID: "fold1"},
+			},
+		}
+		s.store = fStore
+		s.permissionStore = fStore
+
+		trackingStore := &trackingFolderStore{inner: fStore}
+		s.folderStore = trackingStore
+		s.identityStore = &fakeIdentityStore{disableNsCheck: true}
+		ctx := types.WithAuthInfo(context.Background(), callingService)
+
+		// Multiple checks with different verbs and a subresource — each creates a separate
+		// action group, which before the fix would each get its own folderTreeGetter.
+		resp, err := s.BatchCheck(ctx, &authzv1.BatchCheckRequest{
+			Namespace: "org-12",
+			Subject:   "user:test-uid",
+			Checks: []*authzv1.BatchCheckItem{
+				{
+					CorrelationId: "dash_read",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Verb:          "get",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+				{
+					CorrelationId: "dash_write",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Verb:          "update",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+				{
+					CorrelationId: "dash_delete",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Verb:          "delete",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+				{
+					CorrelationId: "annot_create",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Subresource:   "annotations",
+					Verb:          "create",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, 4, len(resp.Results))
+
+		// The key assertion: ListFolders should be called at most once,
+		// not once per action group (which would be 4 times without sharing).
+		assert.LessOrEqual(t, trackingStore.listFoldersCalls, 1,
+			"ListFolders should be called at most once across all BatchCheck groups")
+	})
+
+	t.Run("mixed batch: fresh group runs first, non-fresh reuses its result", func(t *testing.T) {
+		s := setupService()
+		fStore := &fakeStore{
+			disableNsCheck: true,
+			userID:         &store.UserIdentifiers{UID: "test-uid"},
+			basicRole:      &store.BasicRole{Role: "Viewer", IsAdmin: false},
+			userPermissions: []accesscontrol.Permission{
+				{Action: "dashboards:read", Scope: "folders:uid:fold1"},
+				{Action: "dashboards:write", Scope: "folders:uid:fold1"},
+				{Action: "dashboards:delete", Scope: "folders:uid:fold1"},
+			},
+			folders: []store.Folder{
+				{UID: "fold1"},
+			},
+		}
+		s.store = fStore
+		s.permissionStore = fStore
+
+		trackingStore := &trackingFolderStore{inner: fStore}
+		s.folderStore = trackingStore
+		s.identityStore = &fakeIdentityStore{disableNsCheck: true}
+		ctx := types.WithAuthInfo(context.Background(), callingService)
+
+		// Do NOT pre-populate folder cache — cold cache scenario.
+		// The fresh group should fetch the tree, and non-fresh groups should
+		// reuse the same memoized result without additional ListFolders calls.
+		freshTimestamp := time.Now().UnixMilli()
+		resp, err := s.BatchCheck(ctx, &authzv1.BatchCheckRequest{
+			Namespace: "org-12",
+			Subject:   "user:test-uid",
+			Checks: []*authzv1.BatchCheckItem{
+				{
+					CorrelationId: "dash_read",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Verb:          "get",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+				{
+					CorrelationId: "dash_delete",
+					Group:         "dashboard.grafana.app",
+					Resource:      "dashboards",
+					Verb:          "delete",
+					Name:          "dash1",
+					Folder:        "fold1",
+				},
+				{
+					CorrelationId:      "dash_write",
+					Group:              "dashboard.grafana.app",
+					Resource:           "dashboards",
+					Verb:               "update",
+					Name:               "dash1",
+					Folder:             "fold1",
+					FreshnessTimestamp: freshTimestamp,
+				},
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, 3, len(resp.Results))
+
+		// Fresh groups are processed first and fetch the tree once via buildFolderTree,
+		// which also populates the folder cache. Non-fresh groups then hit the warm cache
+		// through their own cached getter — no additional ListFolders calls.
+		// The fresh getter calls buildFolderTree which writes to folderCache (30s TTL in test setup).
+		// The cached getter then hits the warm cache — so only 1 ListFolders call total.
+		// Note: if folderCache were noop (CacheTTL=0), this would be 2 calls.
+		assert.LessOrEqual(t, trackingStore.listFoldersCalls, 1,
+			"ListFolders should be called at most once when folder cache is active")
+	})
+}
+
+// trackingFolderStore wraps a folder store and counts ListFolders calls.
+type trackingFolderStore struct {
+	inner            store.FolderStore
+	listFoldersCalls int
+}
+
+func (t *trackingFolderStore) ListFolders(ctx context.Context, ns types.NamespaceInfo) ([]store.Folder, error) {
+	t.listFoldersCalls++
+	return t.inner.ListFolders(ctx, ns)
 }
