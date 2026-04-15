@@ -55,3 +55,4 @@ export {
 } from '../services/pluginMeta/panels';
 export { installPluginMeta, uninstallPluginMeta } from '../services/pluginMeta/plugins';
 export { logPluginMetaError } from '../services/pluginMeta/logging';
+export { getPluginSettings, refreshPluginSettings } from '../services/pluginSettings/settings';
