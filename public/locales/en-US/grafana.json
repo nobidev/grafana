@@ -9770,6 +9770,7 @@
         },
         "length": {
           "formats": {
+            "name-centimeter": "centimeter (cm)",
             "name-feet": "feet (ft)",
             "name-inch": "inch (in)",
             "name-kilometer": "kilometer (km)",
@@ -10717,6 +10718,7 @@
       "description": "Description",
       "keys": "Keys"
     },
+    "shortcuts-aria-label": "List of keyboard shortcuts",
     "shortcuts-category": {
       "dashboard": "Dashboard",
       "focused-panel": "Focused panel",
