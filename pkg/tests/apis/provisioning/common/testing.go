@@ -918,7 +918,7 @@ func (h *ProvisioningTestHelper) WaitForResourceQuotaLimit(t *testing.T, repoNam
 			return
 		}
 
-		repo := UnstructuredToRepository(t, repoObj)
+		repo := MustFromUnstructured[provisioning.Repository](t, repoObj)
 		assert.Equal(collect, expectedLimit, repo.Status.Quota.MaxResourcesPerRepository,
 			"repository quota limit not yet updated by controller")
 	}, WaitTimeoutDefault, WaitIntervalDefault, "Status.Quota.MaxResourcesPerRepository should be %d", expectedLimit)
@@ -934,7 +934,7 @@ func (h *ProvisioningTestHelper) WaitForQuotaReconciliation(t *testing.T, repoNa
 			return
 		}
 
-		repo := UnstructuredToRepository(t, repoObj)
+		repo := MustFromUnstructured[provisioning.Repository](t, repoObj)
 		condition := FindCondition(repo.Status.Conditions, provisioning.ConditionTypeResourceQuota)
 		if !assert.NotNil(collect, condition, "Quota condition not found") {
 			return
@@ -953,7 +953,7 @@ func (h *ProvisioningTestHelper) WaitForConditionReason(t *testing.T, repoName s
 			return
 		}
 
-		repo := UnstructuredToRepository(t, repoObj)
+		repo := MustFromUnstructured[provisioning.Repository](t, repoObj)
 		condition := FindCondition(repo.Status.Conditions, conditionType)
 		if !assert.NotNil(collect, condition, "%s condition not found", conditionType) {
 			return
@@ -1408,37 +1408,38 @@ func AsJSON(obj any) []byte {
 	return jj
 }
 
-func UnstructuredToRepository(t *testing.T, obj *unstructured.Unstructured) *provisioning.Repository {
-	bytes, err := obj.MarshalJSON()
-	require.NoError(t, err)
-
-	repo := &provisioning.Repository{}
-	err = json.Unmarshal(bytes, repo)
-	require.NoError(t, err)
-
-	return repo
+// ToUnstructured converts a typed K8s object to an unstructured representation
+// using the canonical DefaultUnstructuredConverter.
+func ToUnstructured[T any](obj *T) (*unstructured.Unstructured, error) {
+	raw, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(obj)
+	if err != nil {
+		return nil, err
+	}
+	return &unstructured.Unstructured{Object: raw}, nil
 }
 
-func RepositoryToUnstructured(t *testing.T, obj *provisioning.Repository) *unstructured.Unstructured {
-	bytes, err := json.Marshal(obj)
-	require.NoError(t, err)
-
-	res := &unstructured.Unstructured{}
-	err = res.UnmarshalJSON(bytes)
-	require.NoError(t, err)
-
-	return res
+// FromUnstructured converts an unstructured object to a typed K8s object
+// using the canonical DefaultUnstructuredConverter.
+func FromUnstructured[T any](obj *unstructured.Unstructured) (*T, error) {
+	result := new(T)
+	err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, result)
+	return result, err
 }
 
-func UnstructuredToConnection(t *testing.T, obj *unstructured.Unstructured) *provisioning.Connection {
-	bytes, err := obj.MarshalJSON()
+// MustToUnstructured is a test-fatal wrapper around ToUnstructured.
+func MustToUnstructured[T any](t *testing.T, obj *T) *unstructured.Unstructured {
+	t.Helper()
+	result, err := ToUnstructured(obj)
 	require.NoError(t, err)
+	return result
+}
 
-	c := &provisioning.Connection{}
-	err = json.Unmarshal(bytes, c)
+// MustFromUnstructured is a test-fatal wrapper around FromUnstructured.
+func MustFromUnstructured[T any](t *testing.T, obj *unstructured.Unstructured) *T {
+	t.Helper()
+	result, err := FromUnstructured[T](obj)
 	require.NoError(t, err)
-
-	return c
+	return result
 }
 
 // ParseTestResults extracts TestResults from an API response k8sruntime.Object.
@@ -2896,38 +2897,6 @@ func GetRepositoryClientV1Beta1(helper *apis.K8sTestHelper) *apis.K8sResourceCli
 	})
 }
 
-// ToUnstructuredConnection converts a Connection to an unstructured object
-func ToUnstructuredConnection(obj *provisioning.Connection) (*unstructured.Unstructured, error) {
-	unstructuredObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return nil, err
-	}
-	return &unstructured.Unstructured{Object: unstructuredObj}, nil
-}
-
-// FromUnstructuredToConnection converts an unstructured object to a Connection
-func FromUnstructuredToConnection(obj *unstructured.Unstructured) (*provisioning.Connection, error) {
-	conn := &provisioning.Connection{}
-	err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, conn)
-	return conn, err
-}
-
-// ToUnstructuredRepository converts a Repository to an unstructured object
-func ToUnstructuredRepository(obj *provisioning.Repository) (*unstructured.Unstructured, error) {
-	unstructuredObj, err := k8sruntime.DefaultUnstructuredConverter.ToUnstructured(obj)
-	if err != nil {
-		return nil, err
-	}
-	return &unstructured.Unstructured{Object: unstructuredObj}, nil
-}
-
-// FromUnstructuredToRepository converts an unstructured object to a Repository
-func FromUnstructuredToRepository(obj *unstructured.Unstructured) (*provisioning.Repository, error) {
-	repo := &provisioning.Repository{}
-	err := k8sruntime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, repo)
-	return repo, err
-}
-
 // NewDefaultSharedEnv creates a SharedEnv with default options for provisioning tests
 func NewDefaultSharedEnv() *SharedEnv {
 	return NewSharedEnv(
@@ -2944,6 +2913,35 @@ func SharedHelper(t *testing.T, env *SharedEnv) *ProvisioningTestHelper {
 	helper := env.GetCleanHelper(t)
 	helper.GetEnv().GithubRepoFactory.Client = ghmock.NewMockedHTTPClient()
 	return helper
+}
+
+// RESTDo performs a REST request against the provisioning API and returns the
+// response as an unstructured map. The subpath is appended to
+// /apis/provisioning.grafana.app/<version>/namespaces/<namespace>/.
+func (h *ProvisioningTestHelper) RESTDo(t *testing.T, method, version, subpath string, body ...map[string]interface{}) map[string]interface{} {
+	t.Helper()
+	ns := h.Namespace
+	if ns == "" {
+		ns = "default"
+	}
+	absPath := fmt.Sprintf("/apis/provisioning.grafana.app/%s/namespaces/%s/%s", version, ns, subpath)
+
+	req := h.AdminREST.Verb(method).AbsPath(absPath)
+	if len(body) > 0 && body[0] != nil {
+		bodyBytes, err := json.Marshal(body[0])
+		require.NoError(t, err)
+		req = req.Body(bodyBytes).SetHeader("Content-Type", "application/json")
+	}
+
+	result := req.Do(context.Background())
+	require.NoError(t, result.Error())
+
+	raw, err := result.Raw()
+	require.NoError(t, err)
+
+	var obj map[string]interface{}
+	require.NoError(t, json.Unmarshal(raw, &obj))
+	return obj
 }
 
 // LabelPendingDelete is the label key written by the tenant watcher to mark
