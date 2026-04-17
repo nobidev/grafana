@@ -105,18 +105,14 @@ export const RoutingSettings = ({ alertManager }: RoutingSettingsProps) => {
 
                       // If '...' is selected, remove it and add required fields + new option
                       if (currentValues.includes(DISABLE_GROUPING)) {
-                        setValue(`contactPoints.${alertManager}.groupBy`, [
-                          ...new Set([...REQUIRED_FIELDS_IN_GROUPBY, opt]),
-                        ]);
+                        setValue(`contactPoints.${alertManager}.groupBy`, [...REQUIRED_FIELDS_IN_GROUPBY, opt]);
                       } else {
                         // @ts-ignore-check: react-hook-form made me do this
-                        setValue(`contactPoints.${alertManager}.groupBy`, [
-                          ...new Set([...(field.value as string[]), opt]),
-                        ]);
+                        setValue(`contactPoints.${alertManager}.groupBy`, [...field.value, opt]);
                       }
                     }}
                     onChange={(value) => {
-                      const newValues = [...new Set(mapMultiSelectValueToStrings(value))];
+                      const newValues = mapMultiSelectValueToStrings(value);
                       const hadDisableGrouping = currentValues.includes(DISABLE_GROUPING);
                       const nowHasDisableGrouping = newValues.includes(DISABLE_GROUPING);
 
