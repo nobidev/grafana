@@ -1,22 +1,22 @@
-import { css } from '@emotion/css';
-import { useEffect, useState } from 'react';
-import { Controller, useFormContext } from 'react-hook-form';
+import {css} from '@emotion/css';
+import {useEffect, useState} from 'react';
+import {Controller, useFormContext} from 'react-hook-form';
 
-import { type GrafanaTheme2 } from '@grafana/data';
-import { Trans, t } from '@grafana/i18n';
-import { Field, FieldValidationMessage, InlineField, MultiSelect, Stack, Switch, Text, useStyles2 } from '@grafana/ui';
-import { type RuleFormValues } from 'app/features/alerting/unified/types/rule-form';
+import {type GrafanaTheme2} from '@grafana/data';
+import {t, Trans} from '@grafana/i18n';
+import {Field, FieldValidationMessage, InlineField, MultiSelect, Stack, Switch, Text, useStyles2} from '@grafana/ui';
+import {type RuleFormValues} from 'app/features/alerting/unified/types/rule-form';
 import {
   commonGroupByOptions,
   mapMultiSelectValueToStrings,
-  stringToSelectableValue,
   stringsToSelectableValues,
+  stringToSelectableValue,
 } from 'app/features/alerting/unified/utils/amroutes';
 
-import { getFormStyles } from '../../../../notification-policies/formStyles';
-import { TIMING_OPTIONS_DEFAULTS } from '../../../../notification-policies/timingOptions';
+import {getFormStyles} from '../../../../notification-policies/formStyles';
+import {TIMING_OPTIONS_DEFAULTS} from '../../../../notification-policies/timingOptions';
 
-import { RouteTimings } from './RouteTimings';
+import {RouteTimings} from './RouteTimings';
 
 const REQUIRED_FIELDS_IN_GROUPBY = ['grafana_folder', 'alertname'];
 
@@ -105,14 +105,14 @@ export const RoutingSettings = ({ alertManager }: RoutingSettingsProps) => {
 
                       // If '...' is selected, remove it and add required fields + new option
                       if (currentValues.includes(DISABLE_GROUPING)) {
-                        setValue(`contactPoints.${alertManager}.groupBy`, [...REQUIRED_FIELDS_IN_GROUPBY, opt]);
+                        setValue(`contactPoints.${alertManager}.groupBy`, [...new Set([...REQUIRED_FIELDS_IN_GROUPBY, opt])]);
                       } else {
                         // @ts-ignore-check: react-hook-form made me do this
-                        setValue(`contactPoints.${alertManager}.groupBy`, [...field.value, opt]);
+                        setValue(`contactPoints.${alertManager}.groupBy`, [...new Set([...(field.value as string[]), opt])]);
                       }
                     }}
                     onChange={(value) => {
-                      const newValues = mapMultiSelectValueToStrings(value);
+                      const newValues = [...new Set(mapMultiSelectValueToStrings(value))];
                       const hadDisableGrouping = currentValues.includes(DISABLE_GROUPING);
                       const nowHasDisableGrouping = newValues.includes(DISABLE_GROUPING);
 
