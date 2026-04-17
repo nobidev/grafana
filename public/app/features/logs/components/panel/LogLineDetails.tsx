@@ -81,7 +81,8 @@ LogLineDetails.displayName = 'LogLineDetails';
 const LogLineDetailsTabs = memo(
   ({ focusLogLine, logs, timeRange, timeZone }: Pick<Props, 'focusLogLine' | 'logs' | 'timeRange' | 'timeZone'>) => {
     const { app, fontSize, noInteractions, wrapLogMessage } = useLogListContext();
-    const { currentLog, setCurrentLog, showDetails, toggleDetails } = useLogDetailsContext();
+    const { currentLog, closeDetails, detailsMode, setCurrentLog, showDetails, setDetailsMode, toggleDetails } =
+      useLogDetailsContext();
     const [search, setSearch] = useState('');
     const inputRef = useRef('');
     const inlineLogDetailsNoScrolls = useBooleanFlagValue('inlineLogDetailsNoScrolls', false);
@@ -144,7 +145,15 @@ const LogLineDetailsTabs = memo(
             })}
           </TabsBar>
         )}
-        <LogLineDetailsHeader focusLogLine={focusLogLine} log={currentLog} search={search} onSearch={handleSearch} />
+        <LogLineDetailsHeader
+          closeDetails={closeDetails}
+          detailsMode={detailsMode}
+          focusLogLine={focusLogLine}
+          log={currentLog}
+          search={search}
+          setDetailsMode={setDetailsMode}
+          onSearch={handleSearch}
+        />
         <ScrollContainer>
           <LogLineDetailsComponent
             log={currentLog}
@@ -170,7 +179,7 @@ export interface InlineLogLineDetailsProps {
 
 export const InlineLogLineDetails = memo(({ logs, log, onResize, timeRange, timeZone }: InlineLogLineDetailsProps) => {
   const { app, fontSize, noInteractions } = useLogListContext();
-  const { detailsWidth } = useLogDetailsContext();
+  const { closeDetails, detailsMode, detailsWidth, setDetailsMode } = useLogDetailsContext();
   const inlineLogDetailsNoScrolls = useBooleanFlagValue('inlineLogDetailsNoScrolls', false);
   const styles = useStyles2(getStyles, 'inline', undefined, fontSize, inlineLogDetailsNoScrolls);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -219,7 +228,14 @@ export const InlineLogLineDetails = memo(({ logs, log, onResize, timeRange, time
   return (
     <div className={`${styles.inlineWrapper} log-line-inline-details`} style={{ maxWidth: detailsWidth }}>
       <div className={styles.inlineContainer}>
-        <LogLineDetailsHeader log={log} search={search} onSearch={handleSearch} />
+        <LogLineDetailsHeader
+          closeDetails={closeDetails}
+          detailsMode={detailsMode}
+          log={log}
+          search={search}
+          setDetailsMode={setDetailsMode}
+          onSearch={handleSearch}
+        />
         {inlineLogDetailsNoScrolls ? (
           <div>
             <LogLineDetailsComponent log={log} logs={logs} search={search} timeRange={timeRange} timeZone={timeZone} />
