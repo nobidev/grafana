@@ -3032,7 +3032,7 @@ var (
 		{
 			Name:        "reporting.anyPageReporting",
 			Description: "Enables reporting for any page in Grafana",
-			Stage:       FeatureStageExperimental, // TODO: Can this be set to PublicPreview or GeneralAvailability?
+			Stage:       FeatureStageExperimental,
 			Owner:       grafanaSharingSquad,
 			Expression:  "false",
 			Generate:    Generate{Go: true, React: true},
