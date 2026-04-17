@@ -949,4 +949,8 @@ const (
 	// FlagClickHouseConfigValidation
 	// Enables validation on the ClickHouse data source configuration page
 	FlagClickHouseConfigValidation = "clickHouseConfigValidation"
+
+	// FlagReportingAnyPageReporting
+	// Enables reporting for any page in Grafana
+	FlagReportingAnyPageReporting = "reporting.anyPageReporting"
 )
