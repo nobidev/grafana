@@ -99,6 +99,11 @@ func getStaticRootPath(cfgProvider configprovider.ConfigProvider) (string, error
 	}
 
 	staticRootPath := cfg.StaticRootPath
+	// cfg.HomePath may not be set depending on the cfgProvider implementation
+	if staticRootPath == "" {
+		return "/usr/share/grafana/public", nil
+	}
+
 	if _, err = os.Stat(filepath.Join(staticRootPath, "app", "plugins")); err != nil {
 		return "", fmt.Errorf("could not find core plugins in directory %s", staticRootPath)
 	}
