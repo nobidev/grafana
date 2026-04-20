@@ -100,7 +100,7 @@ func getStaticRootPath(cfgProvider configprovider.ConfigProvider) (string, error
 
 	staticRootPath := cfg.StaticRootPath
 	if _, err = os.Stat(filepath.Join(staticRootPath, "app", "plugins")); err != nil {
-		return "", errors.New("could not find core plugins directory")
+		return "", fmt.Errorf("could not find core plugins in directory %s", staticRootPath)
 	}
 
 	return staticRootPath, nil
