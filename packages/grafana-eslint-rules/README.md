@@ -294,3 +294,37 @@ interface LoadedProperties extends EventProperty {
   numberOfItems: number;
 }
 ```
+
+### `no-unassociated-field-label`
+
+Require `<Field>` and `<InlineField>` components with a string label to be associated with an input, matching the runtime behaviour in `getChildId` (`packages/grafana-ui/src/utils/reactUtils.ts`). The rule is satisfied when one of the following is true:
+
+- the Field has an `htmlFor` prop, or
+- the direct child JSX element has an `id` or `inputId` attribute with a value, or
+- the direct child is a `RadioButtonGroup` (rendered as a `<fieldset>`).
+
+The rule only fires when `label` is a plain string. When `label` is a JSX element, the caller is responsible for labelling and the rule stays out of the way.
+
+Anything that isn't a directly-inspectable single JSX child — spread attributes, variable identifiers, fragments, mapped arrays — is skipped silently. The rule is intentionally narrow and covers only the common happy-path shape; off-pattern cases may still be runtime bugs, but they're left to review.
+
+```tsx
+// Bad ❌
+<Field label="Name">
+  <Input />
+</Field>
+
+// Good ✅ — htmlFor on Field
+<Field label="Name" htmlFor="name">
+  <Input />
+</Field>
+
+// Good ✅ — id on the child
+<Field label="Name">
+  <Input id="name" />
+</Field>
+
+// Good ✅ — RadioButtonGroup is exempt
+<Field label="Mode">
+  <RadioButtonGroup options={options} />
+</Field>
+```

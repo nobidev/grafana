@@ -211,6 +211,7 @@ module.exports = [
       'no-constant-condition': 'error',
       '@grafana/define-feature-events': 'error',
       '@grafana/no-plain-links': 'error',
+      '@grafana/no-unassociated-field-label': 'error',
     },
   },
 

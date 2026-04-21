@@ -8,6 +8,7 @@ const noPluginExternalImportPaths = require('./rules/no-plugin-external-import-p
 const noInvalidCssProperties = require('./rules/no-invalid-css-properties.cjs');
 const defineFeatureEvents = require('./rules/define-feature-events.cjs');
 const noRestrictedSyntaxRules = require('./rules/no-restricted-syntax.cjs');
+const noUnassociatedFieldLabel = require('./rules/no-unassociated-field-label.cjs');
 
 /** @type {import('eslint').Linter.Plugin} */
 module.exports = {
@@ -21,6 +22,7 @@ module.exports = {
     'no-plugin-external-import-paths': noPluginExternalImportPaths,
     'no-invalid-css-properties': noInvalidCssProperties,
     'define-feature-events': defineFeatureEvents,
+    'no-unassociated-field-label': noUnassociatedFieldLabel,
     ...noRestrictedSyntaxRules.rules,
   },
 };
