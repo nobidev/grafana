@@ -1,10 +1,9 @@
 import { cx, css } from '@emotion/css';
-import { cloneElement, type ReactNode, useId } from 'react';
+import { cloneElement, useId } from 'react';
 
 import { type GrafanaTheme2 } from '@grafana/data';
 
 import { useTheme2 } from '../../themes/ThemeContext';
-import { getChildId } from '../../utils/reactUtils';
 import { type PopoverContent } from '../Tooltip/types';
 
 import { type FieldProps } from './Field';
@@ -12,7 +11,7 @@ import { FieldValidationMessage } from './FieldValidationMessage';
 import { InlineLabel } from './InlineLabel';
 import { RadioButtonGroup } from './RadioButtonGroup/RadioButtonGroup';
 
-export interface Props extends Omit<FieldProps, 'css' | 'horizontal' | 'description' | 'error'> {
+export interface Props extends Omit<FieldProps, 'horizontal' | 'description'> {
   /** Content for the label's tooltip */
   tooltip?: PopoverContent;
   /** Custom width for the label as a multiple of 8px */
@@ -23,15 +22,12 @@ export interface Props extends Omit<FieldProps, 'css' | 'horizontal' | 'descript
   shrink?: boolean;
   /** Make field's background transparent */
   transparent?: boolean;
-  /** Error message to display */
-  error?: ReactNode;
-  htmlFor?: string;
   /** Make tooltip interactive */
   interactive?: boolean;
 }
 
 /**
- * A basic component for rendering form elements, like `Input`, `Checkbox`, `Combobox`, etc, inline together with `InlineLabel`. If the child element has `id` specified, the label's `htmlFor` attribute, pointing to the id, will be added.
+ * A basic component for rendering form elements, like `Input`, `Checkbox`, `Combobox`, etc, inline together with `InlineLabel`.
  *
  * https://developers.grafana.com/ui/latest/index.html?path=/docs/forms-inlinefield--docs
  */
@@ -56,7 +52,6 @@ export const InlineField = ({
 }: Props) => {
   const theme = useTheme2();
   const styles = getStyles(theme, grow, shrink);
-  const inputId = htmlFor ?? getChildId(children);
   const useFieldset = children.type === RadioButtonGroup;
   const labelId = useId();
 
@@ -66,7 +61,7 @@ export const InlineField = ({
         interactive={interactive}
         width={labelWidth}
         tooltip={tooltip}
-        htmlFor={inputId}
+        htmlFor={htmlFor ?? undefined}
         transparent={transparent}
         id={labelId}
         as={useFieldset ? 'span' : 'label'}
