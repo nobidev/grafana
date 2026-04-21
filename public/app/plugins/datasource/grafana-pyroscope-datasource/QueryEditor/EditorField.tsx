@@ -3,7 +3,7 @@ import { type ComponentProps } from 'react';
 import * as React from 'react';
 
 import { type GrafanaTheme2 } from '@grafana/data';
-import { Field, Icon, type PopoverContent, ReactUtils, Tooltip, useStyles2 } from '@grafana/ui';
+import { Field, Icon, type PopoverContent, Tooltip, useStyles2 } from '@grafana/ui';
 
 interface EditorFieldProps extends ComponentProps<typeof Field> {
   label: string;
@@ -19,7 +19,7 @@ export const EditorField = (props: EditorFieldProps) => {
   const styles = useStyles2(getStyles, width);
 
   // Null check for backward compatibility
-  const childInputId = fieldProps?.htmlFor || ReactUtils?.getChildId(children);
+  const childInputId = fieldProps.htmlFor ?? undefined;
 
   const labelEl = (
     <>
