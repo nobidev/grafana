@@ -78,11 +78,12 @@ type RepositoryController struct {
 	minSyncInterval time.Duration
 	drainTimeout    time.Duration
 
-	registry              prometheus.Registerer
-	tracer                tracing.Tracer
-	quotaGetter           quotas.QuotaGetter
-	tokenMetrics          *repositoryTokenMetrics
-	folderMetadataEnabled bool
+	registry               prometheus.Registerer
+	tracer                 tracing.Tracer
+	quotaGetter            quotas.QuotaGetter
+	tokenMetrics           *repositoryTokenMetrics
+	folderMetadataEnabled  bool
+	maxIncrementalDiffSize int
 }
 
 // NewRepositoryController creates new RepositoryController.
@@ -107,6 +108,7 @@ func NewRepositoryController(
 	drainTimeout time.Duration,
 	quotaGetter quotas.QuotaGetter,
 	folderMetadataEnabled bool,
+	maxIncrementalDiffSize int,
 ) (*RepositoryController, error) {
 	finalizerMetrics := registerFinalizerMetrics(registry)
 	repoTokenMetrics := registerRepositoryTokenMetrics(registry)
@@ -132,16 +134,17 @@ func NewRepositoryController(
 			metrics:       &finalizerMetrics,
 			maxWorkers:    parallelOperations,
 		},
-		jobs:                  jobs,
-		logger:                logging.DefaultLogger.With("logger", loggerName),
-		registry:              registry,
-		tracer:                tracer,
-		resyncInterval:        resyncInterval,
-		minSyncInterval:       minSyncInterval,
-		drainTimeout:          drainTimeout,
-		quotaGetter:           quotaGetter,
-		tokenMetrics:          repoTokenMetrics,
-		folderMetadataEnabled: folderMetadataEnabled,
+		jobs:                   jobs,
+		logger:                 logging.DefaultLogger.With("logger", loggerName),
+		registry:               registry,
+		tracer:                 tracer,
+		resyncInterval:         resyncInterval,
+		minSyncInterval:        minSyncInterval,
+		drainTimeout:           drainTimeout,
+		quotaGetter:            quotaGetter,
+		tokenMetrics:           repoTokenMetrics,
+		folderMetadataEnabled:  folderMetadataEnabled,
+		maxIncrementalDiffSize: maxIncrementalDiffSize,
 	}
 
 	_, err := repoInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -458,7 +461,7 @@ func (rc *RepositoryController) determineSyncStrategy(
 		// Whenever possible, we try to keep it as an incremental sync to keep things performant.
 		// However, if there are any .keep file deletions inside a folder with no other deletions, we need
 		// to do a full sync to see if the folder was deleted as well in git.
-		incremental, err := shouldUseIncrementalSync(ctx, versioned, obj, latestRef, rc.folderMetadataEnabled)
+		incremental, err := shouldUseIncrementalSync(ctx, versioned, obj, latestRef, rc.folderMetadataEnabled, rc.maxIncrementalDiffSize)
 		if err != nil {
 			logger.Warn("unable to compare files for incremental sync, doing full sync", "error", err)
 			return &provisioning.SyncJobOptions{}
@@ -471,19 +474,20 @@ func (rc *RepositoryController) determineSyncStrategy(
 	}
 }
 
-func shouldUseIncrementalSync(ctx context.Context, versioned repository.Versioned, obj *provisioning.Repository, latestRef string, folderMetadataEnabled bool) (bool, error) {
+func shouldUseIncrementalSync(
+	ctx context.Context,
+	versioned repository.Versioned,
+	obj *provisioning.Repository,
+	latestRef string,
+	folderMetadataEnabled bool,
+	maxIncrementalDiffSize int,
+) (bool, error) {
 	changes, err := versioned.CompareFiles(ctx, obj.Status.Sync.LastRef, latestRef)
 	if err != nil {
 		return false, err
 	}
-	var deletedPaths []string
-	for _, change := range changes {
-		if change.Action == repository.FileActionDeleted {
-			deletedPaths = append(deletedPaths, change.Path)
-		}
-	}
 
-	return repository.CanUseIncrementalSync(deletedPaths, folderMetadataEnabled), nil
+	return repository.CanUseIncrementalSyncInController(changes, folderMetadataEnabled, maxIncrementalDiffSize), nil
 }
 
 func (rc *RepositoryController) addSyncJob(ctx context.Context, obj *provisioning.Repository, syncOptions *provisioning.SyncJobOptions) error {

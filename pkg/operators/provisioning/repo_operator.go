@@ -123,6 +123,7 @@ func RunRepoController(deps server.OperatorDependencies) error {
 		controllerCfg.DrainTimeout(),
 		quotaGetter,
 		resources.IsFolderMetadataEnabled(controllerCfg.Settings),
+		controllerCfg.Settings.SectionWithEnvOverrides("operator").Key("max_incremental_diff_size").MustInt(100),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create repository controller: %w", err)
