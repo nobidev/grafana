@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { ReducerID } from '@grafana/data';
 import { type CalculateFieldTransformerOptions, type ReduceOptions } from '@grafana/data/internal';
 import { t } from '@grafana/i18n';
@@ -13,6 +15,7 @@ export const ReduceRowOptionsEditor = (props: {
 }) => {
   const { names, selected, onChange, options } = props;
   const { reduce } = options;
+  const calculationId = useId();
 
   const updateReduceOptions = (v: ReduceOptions) => {
     onChange({
@@ -70,6 +73,7 @@ export const ReduceRowOptionsEditor = (props: {
         labelWidth={LABEL_WIDTH}
       >
         <StatsPicker
+          inputId={calculationId}
           allowMultiple={false}
           stats={[reduce?.reducer || ReducerID.sum]}
           onChange={onStatsChange}

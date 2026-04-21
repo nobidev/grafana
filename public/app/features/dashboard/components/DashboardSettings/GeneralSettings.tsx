@@ -1,4 +1,4 @@
-import { useCallback, type ChangeEvent, useState, type JSX } from 'react';
+import { useCallback, type ChangeEvent, useId, useState, type JSX } from 'react';
 import { connect, type ConnectedProps } from 'react-redux';
 
 import { type TimeZone } from '@grafana/data';
@@ -35,6 +35,7 @@ export function GeneralSettingsUnconnected({
   updateWeekStart,
   sectionNav,
 }: Props): JSX.Element {
+  const folderId = useId();
   const [renderCounter, setRenderCounter] = useState(0);
   const [dashboardTitle, setDashboardTitle] = useState(dashboard.title);
   const [dashboardDescription, setDashboardDescription] = useState(dashboard.description);
@@ -173,7 +174,7 @@ export function GeneralSettingsUnconnected({
           </Field>
 
           <Field label={t('dashboard-settings.general.folder-label', 'Folder')}>
-            <FolderPicker value={dashboard.meta.folderUid} onChange={onFolderChange} />
+            <FolderPicker inputId={folderId} value={dashboard.meta.folderUid} onChange={onFolderChange} />
           </Field>
 
           <Field

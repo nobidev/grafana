@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import {
   DataTransformerID,
   standardTransformers,
@@ -16,6 +18,10 @@ import lightImage from '../images/light/transpose.svg';
 import { getEmptyOptions } from '../utils';
 
 export const TransposeTransformerEditor = ({ options, onChange }: TransformerUIProps<TransposeTransformerOptions>) => {
+  const firstFieldNameId = useId();
+  const remainingFieldsNameId = useId();
+  const emptyValueId = useId();
+
   const onSelectEmptyValue = (value?: SelectableValue<SpecialValue>) => {
     onChange({
       ...options,
@@ -31,6 +37,7 @@ export const TransposeTransformerEditor = ({ options, onChange }: TransformerUIP
           labelWidth={24}
         >
           <Input
+            id={firstFieldNameId}
             placeholder={t('transformers.transpose-transfomer-editor.placeholder-field', 'Field')}
             value={options.firstFieldName}
             onChange={(e) => onChange({ ...options, firstFieldName: e.currentTarget.value })}
@@ -45,6 +52,7 @@ export const TransposeTransformerEditor = ({ options, onChange }: TransformerUIP
           labelWidth={24}
         >
           <Input
+            id={remainingFieldsNameId}
             placeholder={t('transformers.transpose-transfomer-editor.placeholder-value', 'Value')}
             value={options.restFieldsName}
             onChange={(e) => onChange({ ...options, restFieldsName: e.currentTarget.value })}
@@ -54,7 +62,13 @@ export const TransposeTransformerEditor = ({ options, onChange }: TransformerUIP
       </InlineFieldRow>
       <InlineFieldRow>
         <InlineField label={t('transformers.grouping-to-matrix-transformer-editor.label-empty-value', 'Empty value')}>
-          <Select options={getEmptyOptions()} value={options.emptyValue} onChange={onSelectEmptyValue} isClearable />
+          <Select
+            inputId={emptyValueId}
+            options={getEmptyOptions()}
+            value={options.emptyValue}
+            onChange={onSelectEmptyValue}
+            isClearable
+          />
         </InlineField>
       </InlineFieldRow>
     </>

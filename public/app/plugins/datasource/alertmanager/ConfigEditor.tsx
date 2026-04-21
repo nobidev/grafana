@@ -1,5 +1,5 @@
 import { produce } from 'immer';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { Link } from 'react-router-dom-v5-compat';
 
 import { SIGV4ConnectionConfig } from '@grafana/aws-sdk';
@@ -31,6 +31,8 @@ const IMPL_OPTIONS: Array<SelectableValue<AlertManagerImplementation>> = [
 ];
 
 export const ConfigEditor = (props: Props) => {
+  const implementationId = useId();
+  const receiveGrafanaAlertsId = useId();
   const { options, onOptionsChange } = props;
 
   // As we default to Mimir, we need to make sure the implementation is set from the start
@@ -50,6 +52,7 @@ export const ConfigEditor = (props: Props) => {
       <Box marginBottom={5}>
         <InlineField label="Implementation" labelWidth={26}>
           <Select
+            inputId={implementationId}
             width={40}
             options={IMPL_OPTIONS}
             value={options.jsonData.implementation || AlertManagerImplementation.mimir}
@@ -70,6 +73,7 @@ export const ConfigEditor = (props: Props) => {
           labelWidth={26}
         >
           <InlineSwitch
+            id={receiveGrafanaAlertsId}
             value={options.jsonData.handleGrafanaManagedAlerts ?? false}
             onChange={(e) => {
               onOptionsChange(

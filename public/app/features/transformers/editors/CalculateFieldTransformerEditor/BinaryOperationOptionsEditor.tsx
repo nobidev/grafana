@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import {
   type BinaryOperationID,
   binaryOperators,
@@ -22,6 +24,7 @@ export const BinaryOperationOptionsEditor = (props: {
   onChange: (options: CalculateFieldTransformerOptions) => void;
   names: string[];
 }) => {
+  const operationId = useId();
   const { options, onChange } = props;
   const newLeft = checkBinaryValueType(props.options.binary?.left ?? '', props.names);
   const newRight = checkBinaryValueType(props.options.binary?.right ?? '', props.names);
@@ -142,6 +145,7 @@ export const BinaryOperationOptionsEditor = (props: {
           labelWidth={LABEL_WIDTH}
         >
           <Select
+            inputId={operationId}
             allowCustomValue={true}
             placeholder={t(
               'transformers.binary-operation-options-editor.placeholder-fields-or-number',

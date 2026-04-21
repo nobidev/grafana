@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { type SelectableValue } from '@grafana/data';
 import { InlineFieldRow, InlineField, Select, MultiSelect, Input } from '@grafana/ui';
 
@@ -9,11 +11,16 @@ export interface Props {
 }
 
 export function USAQueryEditor({ query, onChange }: Props) {
+  const modeId = useId();
+  const periodId = useId();
+  const fieldsId = useId();
+  const statesId = useId();
   return (
     <>
       <InlineFieldRow>
         <InlineField labelWidth={14} label="Mode">
           <Select
+            inputId={modeId}
             options={usaQueryModes}
             onChange={(v) => {
               onChange({ ...query, mode: v.value });
@@ -24,6 +31,7 @@ export function USAQueryEditor({ query, onChange }: Props) {
         </InlineField>
         <InlineField label="Period">
           <Input
+            id={periodId}
             value={query.period}
             placeholder={'30m'}
             onChange={(v) => {
@@ -35,6 +43,7 @@ export function USAQueryEditor({ query, onChange }: Props) {
       <InlineFieldRow>
         <InlineField labelWidth={14} label="Fields">
           <MultiSelect
+            inputId={fieldsId}
             options={fieldNames}
             onChange={(vals: SelectableValue[]) => {
               onChange({ ...query, fields: vals.map((v) => v.value) });
@@ -46,6 +55,7 @@ export function USAQueryEditor({ query, onChange }: Props) {
         </InlineField>
         <InlineField label="States" grow>
           <MultiSelect
+            inputId={statesId}
             options={stateNames}
             onChange={(vals: SelectableValue[]) => {
               onChange({ ...query, states: vals.map((v) => v.value) });

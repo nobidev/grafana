@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -23,6 +23,10 @@ export const GroupingToMatrixTransformerEditor = ({
   options,
   onChange,
 }: TransformerUIProps<GroupingToMatrixTransformerOptions>) => {
+  const columnId = useId();
+  const rowId = useId();
+  const cellValueId = useId();
+  const emptyValueId = useId();
   const fieldNames = useAllFieldNamesFromDataFrames(input).map((item: string) => ({ label: item, value: item }));
   const variables = getTemplateSrv()
     .getVariables()
@@ -78,6 +82,7 @@ export const GroupingToMatrixTransformerEditor = ({
           labelWidth={8}
         >
           <Select
+            inputId={columnId}
             options={[...fieldNames, ...variables]}
             value={options.columnField}
             onChange={onSelectColumn}
@@ -85,13 +90,20 @@ export const GroupingToMatrixTransformerEditor = ({
           />
         </InlineField>
         <InlineField label={t('transformers.grouping-to-matrix-transformer-editor.label-row', 'Row')} labelWidth={8}>
-          <Select options={[...fieldNames, ...variables]} value={options.rowField} onChange={onSelectRow} isClearable />
+          <Select
+            inputId={rowId}
+            options={[...fieldNames, ...variables]}
+            value={options.rowField}
+            onChange={onSelectRow}
+            isClearable
+          />
         </InlineField>
         <InlineField
           label={t('transformers.grouping-to-matrix-transformer-editor.label-cell-value', 'Cell value')}
           labelWidth={10}
         >
           <Select
+            inputId={cellValueId}
             options={[...fieldNames, ...variables]}
             value={options.valueField}
             onChange={onSelectValue}
@@ -99,7 +111,13 @@ export const GroupingToMatrixTransformerEditor = ({
           />
         </InlineField>
         <InlineField label={t('transformers.grouping-to-matrix-transformer-editor.label-empty-value', 'Empty value')}>
-          <Select options={getEmptyOptions()} value={options.emptyValue} onChange={onSelectEmptyValue} isClearable />
+          <Select
+            inputId={emptyValueId}
+            options={getEmptyOptions()}
+            value={options.emptyValue}
+            onChange={onSelectEmptyValue}
+            isClearable
+          />
         </InlineField>
       </InlineFieldRow>
     </>

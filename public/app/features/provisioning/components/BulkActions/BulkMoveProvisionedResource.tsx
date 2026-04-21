@@ -1,5 +1,5 @@
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useState, useCallback } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 
 import { AppEvents } from '@grafana/data';
@@ -45,6 +45,7 @@ function FormContent({ initialValues, selectedItems, repository, canPushToConfig
   const [jobError, setJobError] = useState<string | StatusInfo>();
   const [targetFolderUID, setTargetFolderUID] = useState<string | undefined>(undefined);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const targetFolderId = useId();
 
   // Hooks
   const { createBulkJob, isLoading: isCreatingJob } = useBulkActionJob();
@@ -153,6 +154,7 @@ function FormContent({ initialValues, selectedItems, repository, canPushToConfig
                 invalid={!!errors.targetFolderUID}
               >
                 <ProvisioningAwareFolderPicker
+                  id={targetFolderId}
                   value={targetFolderUID}
                   onChange={(uid) => {
                     setTargetFolderUID(uid || '');

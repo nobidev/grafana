@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useId } from 'react';
 import * as React from 'react';
 
 import { type SelectableValue } from '@grafana/data';
@@ -58,6 +58,7 @@ export function getQueryDirectionLabel(direction: LokiQueryDirection) {
 export function LokiOptionFields(props: LokiOptionFieldsProps) {
   const { lineLimitValue, onRunQuery, runOnBlur, onChange } = props;
   const query = props.query ?? {};
+  const lineLimitId = useId();
 
   function onChangeQueryLimit(value: string) {
     const maxLines = preprocessMaxLines(value);
@@ -86,6 +87,7 @@ export function LokiOptionFields(props: LokiOptionFieldsProps) {
       <Stack wrap="nowrap" gap={0} data-testid="lineLimitField" aria-label="Line limit field">
         <InlineField label="Line limit" tooltip={'Upper limit for number of log lines returned by query.'}>
           <Input
+            id={lineLimitId}
             className="width-4"
             placeholder="auto"
             type="number"

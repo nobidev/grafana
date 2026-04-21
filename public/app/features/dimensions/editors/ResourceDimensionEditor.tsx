@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 import * as React from 'react';
 
 import {
@@ -24,6 +24,7 @@ export const ResourceDimensionEditor = (
   props: StandardEditorProps<ResourceDimensionConfig, ResourceDimensionOptions, unknown>
 ) => {
   const { value, context, onChange, item } = props;
+  const fieldId = useId();
   const labelWidth = 9;
   const resourceOptions = [
     {
@@ -109,6 +110,7 @@ export const ResourceDimensionEditor = (
             grow={true}
           >
             <FieldNamePicker
+              id={fieldId}
               context={context}
               value={value.field ?? ''}
               onChange={onFieldChange}

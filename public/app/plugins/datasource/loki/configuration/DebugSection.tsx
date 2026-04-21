@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 
 import { getTemplateSrv } from '@grafana/runtime';
 import { InlineField, TextArea } from '@grafana/ui';
@@ -11,6 +11,7 @@ type Props = {
 };
 export const DebugSection = (props: Props) => {
   const { derivedFields, className } = props;
+  const debugLogMessageId = useId();
   const [debugText, setDebugText] = useState('');
 
   let debugFields: DebugField[] = [];
@@ -22,6 +23,7 @@ export const DebugSection = (props: Props) => {
     <div className={className}>
       <InlineField label="Debug log message" labelWidth={24} grow>
         <TextArea
+          id={debugLogMessageId}
           type="text"
           aria-label="Loki query"
           placeholder="Paste an example log line here to test the regular expressions of your derived fields"

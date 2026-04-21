@@ -1,4 +1,4 @@
-import { type FormEvent, useState, useEffect } from 'react';
+import { type FormEvent, useEffect, useId, useState } from 'react';
 import { usePrevious } from 'react-use';
 
 import { type QueryEditorProps, type SelectableValue } from '@grafana/data';
@@ -18,6 +18,9 @@ export type Props = QueryEditorProps<LokiDatasource, LokiQuery, LokiOptions, Lok
 const refId = 'LokiVariableQueryEditor-VariableQuery';
 
 export const LokiVariableQueryEditor = ({ onChange, query, datasource, range }: Props) => {
+  const queryTypeId = useId();
+  const labelId = useId();
+  const streamSelectorId = useId();
   const [type, setType] = useState<number | undefined>(undefined);
   const [label, setLabel] = useState('');
   const [labelOptions, setLabelOptions] = useState<Array<SelectableValue<string>>>([]);
@@ -77,6 +80,7 @@ export const LokiVariableQueryEditor = ({ onChange, query, datasource, range }: 
       <InlineFieldRow>
         <InlineField label="Query type" labelWidth={20}>
           <Select
+            inputId={queryTypeId}
             aria-label="Query type"
             onChange={onQueryTypeChange}
             onBlur={handleBlur}
@@ -89,6 +93,7 @@ export const LokiVariableQueryEditor = ({ onChange, query, datasource, range }: 
           <>
             <InlineField label="Label" labelWidth={20}>
               <Select
+                inputId={labelId}
                 aria-label="Label"
                 onChange={onLabelChange}
                 onBlur={handleBlur}
@@ -116,6 +121,7 @@ export const LokiVariableQueryEditor = ({ onChange, query, datasource, range }: 
             }
           >
             <Input
+              id={streamSelectorId}
               type="text"
               aria-label="Stream selector"
               placeholder="Optional stream selector"

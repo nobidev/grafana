@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import {
   onUpdateDatasourceJsonDataOption,
@@ -24,6 +24,11 @@ import { type Props } from './types';
 export const AdvancedDbConnectionSettings = (props: Props) => {
   const { options } = props;
   const [maxSeriesValue, setMaxSeriesValue] = useState(options.jsonData.maxSeries?.toString() || '');
+
+  const httpMethodId = useId();
+  const minTimeIntervalId = useId();
+  const autocompleteRangeId = useId();
+  const maxSeriesId = useId();
 
   const [advancedDbConnectionSettingsIsOpen, setAdvancedDbConnectionSettingsIsOpen] = useState(
     () => !!options.jsonData.timeInterval || !!options.jsonData.insecureGrpc || !!options.jsonData.maxSeries
@@ -64,6 +69,7 @@ export const AdvancedDbConnectionSettings = (props: Props) => {
                 noMargin
               >
                 <Combobox
+                  id={httpMethodId}
                   value={HTTP_MODES.find((httpMode) => httpMode.value === options.jsonData.httpMode)}
                   options={HTTP_MODES}
                   onChange={onUpdateDatasourceJsonDataOptionSelect(props, 'httpMode')}
@@ -83,6 +89,7 @@ export const AdvancedDbConnectionSettings = (props: Props) => {
                 noMargin
               >
                 <Input
+                  id={minTimeIntervalId}
                   data-testid="influxdb-v2-config-time-interval"
                   onBlur={trackInfluxDBConfigV2AdvancedDbConnectionSettingsMinTimeClicked}
                   onChange={onUpdateDatasourceJsonDataOption(props, 'timeInterval')}
@@ -102,6 +109,7 @@ export const AdvancedDbConnectionSettings = (props: Props) => {
                 noMargin
               >
                 <Input
+                  id={autocompleteRangeId}
                   data-testid="influxdb-v2-config-autocomplete-range"
                   onBlur={trackInfluxDBConfigV2AdvancedDbConnectionSettingsAutocompleteClicked}
                   onChange={onUpdateDatasourceJsonDataOption(props, 'showTagTime')}
@@ -119,6 +127,7 @@ export const AdvancedDbConnectionSettings = (props: Props) => {
             noMargin
           >
             <Input
+              id={maxSeriesId}
               data-testid="influxdb-v2-config-max-series"
               onBlur={trackInfluxDBConfigV2AdvancedDbConnectionSettingsMaxSeriesClicked}
               onChange={onMaxSeriesChange}

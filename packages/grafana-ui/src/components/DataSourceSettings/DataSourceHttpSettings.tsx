@@ -183,6 +183,8 @@ export const DataSourceHttpSettings = (props: HttpSettingsProps) => {
   });
 
   const fromFieldId = useId();
+  const allowedCookiesId = useId();
+  const timeoutId = useId();
 
   return (
     <Stack direction="column" gap={5}>
@@ -254,6 +256,7 @@ export const DataSourceHttpSettings = (props: HttpSettingsProps) => {
               )}
             >
               <TagsInput
+                id={allowedCookiesId}
                 tags={dataSourceConfig.jsonData.keepCookies}
                 width={40}
                 onChange={(cookies) =>
@@ -272,6 +275,7 @@ export const DataSourceHttpSettings = (props: HttpSettingsProps) => {
               disabled={dataSourceConfig.readOnly}
             >
               <Input
+                id={timeoutId}
                 type="number"
                 width={40}
                 placeholder={t('grafana-ui.data-source-http-settings.timeout-placeholder', 'Timeout in seconds')}

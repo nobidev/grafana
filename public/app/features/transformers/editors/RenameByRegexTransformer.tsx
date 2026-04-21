@@ -1,4 +1,4 @@
-import { memo, useState, type FocusEvent, type FormEvent } from 'react';
+import { memo, useId, useState, type FocusEvent, type FormEvent } from 'react';
 
 import {
   DataTransformerID,
@@ -34,6 +34,9 @@ export const RenameByRegexTransformerEditor = memo(function RenameByRegexTransfo
   const [renamePattern, setRenamePattern] = useState(options.renamePattern);
   const [isRegexValid, setIsRegexValid] = useState(true);
 
+  const matchId = useId();
+  const replaceId = useId();
+
   const handleRegexChange = (e: FormEvent<HTMLInputElement>) => {
     const value = e.currentTarget.value;
     setRegex(value);
@@ -66,6 +69,7 @@ export const RenameByRegexTransformerEditor = memo(function RenameByRegexTransfo
         error={!isRegexValid ? 'Invalid pattern' : undefined}
       >
         <Input
+          id={matchId}
           placeholder={t(
             'transformers.rename-by-regex-transformer-editor.placeholder-regular-expression-pattern',
             'Regular expression pattern'
@@ -81,6 +85,7 @@ export const RenameByRegexTransformerEditor = memo(function RenameByRegexTransfo
         labelWidth={16}
       >
         <Input
+          id={replaceId}
           placeholder={t(
             'transformers.rename-by-regex-transformer-editor.placeholder-replacement-pattern',
             'Replacement pattern'

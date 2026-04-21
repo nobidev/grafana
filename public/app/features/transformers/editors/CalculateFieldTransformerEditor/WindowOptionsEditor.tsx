@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { ReducerID, type SelectableValue } from '@grafana/data';
 import {
   CalculateFieldMode,
@@ -18,6 +20,8 @@ export const WindowOptionsEditor = (props: {
   onChange: (options: CalculateFieldTransformerOptions) => void;
 }) => {
   const { options, names, onChange } = props;
+  const fieldId = useId();
+  const calculationId = useId();
   const { window } = options;
   const selectOptions = names.map((v) => ({ label: v, value: v }));
   const typeOptions = [
@@ -92,6 +96,7 @@ export const WindowOptionsEditor = (props: {
     <>
       <InlineField label={t('transformers.window-options-editor.label-field', 'Field')} labelWidth={LABEL_WIDTH}>
         <Select
+          inputId={fieldId}
           placeholder={t('transformers.window-options-editor.placeholder-field', 'Field')}
           options={selectOptions}
           className="min-width-18"
@@ -104,6 +109,7 @@ export const WindowOptionsEditor = (props: {
         labelWidth={LABEL_WIDTH}
       >
         <StatsPicker
+          inputId={calculationId}
           allowMultiple={false}
           stats={[window?.reducer || ReducerID.mean]}
           onChange={onWindowStatsChange}

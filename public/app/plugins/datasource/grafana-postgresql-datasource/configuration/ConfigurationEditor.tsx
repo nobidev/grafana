@@ -1,4 +1,4 @@
-import { type SyntheticEvent, useState } from 'react';
+import { type SyntheticEvent, useId, useState } from 'react';
 
 import {
   type DataSourcePluginOptionsEditorProps,
@@ -54,6 +54,10 @@ export const postgresVersions: Array<ComboboxOption<number>> = [
 export const PostgresConfigEditor = (props: DataSourcePluginOptionsEditorProps<PostgresOptions, SecureJsonData>) => {
   const [versionOptions, setVersionOptions] = useState(postgresVersions);
   const [isOpen, setIsOpen] = useState(true);
+  const hostUrlId = useId();
+  const databaseNameId = useId();
+  const usernameId = useId();
+  const passwordId = useId();
 
   useAutoDetectFeatures({ props, setVersionOptions });
   useMigrateDatabaseFields(props);
@@ -128,6 +132,7 @@ export const PostgresConfigEditor = (props: DataSourcePluginOptionsEditorProps<P
         <Stack direction="column" gap={2}>
           <Field label="Host URL" required noMargin>
             <Input
+              id={hostUrlId}
               width={WIDTH_LONG}
               name="host"
               type="text"
@@ -139,6 +144,7 @@ export const PostgresConfigEditor = (props: DataSourcePluginOptionsEditorProps<P
 
           <Field label="Database name" required noMargin>
             <Input
+              id={databaseNameId}
               width={WIDTH_LONG}
               name="database"
               value={jsonData.database || ''}
@@ -155,6 +161,7 @@ export const PostgresConfigEditor = (props: DataSourcePluginOptionsEditorProps<P
         <Stack direction="column" gap={2}>
           <Field label="Username" required noMargin>
             <Input
+              id={usernameId}
               width={WIDTH_LONG}
               value={options.user || ''}
               placeholder="Username"
@@ -164,6 +171,7 @@ export const PostgresConfigEditor = (props: DataSourcePluginOptionsEditorProps<P
 
           <Field label="Password" noMargin>
             <SecretInput
+              id={passwordId}
               width={WIDTH_LONG}
               placeholder="Password"
               isConfigured={options.secureJsonFields && options.secureJsonFields.password}

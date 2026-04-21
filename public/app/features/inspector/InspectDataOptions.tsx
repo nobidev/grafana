@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import * as React from 'react';
 
 import { type DataFrame, DataTransformerID, getFrameDisplayName, type SelectableValue } from '@grafana/data';
@@ -39,6 +40,8 @@ export const InspectDataOptions = ({
   toggleExcelCompatibilityMode,
 }: Props) => {
   const styles = useStyles2(getPanelInspectorStyles2);
+  const dataFrameId = useId();
+  const applyPanelTransformationsId = useId();
 
   let dataSelect = dataFrames;
   if (selectedDataFrame === DataTransformerID.joinByField) {
@@ -95,6 +98,7 @@ export const InspectDataOptions = ({
             {data!.length > 1 && (
               <Field label={t('dashboard.inspect-data.dataframe-label', 'Show data frame')}>
                 <Select
+                  inputId={dataFrameId}
                   options={selectableOptions}
                   value={selectedDataFrame}
                   onChange={onDataFrameChange}
@@ -114,6 +118,7 @@ export const InspectDataOptions = ({
                   )}
                 >
                   <Switch
+                    id={applyPanelTransformationsId}
                     value={!!options.withTransforms}
                     onChange={() => onOptionsChange({ ...options, withTransforms: !options.withTransforms })}
                   />

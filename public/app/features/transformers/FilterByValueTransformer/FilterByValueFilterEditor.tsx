@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import { type Field, type SelectableValue, valueMatchers } from '@grafana/data';
 import { type FilterByValueFilter } from '@grafana/data/internal';
@@ -20,6 +20,8 @@ export interface DataFrameFieldsInfo {
 }
 
 export const FilterByValueFilterEditor = (props: Props) => {
+  const fieldId = useId();
+  const matchId = useId();
   const { onDelete, onChange, filter, fieldsInfo } = props;
   const { fieldsAsOptions, fieldByDisplayName } = fieldsInfo;
   const fieldName = getFieldName(filter, fieldsAsOptions) ?? '';
@@ -79,6 +81,7 @@ export const FilterByValueFilterEditor = (props: Props) => {
     <InlineFieldRow>
       <InlineField label={t('transformers.filter-by-value-filter-editor.label-field', 'Field')} labelWidth={14}>
         <Select
+          inputId={fieldId}
           className="min-width-15 max-width-24"
           placeholder={t('transformers.filter-by-value-filter-editor.placeholder-field-name', 'Field name')}
           options={fieldsAsOptions}
@@ -88,6 +91,7 @@ export const FilterByValueFilterEditor = (props: Props) => {
       </InlineField>
       <InlineField label={t('transformers.filter-by-value-filter-editor.label-match', 'Match')}>
         <Select
+          inputId={matchId}
           className="width-12"
           placeholder={t('transformers.filter-by-value-filter-editor.placeholder-select-test', 'Select test')}
           options={matcherOptions}

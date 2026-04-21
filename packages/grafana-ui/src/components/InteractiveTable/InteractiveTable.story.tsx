@@ -1,5 +1,5 @@
 import { type Meta, type StoryFn, type StoryObj } from '@storybook/react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { type CellProps } from 'react-table';
 
 import { LinkButton } from '../Button/Button';
@@ -224,6 +224,7 @@ export const WithCustomCell: StoryObj<typeof InteractiveTable<WithCustomCellData
 
 export const WithPagination: StoryFn<typeof InteractiveTable> = (args) => {
   const [filter, setFilter] = useState('');
+  const filterDataId = useId();
 
   const data = useMemo(() => {
     if (filter) {
@@ -236,6 +237,7 @@ export const WithPagination: StoryFn<typeof InteractiveTable> = (args) => {
     <>
       <Field label={'Filter data'}>
         <Input
+          id={filterDataId}
           placeholder={'Filter by first name'}
           onChange={(event) => {
             setFilter(event.currentTarget.value);

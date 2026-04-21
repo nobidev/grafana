@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -19,6 +19,8 @@ import lightImage from '../images/light/reduce.svg';
 
 // TODO:  Minimal implementation, needs some <3
 export const ReduceTransformerEditor = ({ options, onChange }: TransformerUIProps<ReduceTransformerOptions>) => {
+  const modeId = useId();
+  const calculationsId = useId();
   const modes: Array<SelectableValue<ReduceTransformerMode>> = [
     {
       label: t('transformers.reduce-transformer-editor.modes.label.series-to-rows', 'Series to rows'),
@@ -73,6 +75,7 @@ export const ReduceTransformerEditor = ({ options, onChange }: TransformerUIProp
         labelWidth={16}
       >
         <Select
+          inputId={modeId}
           options={modes}
           value={modes.find((v) => v.value === options.mode) || modes[0]}
           onChange={onSelectMode}
@@ -85,6 +88,7 @@ export const ReduceTransformerEditor = ({ options, onChange }: TransformerUIProp
         labelWidth={16}
       >
         <StatsPicker
+          inputId={calculationsId}
           placeholder={t('transformers.reduce-transformer-editor.placeholder-choose-stat', 'Choose stat')}
           allowMultiple
           stats={options.reducers || []}

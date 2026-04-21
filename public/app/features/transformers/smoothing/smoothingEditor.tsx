@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 
 import {
   DataTransformerID,
@@ -30,6 +30,7 @@ export const SmoothingTransformerEditor = ({
 }: TransformerUIProps<SmoothingTransformerOptions>) => {
   const theme = useTheme2();
   const resolution = options.resolution ?? DEFAULTS.resolution;
+  const resolutionId = useId();
 
   const maxSourcePoints = useMemo(() => calculateMaxSourcePoints(input), [input]);
   const effectiveResolution = maxSourcePoints > 0 ? calculateEffectiveResolution(resolution, maxSourcePoints) : null;
@@ -46,6 +47,7 @@ export const SmoothingTransformerEditor = ({
         )}
       >
         <NumberInput
+          id={resolutionId}
           value={resolution}
           onChange={(v) => onChange({ ...options, resolution: v })}
           min={RESOLUTION_LIMITS.min}

@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
 import { type GrafanaTheme2 } from '@grafana/data';
@@ -48,6 +48,8 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
 
   const defaultExpirationOption = isTokenExpirationDayLimitConfigured ? CUSTOM_EXPIRATION_OPTION : NO_EXPIRATION_OPTION;
 
+  const displayNameId = useId();
+  const expirationDateId = useId();
   const [defaultTokenName, setDefaultTokenName] = useState('');
   const [newTokenName, setNewTokenName] = useState('');
   const [expirationOption, setExpirationOption] = useState(defaultExpirationOption);
@@ -120,6 +122,7 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
             required={true}
           >
             <Input
+              id={displayNameId}
               name="tokenName"
               value={newTokenName}
               placeholder={defaultTokenName}
@@ -140,6 +143,7 @@ export const CreateTokenModal = ({ isOpen, token, serviceAccountLogin, onCreateT
           {expirationOption === CUSTOM_EXPIRATION_OPTION && (
             <Field label={t('serviceaccounts.create-token-modal.label-expiration-date', 'Expiration date')}>
               <DatePickerWithInput
+                id={expirationDateId}
                 onChange={onExpirationDateChange}
                 value={newTokenExpirationDate}
                 placeholder=""

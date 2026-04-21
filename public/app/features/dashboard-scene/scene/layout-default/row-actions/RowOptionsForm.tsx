@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { selectors } from '@grafana/e2e-selectors';
@@ -20,6 +20,7 @@ export interface Props {
 }
 
 export const RowOptionsForm = ({ repeat, title, sceneContext, isUsingDashboardDS, onUpdate, onCancel }: Props) => {
+  const repeatForId = useId();
   const [newRepeat, setNewRepeat] = useState<string | undefined>(repeat);
   const onChangeRepeat = useCallback((name?: string) => setNewRepeat(name), [setNewRepeat]);
 
@@ -37,7 +38,7 @@ export const RowOptionsForm = ({ repeat, title, sceneContext, isUsingDashboardDS
         <Input {...register('title')} type="text" />
       </Field>
       <Field label={t('dashboard.default-layout.row-options.form.repeat-for.label', 'Repeat for')}>
-        <RepeatRowSelect2 sceneContext={sceneContext} repeat={newRepeat} onChange={onChangeRepeat} />
+        <RepeatRowSelect2 id={repeatForId} sceneContext={sceneContext} repeat={newRepeat} onChange={onChangeRepeat} />
       </Field>
       {isUsingDashboardDS && (
         <Alert

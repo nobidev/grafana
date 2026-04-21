@@ -1,6 +1,6 @@
 import { cx } from '@emotion/css';
 import { uniqBy } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import * as React from 'react';
 import { useEffectOnce } from 'react-use';
 
@@ -91,6 +91,9 @@ const ResourcePicker = ({
     locations: [],
   });
   const [view, setView] = useState<'picker' | 'recent'>('picker');
+  const subscriptionsId = useId();
+  const resourceTypesId = useId();
+  const locationsId = useId();
 
   // Sync the resourceURI prop to internal state
   useEffect(() => {
@@ -442,6 +445,7 @@ const ResourcePicker = ({
               className={styles.filterInput(queryType)}
             >
               <MultiCombobox
+                id={subscriptionsId}
                 aria-label={t('components.resource-picker.subscriptions-filter', 'Subscriptions')}
                 value={filters.subscriptions}
                 options={subscriptions}
@@ -460,6 +464,7 @@ const ResourcePicker = ({
                 className={styles.filterInput(queryType)}
               >
                 <MultiCombobox
+                  id={resourceTypesId}
                   aria-label={t('components.resource-picker.types-filter', 'Resource Types')}
                   value={filters.types}
                   options={namespaces}
@@ -478,6 +483,7 @@ const ResourcePicker = ({
               className={styles.filterInput(queryType)}
             >
               <MultiCombobox
+                id={locationsId}
                 aria-label={t('components.resource-picker.locations-filter', 'Locations')}
                 value={filters.locations}
                 options={locations}

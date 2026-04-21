@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import { type SelectableValue, type StandardEditorProps } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -19,6 +19,7 @@ const variantOptions: SelectableValue[] = [
 ];
 
 export const ButtonStyleEditor = ({ value, onChange }: Props) => {
+  const variantId = useId();
   if (!value) {
     value = defaultStyleConfig;
   }
@@ -37,7 +38,7 @@ export const ButtonStyleEditor = ({ value, onChange }: Props) => {
     <>
       <InlineFieldRow>
         <InlineField label={t('canvas.button-style-editor.label-variant', 'Variant')} grow={true}>
-          <Select options={variantOptions} value={value?.variant} onChange={onVariantChange} />
+          <Select inputId={variantId} options={variantOptions} value={value?.variant} onChange={onVariantChange} />
         </InlineField>
       </InlineFieldRow>
     </>

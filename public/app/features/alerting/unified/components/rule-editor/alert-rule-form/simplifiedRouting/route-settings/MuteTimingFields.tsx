@@ -1,4 +1,5 @@
 import { css } from '@emotion/css';
+import { useId } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { type GrafanaTheme2 } from '@grafana/data';
@@ -16,6 +17,8 @@ export function MuteTimingFields({ alertmanager }: BaseAlertmanagerArgs) {
     control,
     formState: { errors },
   } = useFormContext<RuleFormValues>();
+
+  const muteTimingsId = useId();
 
   return (
     <Field
@@ -35,6 +38,7 @@ export function MuteTimingFields({ alertmanager }: BaseAlertmanagerArgs) {
             alertmanager={alertmanager}
             selectProps={{
               ...field,
+              inputId: muteTimingsId,
               onChange: (value) => onChange(mapMultiSelectValueToStrings(value)),
             }}
           />

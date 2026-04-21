@@ -1,5 +1,5 @@
 import { get, isEqual } from 'lodash';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useEffectOnce } from 'react-use';
 
 import { type SelectableValue } from '@grafana/data';
@@ -31,6 +31,13 @@ const removeOption: SelectableValue = { label: '-', value: '' };
 
 const VariableEditor = (props: Props) => {
   const { query, onChange, datasource } = props;
+  const queryTypeId = useId();
+  const subscriptionId = useId();
+  const resourceGroupId = useId();
+  const namespaceId = useId();
+  const regionId = useId();
+  const resourceId = useId();
+  const customNamespaceId = useId();
 
   const AZURE_QUERY_VARIABLE_TYPE_OPTIONS = [
     { label: 'Subscriptions', value: AzureQueryType.SubscriptionsQuery },
@@ -290,6 +297,7 @@ const VariableEditor = (props: Props) => {
         data-testid={selectors.components.variableEditor.queryType.input}
       >
         <Select
+          inputId={queryTypeId}
           aria-label={t('components.variable-editor.aria-label-select-query-type', 'Select query type')}
           onChange={onQueryTypeChange}
           options={AZURE_QUERY_VARIABLE_TYPE_OPTIONS}
@@ -336,6 +344,7 @@ const VariableEditor = (props: Props) => {
           data-testid={selectors.components.variableEditor.subscription.input}
         >
           <Select
+            inputId={subscriptionId}
             aria-label={t('components.variable-editor.aria-label-select-subscription', 'Select subscription')}
             onChange={onChangeSubscription}
             options={subscriptions.concat(variableOptionGroup)}
@@ -350,6 +359,7 @@ const VariableEditor = (props: Props) => {
           data-testid={selectors.components.variableEditor.resourceGroup.input}
         >
           <Select
+            inputId={resourceGroupId}
             aria-label={t('components.variable-editor.aria-label-select-resource-group', 'Select resource group')}
             onChange={onChangeResourceGroup}
             options={
@@ -396,6 +406,7 @@ const VariableEditor = (props: Props) => {
           data-testid={selectors.components.variableEditor.region.input}
         >
           <Select
+            inputId={regionId}
             aria-label={t('components.variable-editor.aria-label-select-region', 'Select region')}
             onChange={onChangeRegion}
             options={regions.concat(variableOptionGroup)}
@@ -411,6 +422,7 @@ const VariableEditor = (props: Props) => {
           data-testid={selectors.components.variableEditor.resource.input}
         >
           <Select
+            inputId={resourceId}
             aria-label={t('components.variable-editor.aria-label-select-resource', 'Select resource')}
             onChange={onChangeResource}
             options={resources.concat(variableOptionGroup)}
@@ -425,6 +437,7 @@ const VariableEditor = (props: Props) => {
           data-testid={selectors.components.variableEditor.customNamespace.input}
         >
           <Select
+            inputId={customNamespaceId}
             aria-label={t('components.variable-editor.aria-label-select-custom-namespace', 'Select custom namespace')}
             onChange={onChangeCustomNamespace}
             options={

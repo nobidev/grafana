@@ -1,4 +1,5 @@
 import { css } from '@emotion/css';
+import { useId } from 'react';
 
 import {
   type DataSourceJsonData,
@@ -17,6 +18,7 @@ interface Props extends DataSourcePluginOptionsEditorProps<TagLimitOptions> {}
 
 export default function TagLimitSettings({ options, onOptionsChange }: Props) {
   const styles = useStyles2(getStyles);
+  const maxTagsId = useId();
 
   return (
     <div className={css({ width: '100%' })}>
@@ -27,6 +29,7 @@ export default function TagLimitSettings({ options, onOptionsChange }: Props) {
           tooltip="Specify the max number of tags and tag values to display in the Tempo editor. Default: 5000"
         >
           <Input
+            id={maxTagsId}
             type="number"
             placeholder="5000"
             onChange={(v) =>

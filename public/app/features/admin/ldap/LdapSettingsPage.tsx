@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Controller, FormProvider, useForm } from 'react-hook-form';
 import { connect } from 'react-redux';
 
@@ -122,6 +122,8 @@ export const LdapSettingsPage = () => {
   } = methods;
 
   const styles = useStyles2(getStyles);
+
+  const searchBaseDnsId = useId();
 
   useEffect(() => {
     async function init() {
@@ -371,6 +373,7 @@ export const LdapSettingsPage = () => {
                     render={({ field: { onChange, ref, ...field } }) => (
                       <MultiSelect
                         {...field}
+                        inputId={searchBaseDnsId}
                         allowCustomValue
                         className={styles.multiSelect}
                         noOptionsMessage=""

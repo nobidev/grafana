@@ -3,7 +3,7 @@ import { autoUpdate, useClick, useDismiss, useFloating, useInteractions } from '
 import { useDialog } from '@react-aria/dialog';
 import { FocusScope } from '@react-aria/focus';
 import { useOverlay } from '@react-aria/overlays';
-import { type FormEvent, useCallback, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useId, useRef, useState } from 'react';
 
 import { type RelativeTimeRange, type GrafanaTheme2, type TimeOption } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
@@ -46,6 +46,8 @@ type InputState = {
  */
 export function RelativeTimeRangePicker(props: RelativeTimeRangePickerProps) {
   const { timeRange, onChange } = props;
+  const fromId = useId();
+  const toId = useId();
   const [isOpen, setIsOpen] = useState(false);
   const onClose = useCallback(() => setIsOpen(false), []);
   const timeOption = mapRelativeTimeRangeToOption(timeRange);
@@ -173,6 +175,7 @@ export function RelativeTimeRangePicker(props: RelativeTimeRangePickerProps) {
                       error={from.validation.errorMessage}
                     >
                       <Input
+                        id={fromId}
                         onClick={(event) => event.stopPropagation()}
                         onBlur={() => setFrom({ ...from, validation: isRangeValid(from.value) })}
                         onChange={(event) => setFrom({ ...from, value: event.currentTarget.value })}
@@ -185,6 +188,7 @@ export function RelativeTimeRangePicker(props: RelativeTimeRangePickerProps) {
                       error={to.validation.errorMessage}
                     >
                       <Input
+                        id={toId}
                         onClick={(event) => event.stopPropagation()}
                         onBlur={() => setTo({ ...to, validation: isRangeValid(to.value) })}
                         onChange={(event) => setTo({ ...to, value: event.currentTarget.value })}

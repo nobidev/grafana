@@ -1,4 +1,5 @@
 import { css } from '@emotion/css';
+import { useId } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { type GrafanaTheme2, type TimeRange } from '@grafana/data';
@@ -67,6 +68,7 @@ export function ConfigPublicDashboardBase({
 }: Props) {
   const styles = useStyles2(getStyles);
   const isDesktop = useIsDesktop();
+  const dashboardUrlId = useId();
 
   const [update, { isLoading }] = useUpdatePublicDashboardMutation();
   const [pauseOrResume, { isLoading: isPauseOrResumeLoading }] = usePauseOrResumePublicDashboardMutation();
@@ -138,6 +140,7 @@ export function ConfigPublicDashboardBase({
         className={styles.fieldSpace}
       >
         <Input
+          id={dashboardUrlId}
           value={generatePublicDashboardUrl(publicDashboard!.accessToken!)}
           readOnly
           disabled={!publicDashboard?.isEnabled}

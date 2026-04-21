@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -20,6 +20,8 @@ import lightImage from '../images/light/joinByField.svg';
 export function SeriesToFieldsTransformerEditor({ input, options, onChange }: TransformerUIProps<JoinByFieldOptions>) {
   const names = useFieldDisplayNames(input);
   const fieldNames = useMatcherSelectOptions(names);
+  const modeId = useId();
+  const fieldId = useId();
 
   const modes = [
     {
@@ -82,7 +84,7 @@ export function SeriesToFieldsTransformerEditor({ input, options, onChange }: Tr
           labelWidth={8}
           grow
         >
-          <Combobox options={modes} value={options.mode ?? JoinMode.outer} onChange={onSetMode} />
+          <Combobox id={modeId} options={modes} value={options.mode ?? JoinMode.outer} onChange={onSetMode} />
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>
@@ -92,6 +94,7 @@ export function SeriesToFieldsTransformerEditor({ input, options, onChange }: Tr
           grow
         >
           <Combobox
+            id={fieldId}
             options={[...fieldNames, ...variables]}
             value={options.byField}
             onChange={onSelectField}

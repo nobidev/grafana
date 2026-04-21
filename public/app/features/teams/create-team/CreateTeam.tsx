@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type JSX, useState } from 'react';
+import { type JSX, useId, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { type GrafanaTheme2, locationUtil, type NavModelItem } from '@grafana/data';
@@ -30,6 +30,7 @@ const CreateTeam = (): JSX.Element => {
 
   const [pendingRoles, setPendingRoles] = useState<Role[]>([]);
   const [autocreateTeamFolder, setAutocreateTeamFolder] = useState(false);
+  const teamFolderId = useId();
   const [{ roleOptions }] = useRoleOptions(currentOrgId);
   const {
     handleSubmit,
@@ -112,6 +113,7 @@ const CreateTeam = (): JSX.Element => {
                   )}
                 >
                   <Checkbox
+                    id={teamFolderId}
                     value={autocreateTeamFolder}
                     label={t(
                       'teams.create-team.checkbox-text-create-team-folder-team-folder',

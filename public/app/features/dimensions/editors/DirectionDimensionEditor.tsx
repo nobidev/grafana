@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   type FieldNamePickerConfigSettings,
@@ -21,6 +21,8 @@ const dummyFieldSettings = {
 type Props = StandardEditorProps<DirectionDimensionConfig, DirectionDimensionOptions>;
 
 export const DirectionDimensionEditor = ({ value, context, onChange }: Props) => {
+  const fieldId = useId();
+  const directionId = useId();
   const directionOptions = [
     {
       label: t('dimensions.direction-dimension-editor.label-fixed', 'Fixed'),
@@ -97,6 +99,7 @@ export const DirectionDimensionEditor = ({ value, context, onChange }: Props) =>
             grow={true}
           >
             <FieldNamePicker
+              id={fieldId}
               context={context}
               value={value?.field ?? ''}
               onChange={onFieldChange}
@@ -113,7 +116,12 @@ export const DirectionDimensionEditor = ({ value, context, onChange }: Props) =>
             labelWidth={labelWidth}
             grow={true}
           >
-            <Select value={selectedDirection} options={fixedDirectionOptions} onChange={onFixedChange} />
+            <Select
+            inputId={directionId}
+            value={selectedDirection}
+            options={fixedDirectionOptions}
+            onChange={onFixedChange}
+          />
           </InlineField>
         </InlineFieldRow>
       )}

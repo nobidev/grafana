@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type ChangeEvent, useEffect, useState } from 'react';
+import { type ChangeEvent, useEffect, useId, useState } from 'react';
 import * as React from 'react';
 import { usePrevious } from 'react-use';
 
@@ -59,6 +59,11 @@ export const DerivedField = (props: Props) => {
   const [openInNewTab, setOpenInNewTab] = useState(!!value.targetBlank);
   const previousUid = usePrevious(value.datasourceUid);
   const [fieldType, setFieldType] = useState<MatcherType>(value.matcherType ?? 'regex');
+  const nameId = useId();
+  const removeFieldId = useId();
+  const internalLinkId = useId();
+  const dataSourceId = useId();
+  const openNewTabId = useId();
 
   // Force internal link visibility change if uid changed outside of this component.
   useEffect(() => {
@@ -83,7 +88,13 @@ export const DerivedField = (props: Props) => {
     <div className={className} data-testid="derived-field">
       <div className="gf-form">
         <Field className={styles.nameField} label="Name" invalid={invalidName} error="The name is already in use">
-          <Input value={value.name} onChange={handleChange('name')} placeholder="Field name" invalid={invalidName} />
+          <Input
+            id={nameId}
+            value={value.name}
+            onChange={handleChange('name')}
+            placeholder="Field name"
+            invalid={invalidName}
+          />
         </Field>
         <Field
           className={styles.nameMatcherField}
@@ -131,6 +142,7 @@ export const DerivedField = (props: Props) => {
         </Field>
         <Field label="">
           <Button
+            id={removeFieldId}
             variant="destructive"
             aria-label="Remove field"
             icon="times"
@@ -172,6 +184,7 @@ export const DerivedField = (props: Props) => {
       <div className="gf-form">
         <Field label="Internal link" className={styles.internalLink}>
           <Switch
+            id={internalLinkId}
             value={showInternalLink}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               const { checked } = e.currentTarget;
@@ -189,6 +202,7 @@ export const DerivedField = (props: Props) => {
         {showInternalLink && (
           <Field label="" className={styles.dataSource}>
             <DataSourcePicker
+              inputId={dataSourceId}
               tracing={true}
               onChange={(ds: DataSourceInstanceSettings) =>
                 onChange({
@@ -206,6 +220,7 @@ export const DerivedField = (props: Props) => {
       <div className="gf-form">
         <Field label="Open in new tab" className={styles.openNewTab}>
           <Switch
+            id={openNewTabId}
             value={openInNewTab}
             onChange={(e: ChangeEvent<HTMLInputElement>) => {
               const { checked } = e.currentTarget;

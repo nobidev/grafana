@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { Trans, t } from '@grafana/i18n';
 import { Alert, Button, Field, Modal, Text, Space, Box } from '@grafana/ui';
@@ -20,6 +20,7 @@ export interface Props {
 export const MoveModal = ({ onConfirm, onDismiss, selectedItems, ...props }: Props) => {
   const [moveTarget, setMoveTarget] = useState<string>();
   const [isMoving, setIsMoving] = useState(false);
+  const folderNameId = useId();
   const selectedFolders = Object.keys(selectedItems.folder || {}).filter((uid) => selectedItems.folder[uid]);
   const selectedDashboards = Object.keys(selectedItems.dashboard || {}).filter((uid) => selectedItems.dashboard[uid]);
   const selectedPanels = Object.keys(selectedItems.panel || {}).filter((uid) => selectedItems.panel[uid]);
@@ -80,6 +81,7 @@ export const MoveModal = ({ onConfirm, onDismiss, selectedItems, ...props }: Pro
 
       <Field noMargin label={t('browse-dashboards.action.move-modal-field-label', 'Folder name')}>
         <ProvisioningAwareFolderPicker
+          inputId={folderNameId}
           value={moveTarget}
           excludeUIDs={selectedFolders}
           onChange={setMoveTarget}

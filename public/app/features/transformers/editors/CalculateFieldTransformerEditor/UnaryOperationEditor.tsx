@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { unaryOperators, type SelectableValue, type UnaryOperationID } from '@grafana/data';
 import { type UnaryOptions, CalculateFieldMode, type CalculateFieldTransformerOptions } from '@grafana/data/internal';
 import { t } from '@grafana/i18n';
@@ -10,6 +12,8 @@ export const UnaryOperationEditor = (props: {
   names: string[];
   onChange: (options: CalculateFieldTransformerOptions) => void;
 }) => {
+  const operationId = useId();
+  const fieldId = useId();
   const { options, onChange } = props;
   const { unary } = options;
 
@@ -56,10 +60,16 @@ export const UnaryOperationEditor = (props: {
           label={t('transformers.unary-operation-editor.label-operation', 'Operation')}
           labelWidth={LABEL_WIDTH}
         >
-          <Select options={ops} value={unary?.operator ?? ops[0].value} onChange={onUnaryOperationChanged} />
+          <Select
+            inputId={operationId}
+            options={ops}
+            value={unary?.operator ?? ops[0].value}
+            onChange={onUnaryOperationChanged}
+          />
         </InlineField>
         <InlineField label="(" labelWidth={2}>
           <Select
+            inputId={fieldId}
             placeholder={t('transformers.unary-operation-editor.placeholder-field', 'Field')}
             className="min-width-11"
             options={fieldName}

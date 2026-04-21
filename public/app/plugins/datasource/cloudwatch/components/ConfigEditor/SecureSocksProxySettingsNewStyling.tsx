@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useId, type JSX } from 'react';
 
 import { type DataSourceJsonData, type DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { ConfigSection } from '@grafana/plugin-ui';
@@ -15,10 +15,12 @@ export function SecureSocksProxySettingsNewStyling<T extends SecureSocksProxyCon
   options,
   onOptionsChange,
 }: Props<T>): JSX.Element {
+  const enabledId = useId();
   return (
     <ConfigSection title="Secure Socks Proxy">
       <Field label="Enabled" description="Connect to this datasource via the secure socks proxy.">
         <Switch
+          id={enabledId}
           value={options.jsonData.enableSecureSocksProxy ?? false}
           onChange={(event) =>
             onOptionsChange({

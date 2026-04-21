@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useAsync, useDebounce } from 'react-use';
 
 import { Trans, t } from '@grafana/i18n';
@@ -24,6 +24,7 @@ export const AddLibraryPanelContents = ({
   onCreateLibraryPanel,
   onDismiss,
 }: AddLibraryPanelContentsProps) => {
+  const folderId = useId();
   const [folderUid, setFolderUid] = useState(initialFolderUid);
   const [panelName, setPanelName] = useState(panel.title);
   const [debouncedPanelName, setDebouncedPanelName] = useState(panel.title);
@@ -84,7 +85,7 @@ export const AddLibraryPanelContents = ({
           'Library panel permissions are derived from the folder permissions'
         )}
       >
-        <FolderPicker onChange={(uid) => setFolderUid(uid)} value={folderUid} />
+        <FolderPicker id={folderId} onChange={(uid) => setFolderUid(uid)} value={folderUid} />
       </Field>
       <Stack gap={1} justifyContent={'start'}>
         <Button onClick={onCreate} disabled={invalidInput}>

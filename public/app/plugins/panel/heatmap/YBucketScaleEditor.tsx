@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { type SelectableValue, type StandardEditorProps } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -13,6 +13,8 @@ type ScaleOptionValue = 'auto' | ScaleDistribution;
  */
 export const YBucketScaleEditor = (props: StandardEditorProps<ScaleDistributionConfig | undefined>) => {
   const { value, onChange } = props;
+  const logBaseId = useId();
+  const linearThresholdId = useId();
 
   const type = value?.type;
   const log = value?.log ?? 2;
@@ -109,7 +111,12 @@ export const YBucketScaleEditor = (props: StandardEditorProps<ScaleDistributionC
           style={{ marginTop: '8px' }}
           noMargin
         >
-          <Select options={LOG_BASE_OPTIONS} value={log} onChange={(v) => handleLogBaseChange(v.value!)} />
+          <Select
+            inputId={logBaseId}
+            options={LOG_BASE_OPTIONS}
+            value={log}
+            onChange={(v) => handleLogBaseChange(v.value!)}
+          />
         </Field>
       )}
       {showLinearThreshold && (
@@ -123,6 +130,7 @@ export const YBucketScaleEditor = (props: StandardEditorProps<ScaleDistributionC
           noMargin
         >
           <Input
+            id={linearThresholdId}
             type="number"
             value={localLinearThreshold}
             onChange={(e) => handleLinearThresholdChange(e.currentTarget.value)}

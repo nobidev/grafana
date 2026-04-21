@@ -1,5 +1,5 @@
 import { intersection } from 'lodash';
-import { useState, useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { type SelectableValue } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -58,6 +58,7 @@ const ArgQueryEditor = ({
   onChange,
   setError,
 }: ArgQueryEditorProps) => {
+  const scopeId = useId();
   const [subscriptions, setSubscriptions] = useState<AzureMonitorOption[]>([]);
   useMemo(() => {
     if (query.azureResourceGraph?.scope !== ARGScope.Directory) {
@@ -104,6 +105,7 @@ const ArgQueryEditor = ({
           <EditorFieldGroup>
             <Field label={t('components.scope-selector.label', 'Scope')}>
               <Combobox
+                id={scopeId}
                 onChange={onChangeScope}
                 options={[
                   { value: ARGScope.Directory, label: 'Directory' },

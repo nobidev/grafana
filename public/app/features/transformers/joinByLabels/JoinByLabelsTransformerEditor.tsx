@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import * as React from 'react';
 
 import {
@@ -20,6 +20,8 @@ import { getJoinByLabelsTransformer, type JoinByLabelsTransformOptions } from '.
 export interface Props extends TransformerUIProps<JoinByLabelsTransformOptions> {}
 
 export function JoinByLabelsTransformerEditor({ input, options, onChange }: Props) {
+  const valueId = useId();
+  const joinId = useId();
   const info = useMemo(() => {
     let warn: React.ReactNode = undefined;
     const distinct = getDistinctLabels(input);
@@ -119,6 +121,7 @@ export function JoinByLabelsTransformerEditor({ input, options, onChange }: Prop
           )}
         >
           <Select
+            inputId={valueId}
             options={info.valueOptions}
             value={info.valueOption}
             onChange={(v) => onChange({ ...options, value: v.value! })}
@@ -165,6 +168,7 @@ export function JoinByLabelsTransformerEditor({ input, options, onChange }: Prop
                 labelWidth={labelWidth}
               >
                 <Select
+                  inputId={joinId}
                   options={info.addOptions}
                   placeholder={info.addText}
                   onChange={addJoin}

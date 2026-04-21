@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo } from 'react';
+import { type FormEvent, useId, useMemo } from 'react';
 import { useAsync } from 'react-use';
 
 import { type QueryEditorProps, type SelectableValue } from '@grafana/data';
@@ -40,6 +40,13 @@ export interface EditorProps {
 export type Props = QueryEditorProps<TestDataDataSource, TestDataDataQuery>;
 
 export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) => {
+  const dropPercentId = useId();
+  const linesId = useId();
+  const levelColumnId = useId();
+  const annotationsLinesId = useId();
+  const endpointId = useId();
+  const flamegraphDiffId = useId();
+  const spanCountId = useId();
   query = { ...defaultQuery, ...query };
 
   const { loading, value: scenarioList } = useAsync(async () => {
@@ -235,6 +242,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
         {show.dropPercent && (
           <InlineField label="Drop" tooltip={'Drop a random set of points'}>
             <Input
+              id={dropPercentId}
               type="number"
               min={0}
               max={100}
@@ -302,6 +310,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
         <InlineFieldRow>
           <InlineField label="Lines" labelWidth={14}>
             <Input
+              id={linesId}
               type="number"
               name="lines"
               value={query.lines}
@@ -311,7 +320,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
             />
           </InlineField>
           <InlineField label="Level" labelWidth={14}>
-            <InlineSwitch onChange={onInputChange} name="levelColumn" value={!!query.levelColumn} />
+            <InlineSwitch id={levelColumnId} onChange={onInputChange} name="levelColumn" value={!!query.levelColumn} />
           </InlineField>
         </InlineFieldRow>
       )}
@@ -319,6 +328,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
         <InlineFieldRow>
           <InlineField label="Count" labelWidth={14}>
             <Input
+              id={annotationsLinesId}
               type="number"
               name="lines"
               value={query.lines}
@@ -333,6 +343,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
       {scenarioId === TestDataQueryType.GrafanaAPI && (
         <InlineField labelWidth={14} label="Endpoint">
           <Select
+            inputId={endpointId}
             options={endpoints}
             onChange={onEndPointChange}
             width={32}
@@ -356,6 +367,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
       {scenarioId === TestDataQueryType.FlameGraph && (
         <InlineField label={'Diff profile'} grow>
           <InlineSwitch
+            id={flamegraphDiffId}
             value={Boolean(query.flamegraphDiff)}
             onChange={(e) => {
               onUpdate({ ...query, flamegraphDiff: e.currentTarget.checked });
@@ -379,6 +391,7 @@ export const QueryEditor = ({ query, datasource, onChange, onRunQuery }: Props) 
       {scenarioId === TestDataQueryType.Trace && (
         <InlineField labelWidth={14} label="Span count">
           <Input
+            id={spanCountId}
             type="number"
             name="spanCount"
             value={query.spanCount}

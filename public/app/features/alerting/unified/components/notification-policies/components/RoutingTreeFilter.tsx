@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 import { Trans, t } from '@grafana/i18n';
@@ -9,6 +9,7 @@ import { useURLSearchParams } from '../../../hooks/useURLSearchParams';
 
 const RoutingTreeFilter = () => {
   const styles = useStyles2(getStyles);
+  const searchByNameOrReceiverId = useId();
 
   const [searchParams, setSearchParams] = useURLSearchParams();
 
@@ -42,6 +43,7 @@ const RoutingTreeFilter = () => {
         )}
       >
         <Input
+          id={searchByNameOrReceiverId}
           aria-label={t('alerting.routing-tree-filter.aria-label-search-routing-trees', 'search routing trees')}
           placeholder={t('alerting.routing-tree-filter.placeholder-search', 'Search')}
           width={46}

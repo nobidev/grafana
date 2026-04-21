@@ -18,6 +18,10 @@ interface DashboardLinkFormProps {
 
 export function DashboardLinkForm({ link, onUpdate, onGoBack }: DashboardLinkFormProps) {
   const styles = useStyles2(getStyles);
+  const withTagsId = React.useId();
+  const urlId = React.useId();
+  const tooltipId = React.useId();
+  const iconId = React.useId();
   const linkTypeOptions = [
     {
       value: 'dashboards',
@@ -81,7 +85,7 @@ export function DashboardLinkForm({ link, onUpdate, onGoBack }: DashboardLinkFor
         {/* Tags */}
         {link.type === 'dashboards' && (
           <Field noMargin label={t('dashboard-scene.dashboard-link-form.label-with-tags', 'With tags')}>
-            <TagsInput tags={link.tags} onChange={onTagsChange} />
+            <TagsInput id={withTagsId} tags={link.tags} onChange={onTagsChange} />
           </Field>
         )}
 
@@ -89,12 +93,13 @@ export function DashboardLinkForm({ link, onUpdate, onGoBack }: DashboardLinkFor
           <Stack direction="column" gap={2}>
             {/* URL */}
             <Field noMargin label={t('dashboard-scene.dashboard-link-form.label-url', 'URL')}>
-              <Input name="url" value={link.url} onChange={onChange} />
+              <Input id={urlId} name="url" value={link.url} onChange={onChange} />
             </Field>
 
             {/* Tooltip */}
             <Field noMargin label={t('dashboard-scene.dashboard-link-form.label-tooltip', 'Tooltip')}>
               <Input
+                id={tooltipId}
                 name="tooltip"
                 value={link.tooltip}
                 onChange={onChange}
@@ -104,7 +109,7 @@ export function DashboardLinkForm({ link, onUpdate, onGoBack }: DashboardLinkFor
 
             {/* Icon */}
             <Field noMargin label={t('dashboard-scene.dashboard-link-form.label-icon', 'Icon')}>
-              <Select value={link.icon} options={linkIconOptions} onChange={onIconChange} />
+              <Select inputId={iconId} value={link.icon} options={linkIconOptions} onChange={onIconChange} />
             </Field>
           </Stack>
         )}

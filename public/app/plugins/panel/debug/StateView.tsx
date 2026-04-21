@@ -1,4 +1,4 @@
-import { type FormEvent } from 'react';
+import { type FormEvent, useId } from 'react';
 
 import { type PanelOptionsEditorProps, type PanelProps } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
@@ -8,6 +8,7 @@ import { type Options } from './panelcfg.gen';
 
 export function StateView(props: PanelProps<Options>) {
   const context = usePanelContext();
+  const stateNameId = useId();
 
   const onChangeName = (e: FormEvent<HTMLInputElement>) => {
     context.onInstanceStateChange!({
@@ -18,7 +19,7 @@ export function StateView(props: PanelProps<Options>) {
   return (
     <>
       <Field label={t('debug.state-view.label-state-name', 'State name')}>
-        <Input value={context.instanceState?.name ?? ''} onChange={onChangeName} />
+        <Input id={stateNameId} value={context.instanceState?.name ?? ''} onChange={onChangeName} />
       </Field>
     </>
   );

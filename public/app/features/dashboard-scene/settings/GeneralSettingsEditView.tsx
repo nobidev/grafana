@@ -1,4 +1,4 @@
-import { type ChangeEvent } from 'react';
+import { type ChangeEvent, useId } from 'react';
 
 import { PageLayoutType } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
@@ -206,6 +206,7 @@ export class GeneralSettingsEditView
 }
 
 function GeneralSettingsEditViewComponent({ model }: SceneComponentProps<GeneralSettingsEditView>) {
+  const folderId = useId();
   const dashboard = model.getDashboard();
   const { navModel, pageNav } = useDashboardEditPageNav(dashboard, model.getUrlKey());
   const { title, description, tags, meta, editable } = dashboard.useState();
@@ -310,6 +311,7 @@ function GeneralSettingsEditViewComponent({ model }: SceneComponentProps<General
           </Field>
           <Field noMargin label={t('dashboard-settings.general.folder-label', 'Folder')}>
             <ProvisioningAwareFolderPicker
+              id={folderId}
               value={meta.folderUid}
               onChange={dashboard.isManagedRepository() ? model.onProvisionedFolderChange : model.onFolderChange}
               repositoryName={dashboard.getManagerIdentity()}

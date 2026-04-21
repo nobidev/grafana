@@ -37,6 +37,7 @@ export const GroupToNestedTableTransformerEditor = ({
   options,
   onChange,
 }: TransformerUIProps<GroupToNestedTableTransformerOptions>) => {
+  const showFieldNamesId = useId();
   const fieldNames = useAllFieldNamesFromDataFrames(input);
   const showHeaders =
     options.showSubframeHeaders === undefined ? SHOW_NESTED_HEADERS_DEFAULT : options.showSubframeHeaders;
@@ -120,7 +121,7 @@ export const GroupToNestedTableTransformerEditor = ({
         )}
         noMargin
       >
-        <Switch value={showHeaders} onChange={onShowFieldNamesChange} />
+        <Switch id={showFieldNamesId} value={showHeaders} onChange={onShowFieldNamesChange} />
       </Field>
     </Stack>
   );

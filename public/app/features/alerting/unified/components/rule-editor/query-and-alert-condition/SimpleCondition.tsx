@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import { produce } from 'immer';
-import { type Dispatch, type FormEvent } from 'react';
+import { type Dispatch, type FormEvent, useId } from 'react';
 import { type UnknownAction } from 'redux';
 
 import { type GrafanaTheme2, type PanelData, ReducerID, type SelectableValue } from '@grafana/data';
@@ -81,6 +81,7 @@ export const SimpleConditionEditor = ({
   };
 
   const styles = useStyles2(getStyles);
+  const whenId = useId();
 
   return (
     <div className={styles.condition.wrapper}>
@@ -94,6 +95,7 @@ export const SimpleConditionEditor = ({
           {simpleCondition.whenField && (
             <InlineField label={t('alerting.simple-condition-editor.label-when', 'WHEN')}>
               <Select
+                inputId={whenId}
                 options={reducerTypes}
                 value={reducerTypes.find((o) => o.value === simpleCondition.whenField)}
                 onChange={onReducerTypeChange}

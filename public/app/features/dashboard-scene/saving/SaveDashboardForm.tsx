@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
@@ -26,6 +26,7 @@ export interface Props {
 
 export function SaveDashboardForm({ dashboard, drawer, changeInfo }: Props) {
   const { hasChanges, hasMigratedToV2, changedSaveModel } = changeInfo;
+  const messageId = useId();
 
   const { state, onSaveDashboard } = useSaveDashboard(false);
   const [options, setOptions] = useState<SaveDashboardOptions>({
@@ -176,6 +177,7 @@ export function SaveDashboardForm({ dashboard, drawer, changeInfo }: Props) {
       )}
       <Field label={t('dashboard-scene.save-dashboard-form.label-message', 'Message')}>
         <TextArea
+          id={messageId}
           aria-label={t('dashboard-scene.save-dashboard-form.aria-label-message', 'message')}
           value={options.message ?? ''}
           onChange={(e) => {

@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -28,6 +28,7 @@ const fieldLookupSettings = {
 } as StandardEditorsRegistryItem<string, GazetteerPathEditorConfigSettings>;
 
 export const FieldLookupTransformerEditor = ({ input, options, onChange }: TransformerUIProps<FieldLookupOptions>) => {
+  const fieldId = useId();
   const fieldNamePickerSettings: StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings> = {
     settings: {
       width: 30,
@@ -70,6 +71,7 @@ export const FieldLookupTransformerEditor = ({ input, options, onChange }: Trans
       <InlineFieldRow>
         <InlineField label={t('transformers.field-lookup-transformer-editor.label-field', 'Field')} labelWidth={12}>
           <FieldNamePicker
+            id={fieldId}
             context={{ data: input }}
             value={options?.lookupField ?? ''}
             onChange={onPickLookupField}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { Trans, t } from '@grafana/i18n';
@@ -52,6 +52,7 @@ export function AuthTypeStep({ onGitHubAppSubmit }: AuthTypeStepProps) {
     'repository.type',
   ]);
   const authTypeOptions = useMemo(() => getAuthTypeOptions(), []);
+  const authenticationMethodId = useId();
   const shouldShowRepositories = githubAuthType !== 'github-app' || githubAppMode !== 'new';
   const isGitHub = repoType === 'github';
 
@@ -113,6 +114,7 @@ export function AuthTypeStep({ onGitHubAppSubmit }: AuthTypeStepProps) {
             control={control}
             render={({ field: { onChange, value } }) => (
               <RadioButtonGroup<GitHubAuthType>
+                id={authenticationMethodId}
                 value={value}
                 onChange={onChange}
                 options={authTypeOptions.map((option) => ({

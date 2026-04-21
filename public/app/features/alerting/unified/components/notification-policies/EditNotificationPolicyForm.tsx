@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useId, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 
 import { ContactPointSelector as GrafanaManagedContactPointSelector } from '@grafana/alerting/unstable';
@@ -55,6 +55,10 @@ export const AmRoutesExpandedForm = ({ actionButtons, route, onSubmit, defaults 
   const { selectedAlertmanager, isGrafanaAlertmanager } = useAlertmanager();
   const [, canSeeMuteTimings] = useAlertmanagerAbility(AlertmanagerAction.ViewTimeInterval);
   const [groupByOptions, setGroupByOptions] = useState(stringsToSelectableValues(route?.group_by));
+
+  const groupById = useId();
+  const muteTimingsId = useId();
+  const activeTimingsId = useId();
 
   const emptyMatcher = [{ name: '', operator: MatcherOperator.equal, value: '' }];
 
@@ -238,6 +242,7 @@ export const AmRoutesExpandedForm = ({ actionButtons, route, onSubmit, defaults 
             render={({ field: { onChange, ref, ...field }, fieldState: { error } }) => (
               <>
                 <MultiSelect
+                  inputId={groupById}
                   aria-label={t('alerting.am-routes-expanded-form.aria-label-group-by', 'Group by')}
                   {...field}
                   invalid={Boolean(error)}
@@ -321,6 +326,7 @@ export const AmRoutesExpandedForm = ({ actionButtons, route, onSubmit, defaults 
               alertmanager={selectedAlertmanager!}
               selectProps={{
                 ...field,
+                inputId: muteTimingsId,
                 disabled: !canSeeMuteTimings,
                 onChange: (value) => onChange(mapMultiSelectValueToStrings(value)),
               }}
@@ -345,6 +351,7 @@ export const AmRoutesExpandedForm = ({ actionButtons, route, onSubmit, defaults 
               alertmanager={selectedAlertmanager!}
               selectProps={{
                 ...field,
+                inputId: activeTimingsId,
                 disabled: !canSeeMuteTimings,
                 onChange: (value) => onChange(mapMultiSelectValueToStrings(value)),
               }}

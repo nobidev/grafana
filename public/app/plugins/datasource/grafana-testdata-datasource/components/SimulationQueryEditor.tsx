@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useId, useMemo, useState } from 'react';
 import { useAsync } from 'react-use';
 
 import { type DataFrameJSON, type SelectableValue } from '@grafana/data';
@@ -28,6 +28,12 @@ export const SimulationQueryEditor = ({ onChange, query, ds }: EditorProps) => {
   const simKey = simQuery.key ?? {};
   // keep track of updated config state to pass down to form
   const [cfgValue, setCfgValue] = useState<Config>({});
+
+  const simulationId = useId();
+  const streamId = useId();
+  const intervalId = useId();
+  const lastId = useId();
+  const uidId = useId();
 
   // This only changes once
   const info = useAsync(async () => {
@@ -99,6 +105,7 @@ export const SimulationQueryEditor = ({ onChange, query, ds }: EditorProps) => {
       <InlineFieldRow>
         <InlineField labelWidth={14} label="Simulation" tooltip="">
           <Select
+            inputId={simulationId}
             isLoading={info.loading}
             options={info.value?.options ?? []}
             value={current.option}
@@ -109,11 +116,12 @@ export const SimulationQueryEditor = ({ onChange, query, ds }: EditorProps) => {
       </InlineFieldRow>
       <InlineFieldRow>
         <InlineField labelWidth={14} label="Stream" tooltip="connect to the live channel">
-          <InlineSwitch value={Boolean(simQuery.stream)} onChange={onToggleStream} />
+          <InlineSwitch id={streamId} value={Boolean(simQuery.stream)} onChange={onToggleStream} />
         </InlineField>
 
         <InlineField label="Interval" tooltip="the rate a simulation will spit out events">
           <Input
+            id={intervalId}
             width={10}
             type="number"
             value={simKey.tick}
@@ -126,11 +134,11 @@ export const SimulationQueryEditor = ({ onChange, query, ds }: EditorProps) => {
 
         <InlineField label="Last" tooltip="Only return the last value">
           <Label>
-            <InlineSwitch value={Boolean(simQuery.last)} onChange={onToggleLast} />
+            <InlineSwitch id={lastId} value={Boolean(simQuery.last)} onChange={onToggleLast} />
           </Label>
         </InlineField>
         <InlineField label="UID" tooltip="A UID will allow multiple simulations to run at the same time">
-          <Input type="text" placeholder="optional" value={simQuery.key.uid} onChange={onUIDChanged} />
+          <Input id={uidId} type="text" placeholder="optional" value={simQuery.key.uid} onChange={onUIDChanged} />
         </InlineField>
       </InlineFieldRow>
       <SimulationSchemaForm

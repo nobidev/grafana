@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type SyntheticEvent } from 'react';
+import { type SyntheticEvent, useId } from 'react';
 
 import {
   type DataSourcePluginOptionsEditorProps,
@@ -48,6 +48,14 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
 
   const styles = useStyles2(getStyles);
   const jsonData = dsSettings.jsonData;
+
+  const hostId = useId();
+  const databaseId = useId();
+  const tlsCertId = useId();
+  const commonNameId = useId();
+  const usernameId = useId();
+  const passwordId = useId();
+  const minIntervalId = useId();
 
   const azureAuthSettings: AzureAuthConfigType = {
     azureAuthSettingsUI: AzureAuthSettings,
@@ -149,6 +157,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
           error={t('configuration.configuration-editor.required-host', 'Host is required')}
         >
           <Input
+            id={hostId}
             width={LONG_WIDTH}
             name="host"
             type="text"
@@ -165,6 +174,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
           error={t('configuration.configuration-editor.required-database', 'Database is required')}
         >
           <Input
+            id={databaseId}
             width={LONG_WIDTH}
             name="database"
             value={jsonData.database || ''}
@@ -248,6 +258,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
                   label={t('configuration.configuration-editor.label-tls-cert', 'TLS/SSL Root Certificate')}
                 >
                   <Input
+                    id={tlsCertId}
                     value={jsonData.sslRootCertFile || ''}
                     onChange={onUpdateDatasourceJsonDataOption(props, 'sslRootCertFile')}
                     placeholder={t(
@@ -261,6 +272,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
                   label={t('configuration.configuration-editor.label-common-name', 'Hostname in server certificate')}
                 >
                   <Input
+                    id={commonNameId}
                     placeholder={t(
                       'configuration.configuration-editor.placeholder-common-name',
                       'Common Name (CN) in server certificate'
@@ -353,6 +365,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
               description={jsonData.authenticationType === MSSQLAuthenticationType.kerberosRaw ? UsernameMessage : ''}
             >
               <Input
+                id={usernameId}
                 value={dsSettings.user || ''}
                 placeholder={
                   jsonData.authenticationType === MSSQLAuthenticationType.kerberosRaw
@@ -371,6 +384,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
               error={t('configuration.configuration-editor.required-password', 'Password is required')}
             >
               <SecretInput
+                id={passwordId}
                 width={LONG_WIDTH}
                 placeholder={t('configuration.configuration-editor.placeholder-password', 'Password')}
                 isConfigured={dsSettings.secureJsonFields && dsSettings.secureJsonFields.password}
@@ -422,6 +436,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<Ms
             label={t('configuration.configuration-editor.label-min-interval', 'Min time interval')}
           >
             <Input
+              id={minIntervalId}
               width={LONG_WIDTH}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
               placeholder="1m"

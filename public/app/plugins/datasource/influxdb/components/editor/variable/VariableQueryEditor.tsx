@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { type QueryEditorProps } from '@grafana/data';
 import { InlineField, InlineFieldRow, Input, TextArea } from '@grafana/ui';
 
@@ -10,6 +12,8 @@ type Props = QueryEditorProps<InfluxDatasource, InfluxQuery, InfluxOptions, Infl
 const refId = 'InfluxVariableQueryEditor-VariableQuery';
 
 export const InfluxVariableEditor = ({ onChange, datasource, query }: Props) => {
+  const queryId = useId();
+
   const getVariableQuery = (q: InfluxVariableQuery | string) => {
     // in legacy variable support query can be only a string
     // in new variable support query can be an object and hold more information
@@ -68,6 +72,7 @@ export const InfluxVariableEditor = ({ onChange, datasource, query }: Props) => 
         <InlineFieldRow>
           <InlineField label="Query" labelWidth={20} required grow aria-labelledby="influx-variable-query">
             <TextArea
+              id={queryId}
               aria-label="influx-variable-query"
               defaultValue={getVariableQuery(query).query}
               placeholder="metric name or tags query"

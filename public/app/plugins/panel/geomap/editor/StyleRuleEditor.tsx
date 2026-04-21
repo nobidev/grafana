@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import { type FeatureLike } from 'ol/Feature';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useId, useMemo } from 'react';
 import { useObservable } from 'react-use';
 import { type Observable } from 'rxjs';
 
@@ -41,6 +41,7 @@ export const StyleRuleEditor = ({ value, onChange, item, context }: Props) => {
 
   const propertyOptions = useObservable(layerInfo);
   const feats = useObservable(features);
+  const ruleId = useId();
 
   const uniqueSelectables = useMemo(() => {
     const key = value?.check?.property;
@@ -140,6 +141,7 @@ export const StyleRuleEditor = ({ value, onChange, item, context }: Props) => {
       <InlineFieldRow className={styles.row}>
         <InlineField label={t('geomap.style-rule-editor.label-rule', 'Rule')} labelWidth={LABEL_WIDTH} grow={true}>
           <Select
+            inputId={ruleId}
             placeholder={t('geomap.style-rule-editor.placeholder-feature-property', 'Feature property')}
             value={propv.current}
             options={propv.options}

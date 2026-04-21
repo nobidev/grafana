@@ -1,4 +1,4 @@
-import { type SyntheticEvent, useState } from 'react';
+import { type SyntheticEvent, useId, useState } from 'react';
 
 import {
   type DataSourcePluginOptionsEditorProps,
@@ -30,6 +30,17 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
 
   const { options, onOptionsChange } = props;
   const jsonData = options.jsonData;
+
+  const hostUrlId = useId();
+  const databaseNameId = useId();
+  const usernameId = useId();
+  const passwordId = useId();
+  const useTlsClientAuthId = useId();
+  const withCaCertId = useId();
+  const skipTlsVerificationId = useId();
+  const allowCleartextPasswordsId = useId();
+  const sessionTimezoneId = useId();
+  const minTimeIntervalId = useId();
 
   useMigrateDatabaseFields(props);
 
@@ -76,6 +87,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
         <Stack direction="column" gap={2}>
           <Field noMargin label="Host URL" required>
             <Input
+              id={hostUrlId}
               width={WIDTH_LONG}
               name="host"
               type="text"
@@ -87,6 +99,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
 
           <Field noMargin label="Database name">
             <Input
+              id={databaseNameId}
               width={WIDTH_LONG}
               name="database"
               value={jsonData.database || ''}
@@ -103,6 +116,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
         <Stack direction="column" gap={2}>
           <Field noMargin label="Username" required>
             <Input
+              id={usernameId}
               width={WIDTH_LONG}
               value={options.user || ''}
               placeholder="Username"
@@ -112,6 +126,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
 
           <Field noMargin label="Password">
             <SecretInput
+              id={passwordId}
               width={WIDTH_LONG}
               placeholder="Password"
               isConfigured={options.secureJsonFields && options.secureJsonFields.password}
@@ -125,11 +140,15 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
             label="Use TLS Client Auth"
             description="Enables TLS authentication using client cert configured in secure json data."
           >
-            <Switch onChange={onSwitchChanged('tlsAuth')} value={jsonData.tlsAuth || false} />
+            <Switch id={useTlsClientAuthId} onChange={onSwitchChanged('tlsAuth')} value={jsonData.tlsAuth || false} />
           </Field>
 
           <Field noMargin label="With CA Cert" description="Needed for verifying self-signed TLS Certs.">
-            <Switch onChange={onSwitchChanged('tlsAuthWithCACert')} value={jsonData.tlsAuthWithCACert || false} />
+            <Switch
+              id={withCaCertId}
+              onChange={onSwitchChanged('tlsAuthWithCACert')}
+              value={jsonData.tlsAuthWithCACert || false}
+            />
           </Field>
 
           <Field
@@ -137,7 +156,11 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
             label="Skip TLS Verification"
             description="When enabled, skips verification of the MySQL server's TLS certificate chain and host name."
           >
-            <Switch onChange={onSwitchChanged('tlsSkipVerify')} value={jsonData.tlsSkipVerify || false} />
+            <Switch
+              id={skipTlsVerificationId}
+              onChange={onSwitchChanged('tlsSkipVerify')}
+              value={jsonData.tlsSkipVerify || false}
+            />
           </Field>
 
           <Field
@@ -146,6 +169,7 @@ export const ConfigurationEditor = (props: DataSourcePluginOptionsEditorProps<My
             description="Allows using the cleartext client side plugin if required by an account."
           >
             <Switch
+              id={allowCleartextPasswordsId}
               onChange={onSwitchChanged('allowCleartextPasswords')}
               value={jsonData.allowCleartextPasswords || false}
             />

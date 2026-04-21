@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useId, useState } from 'react';
 import * as React from 'react';
 
 import { Button, InlineField, InlineFieldRow, Input } from '@grafana/ui';
@@ -21,6 +21,10 @@ interface WaveProps {
 
 const CSVWaveEditor = (props: WaveProps) => {
   const { wave, last, index, onAdd, onChange } = props;
+  const valuesId = useId();
+  const stepId = useId();
+  const nameId = useId();
+  const labelsId = useId();
   const [valuesCSV, setValuesCSV] = useState(wave.valuesCSV || '');
   const [labels, setLabels] = useState(wave.labels || '');
   const [name, setName] = useState(wave.name || '');
@@ -48,6 +52,7 @@ const CSVWaveEditor = (props: WaveProps) => {
         tooltip="Comma separated values. Each value may be an int, float, or null and must not be empty. Whitespace and trailing commas are removed"
       >
         <Input
+          id={valuesId}
           value={valuesCSV}
           placeholder={'CSV values'}
           onChange={(e) => setValuesCSV(e.currentTarget.value)}
@@ -58,6 +63,7 @@ const CSVWaveEditor = (props: WaveProps) => {
       </InlineField>
       <InlineField label={'Step'} tooltip="The number of seconds between datapoints.">
         <Input
+          id={stepId}
           value={wave.timeStep}
           type="number"
           placeholder={'60'}
@@ -67,6 +73,7 @@ const CSVWaveEditor = (props: WaveProps) => {
       </InlineField>
       <InlineField label={'Name'}>
         <Input
+          id={nameId}
           value={name}
           placeholder={'name'}
           width={10}
@@ -76,6 +83,7 @@ const CSVWaveEditor = (props: WaveProps) => {
       </InlineField>
       <InlineField label={'Labels'}>
         <Input
+          id={labelsId}
           value={labels}
           placeholder={'labels'}
           width={12}

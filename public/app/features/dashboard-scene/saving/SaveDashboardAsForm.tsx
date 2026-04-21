@@ -1,4 +1,4 @@
-import { type ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useId, useRef, useState } from 'react';
 import { type UseFormSetValue, useForm } from 'react-hook-form';
 
 import { selectors } from '@grafana/e2e-selectors';
@@ -28,6 +28,7 @@ export interface Props {
 
 export function SaveDashboardAsForm({ dashboard, changeInfo }: Props) {
   const { changedSaveModel } = changeInfo;
+  const folderId = useId();
 
   const { register, handleSubmit, setValue, formState, getValues, watch, trigger } = useForm<SaveDashboardAsFormDTO>({
     mode: 'onBlur',
@@ -191,6 +192,7 @@ export function SaveDashboardAsForm({ dashboard, changeInfo }: Props) {
 
         <Field noMargin label={t('dashboard-scene.save-dashboard-as-form.label-folder', 'Folder')}>
           <FolderPicker
+            id={folderId}
             onChange={async (uid: string | undefined, title: string | undefined) => {
               setValue('folder', { uid, title });
               const meta = await getProvisionedMeta(uid);

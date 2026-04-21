@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useMemo } from 'react';
+import { useId, useMemo } from 'react';
 
 import {
   FieldMatcherID,
@@ -23,6 +23,8 @@ export interface Props extends TransformerUIProps<ConfigFromQueryTransformOption
 
 export function ConfigFromQueryTransformerEditor({ input, onChange, options }: Props) {
   const styles = useStyles2(getStyles);
+  const configQueryId = useId();
+  const applyToId = useId();
 
   const refIds = input
     .map((x) => x.refId)
@@ -58,7 +60,7 @@ export function ConfigFromQueryTransformerEditor({ input, onChange, options }: P
           label={t('transformers.config-from-query-transformer-editor.label-config-query', 'Config query')}
           labelWidth={20}
         >
-          <Select onChange={onRefIdChange} options={refIds} value={currentRefId} width={30} />
+          <Select inputId={configQueryId} onChange={onRefIdChange} options={refIds} value={currentRefId} width={30} />
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>
@@ -66,7 +68,7 @@ export function ConfigFromQueryTransformerEditor({ input, onChange, options }: P
           label={t('transformers.config-from-query-transformer-editor.label-apply-to', 'Apply to')}
           labelWidth={20}
         >
-          <Select onChange={onMatcherChange} options={matchers} value={currentMatcher.id} width={30} />
+          <Select inputId={applyToId} onChange={onMatcherChange} options={matchers} value={currentMatcher.id} width={30} />
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>

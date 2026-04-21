@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useId } from 'react';
 
 import { type DataSourcePluginOptionsEditorProps, updateDatasourcePluginJsonDataOption } from '@grafana/data';
 import { ConnectionConfig } from '@grafana/google-sdk';
@@ -11,6 +11,7 @@ import { type CloudMonitoringOptions, type CloudMonitoringSecureJsonData } from 
 export type Props = DataSourcePluginOptionsEditorProps<CloudMonitoringOptions, CloudMonitoringSecureJsonData>;
 
 export const ConfigEditor = memo(({ options, onOptionsChange }: Props) => {
+  const universeDomainId = useId();
   const handleOnOptionsChange = (options: Props['options']) => {
     if (options.jsonData.privateKeyPath || options.secureJsonFields['privateKey']) {
       reportInteraction('grafana_cloud_monitoring_config_changed', {
@@ -45,6 +46,7 @@ export const ConfigEditor = memo(({ options, onOptionsChange }: Props) => {
             <Stack direction={'column'}>
               <Field noMargin label="Universe Domain">
                 <Input
+                  id={universeDomainId}
                   width={50}
                   value={options.jsonData.universeDomain}
                   onChange={(event) =>

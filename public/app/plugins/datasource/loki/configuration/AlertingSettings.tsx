@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { type DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { ConfigDescriptionLink, ConfigSubSection } from '@grafana/plugin-ui';
 import { config } from '@grafana/runtime';
@@ -7,6 +9,7 @@ export function AlertingSettings({
   options,
   onOptionsChange,
 }: Pick<DataSourcePluginOptionsEditorProps, 'options' | 'onOptionsChange'>) {
+  const manageAlertsId = useId();
   return (
     <ConfigSubSection
       title="Alerting"
@@ -25,6 +28,7 @@ export function AlertingSettings({
         tooltip="Manage alert rules for this data source. To manage other alerting resources, add an Alertmanager data source."
       >
         <InlineSwitch
+          id={manageAlertsId}
           value={options.jsonData.manageAlerts ?? config.defaultDatasourceManageAlertsUiToggle}
           onChange={(event) =>
             onOptionsChange({

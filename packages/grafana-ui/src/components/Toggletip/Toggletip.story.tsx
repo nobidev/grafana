@@ -1,5 +1,5 @@
 import { type Meta, type StoryFn } from '@storybook/react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { Button } from '../Button/Button';
 import { Drawer } from '../Drawer/Drawer';
@@ -140,6 +140,7 @@ LongContent.parameters = {
 
 export const InsideDrawer: StoryFn<typeof Toggletip> = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const nameId = useId();
 
   return (
     <>
@@ -153,7 +154,7 @@ export const InsideDrawer: StoryFn<typeof Toggletip> = () => {
               content={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <Field label="Name">
-                    <Input placeholder="Enter your name" />
+                    <Input id={nameId} placeholder="Enter your name" />
                   </Field>
                   <Button variant="primary" size="sm">
                     Submit
@@ -181,6 +182,7 @@ InsideDrawer.parameters = {
 
 export const InsideModal: StoryFn<typeof Toggletip> = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const nameId = useId();
 
   return (
     <>
@@ -194,7 +196,7 @@ export const InsideModal: StoryFn<typeof Toggletip> = () => {
               content={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <Field label="Name">
-                    <Input placeholder="Enter your name" />
+                    <Input id={nameId} placeholder="Enter your name" />
                   </Field>
                   <Button variant="primary" size="sm">
                     Submit

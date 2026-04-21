@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useId, useMemo } from 'react';
 
 import { type SelectableValue, type StandardEditorContext } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -35,6 +35,8 @@ const DataScopeOptions: Array<SelectableValue<DataScopeValues>> = ScopeOptions.m
 }));
 
 export const FitMapViewEditor = ({ labelWidth, value, onChange, context }: Props) => {
+  const layerId = useId();
+  const paddingId = useId();
   const layers = useMemo(() => {
     if (context.options?.layers) {
       return context.options.layers.map((layer) => ({
@@ -60,7 +62,13 @@ export const FitMapViewEditor = ({ labelWidth, value, onChange, context }: Props
         labelWidth={labelWidth}
         grow={true}
       >
-        <Select options={layers} onChange={onSelectLayer} placeholder={layers[0]?.label} value={value.layer} />
+        <Select
+          inputId={layerId}
+          options={layers}
+          onChange={onSelectLayer}
+          placeholder={layers[0]?.label}
+          value={value.layer}
+        />
       </InlineField>
     </InlineFieldRow>
   );
@@ -80,7 +88,7 @@ export const FitMapViewEditor = ({ labelWidth, value, onChange, context }: Props
           'Sets padding in relative percent beyond data extent'
         )}
       >
-        <NumberInput value={value?.padding ?? 5} min={0} step={1} onChange={onChangePadding} />
+        <NumberInput id={paddingId} value={value?.padding ?? 5} min={0} step={1} onChange={onChangePadding} />
       </InlineField>
     </InlineFieldRow>
   );

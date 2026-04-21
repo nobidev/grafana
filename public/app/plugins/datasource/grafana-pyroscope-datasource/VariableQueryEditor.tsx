@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { type QueryEditorProps, type SelectableValue, type TimeRange } from '@grafana/data';
 import { InlineField, InlineFieldRow, LoadingPlaceholder, Select } from '@grafana/ui';
@@ -8,6 +8,7 @@ import { type PyroscopeDataSource } from './datasource';
 import { type Query, type VariableQuery } from './types';
 
 export function VariableQueryEditor(props: QueryEditorProps<PyroscopeDataSource, Query, {}, VariableQuery>) {
+  const queryTypeId = useId();
   return (
     <>
       <InlineFieldRow>
@@ -19,6 +20,7 @@ export function VariableQueryEditor(props: QueryEditorProps<PyroscopeDataSource,
           }
         >
           <Select
+            inputId={queryTypeId}
             placeholder="Select query type"
             aria-label="Query type"
             width={25}
@@ -88,6 +90,7 @@ function LabelRow(props: {
   to: number;
   onChange: (val: string) => void;
 }) {
+  const labelId = useId();
   const [labels, setLabels] = useState<string[]>();
   useEffect(() => {
     (async () => {
@@ -114,6 +117,7 @@ function LabelRow(props: {
         tooltip={<div>Select label for which to retrieve available values</div>}
       >
         <Select
+          inputId={labelId}
           allowCustomValue={true}
           placeholder="Select label"
           aria-label="Select label"

@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { Input, InlineFieldRow, InlineField, Select } from '@grafana/ui';
 
 import { type NodesQuery, type TestDataDataQuery } from '../dataquery';
@@ -7,11 +9,15 @@ export interface Props {
   query: TestDataDataQuery;
 }
 export function NodeGraphEditor({ query, onChange }: Props) {
+  const dataTypeId = useId();
+  const countId = useId();
+  const seedId = useId();
   const type = query.nodes?.type || 'random';
   return (
     <InlineFieldRow>
       <InlineField label="Data type" labelWidth={14}>
         <Select<NodesQuery['type']>
+          inputId={dataTypeId}
           options={options.map((o) => ({
             label: o,
             value: o,
@@ -25,6 +31,7 @@ export function NodeGraphEditor({ query, onChange }: Props) {
         <>
           <InlineField label="Count" labelWidth={14}>
             <Input
+              id={countId}
               type="number"
               name="count"
               value={query.nodes?.count}
@@ -37,6 +44,7 @@ export function NodeGraphEditor({ query, onChange }: Props) {
           </InlineField>
           <InlineField label="Seed" labelWidth={14}>
             <Input
+              id={seedId}
               type="number"
               name="seed"
               value={query.nodes?.seed}

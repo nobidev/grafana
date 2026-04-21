@@ -1,5 +1,5 @@
 import { cx } from '@emotion/css';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useId, useMemo, useState } from 'react';
 import { useWindowSize } from 'react-use';
 
 import {
@@ -51,6 +51,10 @@ export const AuthSettings = (props: Props) => {
   const { options, onOptionsChange } = props;
   const styles = useStyles2(getInlineLabelStyles);
   const { width } = useWindowSize();
+
+  const userId = useId();
+  const passwordId = useId();
+  const serverNameId = useId();
 
   const authProps = useMemo(
     () =>
@@ -163,6 +167,7 @@ export const AuthSettings = (props: Props) => {
                 <Box display="flex" direction="column" marginBottom={2}>
                   <InlineField label="User" labelWidth={DB_SETTINGS_LABEL_WIDTH} grow>
                     <Input
+                      id={userId}
                       placeholder="User"
                       onChange={onUpdateDatasourceOption(props, 'basicAuthUser')}
                       value={options.basicAuthUser || ''}
@@ -170,6 +175,7 @@ export const AuthSettings = (props: Props) => {
                   </InlineField>
                   <InlineField label="Password" labelWidth={DB_SETTINGS_LABEL_WIDTH} grow>
                     <SecretInput
+                      id={passwordId}
                       placeholder="Password"
                       isConfigured={options.secureJsonFields.basicAuthPassword || false}
                       onChange={onUpdateDatasourceSecureJsonDataOption(props, 'basicAuthPassword')}
@@ -234,6 +240,7 @@ export const AuthSettings = (props: Props) => {
                   <Box marginTop={2}>
                     <InlineField label="Server Name" labelWidth={14} grow>
                       <Input
+                        id={serverNameId}
                         placeholder="domain.example.com"
                         onChange={(e) => authProps.TLS?.TLSClientAuth.onServerNameChange(e.currentTarget.value)}
                         value={authProps.TLS?.TLSClientAuth.serverName || ''}

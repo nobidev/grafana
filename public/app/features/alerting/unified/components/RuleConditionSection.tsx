@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import { type GrafanaTheme2, ReducerID, type SelectableValue } from '@grafana/data';
@@ -37,6 +37,7 @@ export function RuleConditionSection() {
   const evaluateFor = watch('evaluateFor') || '0s';
 
   const [simpleCondition, setSimpleCondition] = useState<SimpleCondition>(DEFAULT_SIMPLE_CONDITION);
+  const whenId = useId();
 
   /**
    * Updates the form's queries and condition based on the current simple condition.
@@ -118,6 +119,7 @@ export function RuleConditionSection() {
             {simpleCondition.whenField && (
               <InlineField label={t('alerting.simple-condition-editor.label-when', 'WHEN')}>
                 <Combobox
+                  id={whenId}
                   options={reducerOptions}
                   value={simpleCondition.whenField}
                   onChange={onReducerTypeChange}

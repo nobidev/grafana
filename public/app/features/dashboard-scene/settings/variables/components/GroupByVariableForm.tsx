@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback } from 'react';
+import { type FormEvent, useCallback, useId } from 'react';
 
 import { type DataSourceInstanceSettings, type MetricFindValue, type SelectableValue, readCSV } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -41,6 +41,8 @@ export function GroupByVariableForm({
   inline,
   datasourceSupported,
 }: GroupByVariableFormProps) {
+  const useStaticGroupDimensionsId = useId();
+
   const updateDefaultOptions = useCallback(
     (csvContent: string) => {
       const df = readCSV('key,value\n' + csvContent)[0];
@@ -111,6 +113,7 @@ export function GroupByVariableForm({
             noMargin
           >
             <Switch
+              id={useStaticGroupDimensionsId}
               data-testid={selectors.pages.Dashboard.Settings.Variables.Edit.GroupByVariable.modeToggle}
               value={defaultOptions !== undefined}
               onChange={(e) => {

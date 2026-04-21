@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { type FormEvent, useCallback } from 'react';
+import { type FormEvent, useCallback, useId } from 'react';
 
 import {
   type DataSourceInstanceSettings,
@@ -59,6 +59,9 @@ export function AdHocVariableForm({
   datasourceSupportsGroupBy,
 }: AdHocVariableFormProps) {
   const styles = useStyles2(getStyles);
+  const enableGroupById = useId();
+  const useStaticKeyDimensionsId = useId();
+  const allowCustomValueId = useId();
   const updateStaticKeys = useCallback(
     (csvContent: string) => {
       const df = readCSV('key,value\n' + csvContent)[0];
@@ -127,6 +130,7 @@ export function AdHocVariableForm({
             noMargin
           >
             <Switch
+              id={enableGroupById}
               value={enableGroupBy ?? false}
               onChange={onEnableGroupByChange}
               data-testid={selectors.pages.Dashboard.Settings.Variables.Edit.AdHocFiltersVariable.enableGroupByToggle}
@@ -159,6 +163,7 @@ export function AdHocVariableForm({
             noMargin
           >
             <Switch
+              id={useStaticKeyDimensionsId}
               data-testid={selectors.pages.Dashboard.Settings.Variables.Edit.AdHocFiltersVariable.modeToggle}
               value={defaultKeys != null}
               onChange={(e) => {
@@ -195,6 +200,7 @@ export function AdHocVariableForm({
           noMargin
         >
           <Switch
+            id={allowCustomValueId}
             value={allowCustomValue ?? true}
             onChange={onAllowCustomValueChange}
             data-testid={

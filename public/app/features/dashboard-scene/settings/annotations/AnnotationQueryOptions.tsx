@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useAsync } from 'react-use';
 
 import { AppEvents, CoreApp, type DataSourceInstanceSettings, getDataSourceRef } from '@grafana/data';
@@ -105,6 +105,7 @@ function QueryLibraryButton({ layer, onQuerySelected }: { layer: AnnotationLayer
 
 function AnnotationDataSourcePicker({ layer }: { layer: AnnotationLayer }) {
   const { query } = layer.useState();
+  const dataSourceId = useId();
 
   const onDataSourceChange = useCallback(
     (ds: DataSourceInstanceSettings) => {
@@ -145,7 +146,13 @@ function AnnotationDataSourcePicker({ layer }: { layer: AnnotationLayer }) {
 
   return (
     <Field label={t('dashboard.edit-pane.annotation.data-source', 'Data source')} noMargin>
-      <DataSourcePicker annotations variables current={query?.datasource} onChange={onDataSourceChange} />
+      <DataSourcePicker
+        inputId={dataSourceId}
+        annotations
+        variables
+        current={query?.datasource}
+        onChange={onDataSourceChange}
+      />
     </Field>
   );
 }

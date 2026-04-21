@@ -1,4 +1,4 @@
-import { type ChangeEvent, useCallback, useEffect, useState } from 'react';
+import { type ChangeEvent, useCallback, useEffect, useId, useState } from 'react';
 
 import { t } from '@grafana/i18n';
 import { InlineField, Input } from '@grafana/ui';
@@ -17,6 +17,7 @@ const GrafanaTemplateVariableFnInput = ({
   updateQuery: (val: AzureMonitorQuery) => void;
   datasource: DataSource;
 }) => {
+  const inputId = useId();
   const [inputVal, setInputVal] = useState('');
 
   useEffect(() => {
@@ -54,6 +55,7 @@ const GrafanaTemplateVariableFnInput = ({
       )}
     >
       <Input
+        id={inputId}
         placeholder={t(
           'components.grafana-template-variable-fn-input.placeholder-grafana-template-variable',
           'Type a grafana template variable function, e.g. {{example}}',

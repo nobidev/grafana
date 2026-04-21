@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { ReducerID, type SelectableValue } from '@grafana/data';
 import {
   CalculateFieldMode,
@@ -17,6 +19,9 @@ export const CumulativeOptionsEditor = (props: {
   const { names, onChange, options } = props;
   const { cumulative } = options;
   const selectOptions = names.map((v) => ({ label: v, value: v }));
+
+  const fieldId = useId();
+  const calculationId = useId();
 
   const onCumulativeStatsChange = (stats: string[]) => {
     const reducer = stats.length ? (stats[0] as ReducerID) : ReducerID.sum;
@@ -43,6 +48,7 @@ export const CumulativeOptionsEditor = (props: {
     <>
       <InlineField label={t('transformers.cumulative-options-editor.label-field', 'Field')} labelWidth={LABEL_WIDTH}>
         <Select
+          inputId={fieldId}
           placeholder={t('transformers.cumulative-options-editor.placeholder-field', 'Field')}
           options={selectOptions}
           className="min-width-18"
@@ -55,6 +61,7 @@ export const CumulativeOptionsEditor = (props: {
         labelWidth={LABEL_WIDTH}
       >
         <StatsPicker
+          id={calculationId}
           allowMultiple={false}
           stats={[cumulative?.reducer || ReducerID.sum]}
           onChange={onCumulativeStatsChange}

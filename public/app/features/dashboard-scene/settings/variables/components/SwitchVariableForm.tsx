@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { selectors } from '@grafana/e2e-selectors';
 import { Trans, t } from '@grafana/i18n';
@@ -29,6 +29,9 @@ export function SwitchVariableForm({
   inline,
 }: SwitchVariableFormProps) {
   const currentValuePairType = getCurrentValuePairType(enabledValue, disabledValue);
+  const valuePairTypeId = useId();
+  const enabledValueId = useId();
+  const disabledValueId = useId();
   const [isCustomValuePairType, setIsCustomValuePairType] = useState(currentValuePairType === 'custom');
   const [enabledValueInvalid, setEnabledValueInvalid] = useState<boolean>(false);
   const [disabledValueInvalid, setDisabledValueInvalid] = useState<boolean>(false);
@@ -109,6 +112,7 @@ export function SwitchVariableForm({
           )}
         >
           <Combobox
+            id={valuePairTypeId}
             width={fieldWidth}
             value={isCustomValuePairType ? 'custom' : currentValuePairType}
             options={VALUE_PAIR_OPTIONS}
@@ -131,6 +135,7 @@ export function SwitchVariableForm({
               invalid={enabledValueInvalid}
             >
               <Input
+                id={enabledValueId}
                 width={fieldWidth}
                 defaultValue={enabledValue}
                 onChange={(event) => {
@@ -155,6 +160,7 @@ export function SwitchVariableForm({
               invalid={disabledValueInvalid}
             >
               <Input
+                id={disabledValueId}
                 width={fieldWidth}
                 defaultValue={disabledValue}
                 onChange={(event) => handleDisabledValueChange(event.currentTarget.value)}

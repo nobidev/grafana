@@ -172,6 +172,8 @@ export function DashboardQueryEditor({ data, query, onChange, onRunQuery }: Prop
 
   const styles = useStyles2(getStyles);
   const selectId = useId();
+  const transformId = useId();
+  const filtersId = useId();
 
   if (panelPluginMetasError) {
     return (
@@ -220,12 +222,12 @@ export function DashboardQueryEditor({ data, query, onChange, onRunQuery }: Prop
 
           {showTransforms && (
             <Field label="Transform" description="Apply transformations from the source panel">
-              <InlineSwitch value={Boolean(query.withTransforms)} onChange={onTransformToggle} />
+              <InlineSwitch id={transformId} value={Boolean(query.withTransforms)} onChange={onTransformToggle} />
             </Field>
           )}
 
           <Field label="Filters" description="Apply --Dashboard-- data source filters to this panel" noMargin>
-            <InlineSwitch value={Boolean(query.adHocFiltersEnabled)} onChange={onAdHocFiltersToggle} />
+            <InlineSwitch id={filtersId} value={Boolean(query.adHocFiltersEnabled)} onChange={onAdHocFiltersToggle} />
           </Field>
         </Stack>
 

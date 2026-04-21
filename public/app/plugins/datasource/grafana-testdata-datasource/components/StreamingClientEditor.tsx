@@ -1,4 +1,4 @@
-import { type ChangeEvent } from 'react';
+import { type ChangeEvent, useId } from 'react';
 
 import { type SelectableValue } from '@grafana/data';
 import { InlineField, InlineFieldRow, Input, Select } from '@grafana/ui';
@@ -21,6 +21,7 @@ const types = [
 ];
 
 export const StreamingClientEditor = ({ onChange, query }: EditorProps) => {
+  const typeId = useId();
   const onSelectChange = ({ value }: SelectableValue) => {
     onChange({ target: { name: 'type', value } });
   };
@@ -43,6 +44,7 @@ export const StreamingClientEditor = ({ onChange, query }: EditorProps) => {
     <InlineFieldRow>
       <InlineField label="Type" labelWidth={14}>
         <Select
+          inputId={typeId}
           width={32}
           onChange={onSelectChange}
           defaultValue={types[0]}

@@ -1,4 +1,4 @@
-import { type SyntheticEvent } from 'react';
+import { type SyntheticEvent, useId } from 'react';
 
 import { type DataSourcePluginOptionsEditorProps, updateDatasourcePluginJsonDataOption } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
@@ -25,6 +25,12 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
   const credentialCache = jsonData?.credentialCache;
   const credentialCacheLookupFile = jsonData?.credentialCacheLookupFile;
 
+  const usernameId = useId();
+  const keytabFilePathId = useId();
+  const credentialCachePathId = useId();
+  const usernameId2 = useId();
+  const credentialCacheFilePathId = useId();
+
   const onKeytabFileChanged = (event: SyntheticEvent<HTMLInputElement>) => {
     updateDatasourcePluginJsonDataOption(props, 'keytabFilePath', event.currentTarget.value);
   };
@@ -49,6 +55,7 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
             description={UsernameMessage}
           >
             <Input
+              id={usernameId}
               value={settings.user || ''}
               placeholder={t('configuration.kerberos-config.placeholder-username', 'name@EXAMPLE.COM')}
               onChange={(e) => onOptionsChange({ ...settings, ...{ ['user']: e.currentTarget.value } })}
@@ -62,6 +69,7 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
             error={'Keytab file path is required'}
           >
             <Input
+              id={keytabFilePathId}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
               placeholder="/home/grot/grot.keytab"
               onChange={onKeytabFileChanged}
@@ -85,6 +93,7 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
             )}
           >
             <Input
+              id={credentialCachePathId}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
               placeholder="/tmp/krb5cc_1000"
               onChange={onCredentialCacheChanged}
@@ -108,6 +117,7 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
             description={UsernameMessage}
           >
             <Input
+              id={usernameId2}
               value={settings.user || ''}
               placeholder={t('configuration.kerberos-config.placeholder-username', 'name@EXAMPLE.COM')}
               onChange={(e) => onOptionsChange({ ...settings, ...{ ['user']: e.currentTarget.value } })}
@@ -124,6 +134,7 @@ export const KerberosConfig = (props: DataSourcePluginOptionsEditorProps<MssqlOp
             )}
           >
             <Input
+              id={credentialCacheFilePathId}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
               placeholder="/home/grot/cache.json"
               onChange={onCredentialCacheFileChanged}
@@ -144,6 +155,10 @@ export const KerberosAdvancedSettings = (props: DataSourcePluginOptionsEditorPro
   const jsonData = settings.jsonData;
   const configFilePath = jsonData?.configFilePath;
   const LONG_WIDTH = 40;
+
+  const udpPreferenceLimitId = useId();
+  const dnsLookupKdcId = useId();
+  const krb5ConfigFilePathId = useId();
   const onUDPLimitChanged = (val: number) => {
     updateDatasourcePluginJsonDataOption(props, 'UDPConnectionLimit', val);
   };
@@ -177,6 +192,7 @@ export const KerberosAdvancedSettings = (props: DataSourcePluginOptionsEditorPro
             }
           >
             <Input
+              id={udpPreferenceLimitId}
               type="text"
               width={LONG_WIDTH}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
@@ -205,6 +221,7 @@ export const KerberosAdvancedSettings = (props: DataSourcePluginOptionsEditorPro
             }
           >
             <Input
+              id={dnsLookupKdcId}
               type="text"
               width={LONG_WIDTH}
               // eslint-disable-next-line @grafana/i18n/no-untranslated-strings
@@ -231,6 +248,7 @@ export const KerberosAdvancedSettings = (props: DataSourcePluginOptionsEditorPro
             }
           >
             <Input
+              id={krb5ConfigFilePathId}
               onChange={onKrbConfigChanged}
               width={LONG_WIDTH}
               required

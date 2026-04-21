@@ -1,6 +1,6 @@
 import { css } from '@emotion/css';
 import moment, { type Moment } from 'moment/moment';
-import { type ChangeEvent, useState } from 'react';
+import { type ChangeEvent, useId, useState } from 'react';
 
 import { dateTimeAsMoment, getTimeZoneInfo, type GrafanaTheme2, isDateTime, type SelectableValue } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -34,6 +34,8 @@ const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 
 export const TimeRegionEditor = ({ value, onChange }: Props) => {
   const styles = useStyles2(getStyles);
+  const cronExpressionId = useId();
+  const durationId = useId();
 
   const timestamp = Date.now();
   const timezoneInfo = getTimeZoneInfo(value.timezone ?? 'utc', timestamp);
@@ -220,6 +222,7 @@ export const TimeRegionEditor = ({ value, onChange }: Props) => {
         <>
           <Field label="Cron expression">
             <Input
+              id={cronExpressionId}
               onChange={(e: ChangeEvent<HTMLInputElement>) => onCronExprChange(e.target.value)}
               value={value.cronExpr}
               placeholder="0 9 * * 1-5"
@@ -228,6 +231,7 @@ export const TimeRegionEditor = ({ value, onChange }: Props) => {
           </Field>
           <Field label="Duration">
             <Input
+              id={durationId}
               onChange={(e: ChangeEvent<HTMLInputElement>) => onDurationChange(e.target.value)}
               value={value.duration}
               placeholder="8h"

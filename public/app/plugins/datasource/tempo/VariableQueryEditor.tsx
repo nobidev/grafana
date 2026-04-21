@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import { type DataQuery, type SelectableValue, type TimeRange } from '@grafana/data';
 import { InlineField, InlineFieldRow, type InputActionMeta, Select } from '@grafana/ui';
@@ -32,6 +32,8 @@ export type TempoVariableQueryEditorProps = {
 };
 
 export const TempoVariableQueryEditor = ({ onChange, query, datasource, range }: TempoVariableQueryEditorProps) => {
+  const queryTypeId = useId();
+  const labelId = useId();
   const [label, setLabel] = useState(query.label || '');
   const [type, setType] = useState<number | undefined>(query.type);
   const [labelOptions, setLabelOptions] = useState<Array<SelectableValue<string>>>([]);
@@ -103,6 +105,7 @@ export const TempoVariableQueryEditor = ({ onChange, query, datasource, range }:
       <InlineFieldRow>
         <InlineField label="Query type" labelWidth={20}>
           <Select
+            inputId={queryTypeId}
             aria-label="Query type"
             onChange={onQueryTypeChange}
             onBlur={handleBlur}
@@ -117,6 +120,7 @@ export const TempoVariableQueryEditor = ({ onChange, query, datasource, range }:
         <InlineFieldRow>
           <InlineField label="Label" labelWidth={20}>
             <Select
+              inputId={labelId}
               aria-label="Label"
               onChange={onLabelChange}
               onBlur={handleBlur}

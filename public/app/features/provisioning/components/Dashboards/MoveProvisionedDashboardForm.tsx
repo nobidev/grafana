@@ -1,5 +1,5 @@
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom-v5-compat';
 
@@ -57,6 +57,7 @@ export function MoveProvisionedDashboardForm({
   onSuccess,
 }: Props) {
   const methods = useForm<ProvisionedDashboardFormData>({ defaultValues });
+  const targetPathId = useId();
   const { editPanel: panelEditor } = dashboard.useState();
 
   const { handleSubmit, watch } = methods;
@@ -300,7 +301,7 @@ export function MoveProvisionedDashboardForm({
                 noMargin
                 label={t('dashboard-scene.move-provisioned-dashboard-form.target-path-label', 'Target path')}
               >
-                <Input readOnly value={targetPath} />
+                <Input id={targetPathId} readOnly value={targetPath} />
               </Field>
 
               <ResourceEditFormSharedFields

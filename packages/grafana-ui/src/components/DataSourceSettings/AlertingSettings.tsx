@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useId, type JSX } from 'react';
 
 import { type DataSourceJsonData, type DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
@@ -16,6 +16,7 @@ export interface AlertingConfig extends DataSourceJsonData {
 }
 
 export function AlertingSettings<T extends AlertingConfig>({ options, onOptionsChange }: Props<T>): JSX.Element {
+  const manageAlertsId = useId();
   return (
     <>
       <h3 className="page-heading">
@@ -38,6 +39,7 @@ export function AlertingSettings<T extends AlertingConfig>({ options, onOptionsC
                 )}
               >
                 <InlineSwitch
+                  id={manageAlertsId}
                   value={options.jsonData.manageAlerts !== false}
                   onChange={(event) =>
                     onOptionsChange({

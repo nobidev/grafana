@@ -1,4 +1,5 @@
 import { css } from '@emotion/css';
+import { useId } from 'react';
 
 import {
   type DataSourceJsonData,
@@ -28,6 +29,7 @@ interface Props extends DataSourcePluginOptionsEditorProps<SpanBarOptionsData> {
 
 export default function SpanBarSettings({ options, onOptionsChange }: Props) {
   const styles = useStyles2(getStyles);
+  const tagKeyId = useId();
 
   const selectOptions = [NONE, DURATION, TAG].map(toOption);
 
@@ -68,6 +70,7 @@ export default function SpanBarSettings({ options, onOptionsChange }: Props) {
             )}
           >
             <Input
+              id={tagKeyId}
               type="text"
               placeholder={t('explore.span-bar-settings.placeholder-enter-tag-key', 'Enter tag key')}
               onChange={(v) =>

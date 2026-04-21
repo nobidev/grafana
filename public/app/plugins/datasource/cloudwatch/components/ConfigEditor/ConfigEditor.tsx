@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 import { ConnectionConfig } from '@grafana/aws-sdk';
@@ -86,6 +86,7 @@ export const ConfigEditor = (props: Props) => {
   }, [options.jsonData.authType, options.jsonData.database, options.jsonData.profile]);
 
   const styles = useStyles2(getStyles);
+  const customMetricsNamespacesId = useId();
 
   return (
     <div className={styles.formStyles}>
@@ -119,6 +120,7 @@ export const ConfigEditor = (props: Props) => {
       >
         <Field label="Namespaces of Custom Metrics">
           <Input
+            id={customMetricsNamespacesId}
             placeholder="Namespace1,Namespace2"
             value={options.jsonData.customMetricsNamespaces || ''}
             onChange={onUpdateDatasourceJsonDataOption(props, 'customMetricsNamespaces')}

@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useMemo, useEffect } from 'react';
+import { useId, useMemo, useEffect } from 'react';
 import AutoSizer from 'react-virtualized-auto-sizer';
 
 import { type PanelPlugin, type GrafanaTheme2 } from '@grafana/data';
@@ -36,6 +36,7 @@ interface Props {
 export function HelpWizard({ panel, plugin, onClose }: Props) {
   const styles = useStyles2(getStyles);
   const service = useMemo(() => new SupportSnapshotService(panel), [panel]);
+  const templateId = useId();
 
   const {
     currentTab,
@@ -115,7 +116,12 @@ export function HelpWizard({ panel, plugin, onClose }: Props) {
         <div className={styles.code}>
           <div className={styles.opts}>
             <Field label={t('dashboard.help-wizard.label-template', 'Template')} className={styles.field}>
-              <Select options={options} value={showMessage} onChange={service.onShowMessageChange} />
+              <Select
+                inputId={templateId}
+                options={options}
+                value={showMessage}
+                onChange={service.onShowMessageChange}
+              />
             </Field>
 
             {showMessage === ShowMessage.GithubComment ? (

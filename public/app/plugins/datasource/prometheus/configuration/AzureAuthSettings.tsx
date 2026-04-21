@@ -1,5 +1,5 @@
 import { cx } from '@emotion/css';
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, useId, useMemo, useState } from 'react';
 import { useEffectOnce } from 'react-use';
 
 import { type AzureCredentials } from '@grafana/azure-sdk';
@@ -12,6 +12,8 @@ import { AzureCredentialsForm } from './AzureCredentialsForm';
 
 export const AzureAuthSettings = (props: HttpSettingsBaseProps) => {
   const { dataSourceConfig, onChange } = props;
+  const overrideAadAudienceId = useId();
+  const resourceId = useId();
 
   const [overrideAudienceAllowed] = useState<boolean>(!!config.featureToggles.prometheusAzureOverrideAudience);
   const [overrideAudienceChecked, setOverrideAudienceChecked] = useState<boolean>(
@@ -67,13 +69,18 @@ export const AzureAuthSettings = (props: HttpSettingsBaseProps) => {
           <div className="gf-form-group">
             <InlineFieldRow>
               <InlineField labelWidth={24} label="Override AAD audience" disabled={dataSourceConfig.readOnly}>
-                <InlineSwitch value={overrideAudienceChecked} onChange={onOverrideAudienceChange} />
+                <InlineSwitch
+                  id={overrideAadAudienceId}
+                  value={overrideAudienceChecked}
+                  onChange={onOverrideAudienceChange}
+                />
               </InlineField>
             </InlineFieldRow>
             {overrideAudienceChecked && (
               <InlineFieldRow>
                 <InlineField labelWidth={24} label="Resource ID" disabled={dataSourceConfig.readOnly}>
                   <Input
+                    id={resourceId}
                     className={cx('width-20')}
                     value={dataSourceConfig.jsonData.azureEndpointResourceId || ''}
                     onChange={onResourceIdChange}

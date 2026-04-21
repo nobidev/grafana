@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import * as React from 'react';
 
 import { type CalculateFieldTransformerOptions } from '@grafana/data/internal';
@@ -11,6 +12,7 @@ export const IndexOptionsEditor = (props: {
   onChange: (options: CalculateFieldTransformerOptions) => void;
 }) => {
   const { options, onChange } = props;
+  const asPercentileId = useId();
   const { index } = options;
 
   const onToggleRowIndexAsPercentile = (e: React.FormEvent<HTMLInputElement>) => {
@@ -31,7 +33,7 @@ export const IndexOptionsEditor = (props: {
           'Transform the row index as a percentile.'
         )}
       >
-        <InlineSwitch value={!!index?.asPercentile} onChange={onToggleRowIndexAsPercentile} />
+        <InlineSwitch id={asPercentileId} value={!!index?.asPercentile} onChange={onToggleRowIndexAsPercentile} />
       </InlineField>
     </>
   );

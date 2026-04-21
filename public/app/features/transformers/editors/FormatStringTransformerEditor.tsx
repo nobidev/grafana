@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -26,6 +26,9 @@ function FormatStringTransfomerEditor({
   options,
   onChange,
 }: TransformerUIProps<FormatStringTransformerOptions>) {
+  const fieldId = useId();
+  const formatId = useId();
+  const substringRangeId = useId();
   const fieldNamePickerSettings: StandardEditorsRegistryItem<string, FieldNamePickerConfigSettings> = {
     settings: {
       width: 30,
@@ -93,6 +96,7 @@ function FormatStringTransfomerEditor({
       <InlineFieldRow>
         <InlineField label={t('transformers.format-string-transfomer-editor.label-field', 'Field')} labelWidth={10}>
           <FieldNamePicker
+            id={fieldId}
             context={{ data: input }}
             value={options.stringField ?? ''}
             onChange={onSelectField}
@@ -101,7 +105,7 @@ function FormatStringTransfomerEditor({
         </InlineField>
 
         <InlineField label={t('transformers.format-string-transfomer-editor.label-format', 'Format')} labelWidth={10}>
-          <Select options={ops} value={options.outputFormat} onChange={onFormatChange} width={20} />
+          <Select inputId={formatId} options={ops} value={options.outputFormat} onChange={onFormatChange} width={20} />
         </InlineField>
       </InlineFieldRow>
 
@@ -111,7 +115,13 @@ function FormatStringTransfomerEditor({
             label={t('transformers.format-string-transfomer-editor.label-substring-range', 'Substring range')}
             labelWidth={15}
           >
-            <NumberInput min={0} value={options.substringStart ?? 0} onChange={onSubstringStartChange} width={7} />
+            <NumberInput
+              id={substringRangeId}
+              min={0}
+              value={options.substringStart ?? 0}
+              onChange={onSubstringStartChange}
+              width={7}
+            />
           </InlineField>
           <InlineField>
             <NumberInput min={0} value={options.substringEnd ?? 0} onChange={onSubstringEndChange} width={7} />

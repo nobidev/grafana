@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useRef, useCallback, useEffect, useMemo, useState } from 'react';
+import { useId, useRef, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAsync } from 'react-use';
 
 import { dateTime, type GrafanaTheme2, type LogRowModel, renderMarkdown, type SelectableValue } from '@grafana/data';
@@ -115,6 +115,7 @@ export const IS_LOKI_LOG_CONTEXT_UI_OPEN = 'isLogContextQueryUiOpen';
 export function LokiContextUi(props: LokiContextUiProps) {
   const { row, logContextProvider, updateFilter, onClose, origQuery, runContextQuery } = props;
   const styles = useStyles2(getStyles);
+  const includePipelineOperationsId = useId();
 
   const [contextFilters, setContextFilters] = useState<ContextFilter[]>([]);
   const [showPreservedFiltersAppliedNotification, setShowPreservedFiltersAppliedNotification] = useState(false);
@@ -425,6 +426,7 @@ export function LokiContextUi(props: LokiContextUiProps) {
                 }
               >
                 <InlineSwitch
+                  id={includePipelineOperationsId}
                   value={includePipelineOperations}
                   showLabel={true}
                   transparent={true}

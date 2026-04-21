@@ -50,6 +50,10 @@ export const CalculateFieldTransformerEditor = (props: CalculateFieldTransformer
   const configuredOptions = options?.reduce?.include;
   const [state, setState] = useState<CalculateFieldTransformerEditorState>({ names: [], selected: [] });
 
+  const modeId = React.useId();
+  const aliasId = React.useId();
+  const replaceAllFieldsId = React.useId();
+
   const calculationModes = [
     {
       value: CalculateFieldMode.BinaryOperation,
@@ -201,6 +205,7 @@ export const CalculateFieldTransformerEditor = (props: CalculateFieldTransformer
         label={t('transformers.calculate-field-transformer-editor.label-mode', 'Mode')}
       >
         <Select
+          inputId={modeId}
           className="width-18"
           options={calculationModes}
           value={calculationModes.find((v) => v.value === mode)}
@@ -244,6 +249,7 @@ export const CalculateFieldTransformerEditor = (props: CalculateFieldTransformer
         disabled={disableAlias}
       >
         <Input
+          id={aliasId}
           className="width-18"
           value={options.alias ?? ''}
           placeholder={getNameFromOptions(options)}
@@ -254,7 +260,7 @@ export const CalculateFieldTransformerEditor = (props: CalculateFieldTransformer
         labelWidth={LABEL_WIDTH}
         label={t('transformers.calculate-field-transformer-editor.label-replace-all-fields', 'Replace all fields')}
       >
-        <InlineSwitch value={!!options.replaceFields} onChange={onToggleReplaceFields} />
+        <InlineSwitch id={replaceAllFieldsId} value={!!options.replaceFields} onChange={onToggleReplaceFields} />
       </InlineField>
     </>
   );

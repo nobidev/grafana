@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useId, useRef } from 'react';
 
 import { type SelectableValue } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -77,6 +77,7 @@ export function LinkTextInput({
 }) {
   const { dashboard, link, linkIndex } = useLinkState(linkEdit);
   const ref = useEditPaneInputAutoFocus({ autoFocus });
+  const inputId = useId();
 
   const config = TEXT_LINK_PROP_CONFIG[prop];
   const oldValue = useRef(link?.[prop] ?? '');
@@ -87,6 +88,7 @@ export function LinkTextInput({
   return (
     <Field label={t(config.labelKey, config.labelFallback)} noMargin>
       <Input
+        id={inputId}
         ref={ref}
         value={link[prop] ?? ''}
         placeholder={
@@ -120,6 +122,7 @@ export function LinkTextInput({
 
 export function LinkTypeSelect({ linkEdit }: { linkEdit: LinkEdit }) {
   const { dashboard, link, linkIndex } = useLinkState(linkEdit);
+  const typeId = useId();
 
   const linkTypeOptions = [
     {
@@ -152,13 +155,14 @@ export function LinkTypeSelect({ linkEdit }: { linkEdit: LinkEdit }) {
 
   return (
     <Field label={t('dashboard-scene.link-options.type', 'Type')} noMargin>
-      <Select value={link.type} options={linkTypeOptions} onChange={onTypeChange} />
+      <Select inputId={typeId} value={link.type} options={linkTypeOptions} onChange={onTypeChange} />
     </Field>
   );
 }
 
 export function LinkTagsInput({ linkEdit }: { linkEdit: LinkEdit }) {
   const { dashboard, link, linkIndex } = useLinkState(linkEdit);
+  const withTagsId = useId();
 
   if (!link || link.type !== 'dashboards') {
     return null;
@@ -166,13 +170,18 @@ export function LinkTagsInput({ linkEdit }: { linkEdit: LinkEdit }) {
 
   return (
     <Field label={t('dashboard-scene.link-options.with-tags', 'With tags')} noMargin>
-      <TagsInput tags={link.tags} onChange={(tags) => commitUpdate(dashboard, linkIndex, link, { ...link, tags })} />
+      <TagsInput
+        id={withTagsId}
+        tags={link.tags}
+        onChange={(tags) => commitUpdate(dashboard, linkIndex, link, { ...link, tags })}
+      />
     </Field>
   );
 }
 
 export function LinkIconSelect({ linkEdit }: { linkEdit: LinkEdit }) {
   const { dashboard, link, linkIndex } = useLinkState(linkEdit);
+  const iconId = useId();
 
   if (!link || link.type !== 'link') {
     return null;
@@ -181,6 +190,7 @@ export function LinkIconSelect({ linkEdit }: { linkEdit: LinkEdit }) {
   return (
     <Field label={t('dashboard-scene.link-options.icon', 'Icon')} noMargin>
       <Select
+        inputId={iconId}
         value={link.icon}
         options={linkIconOptions}
         onChange={(v: SelectableValue) => commitUpdate(dashboard, linkIndex, link, { ...link, icon: v.value })}

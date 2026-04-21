@@ -1,4 +1,4 @@
-import { useCallback, type ChangeEvent } from 'react';
+import { useCallback, useId, type ChangeEvent } from 'react';
 
 import {
   DataTransformerID,
@@ -22,6 +22,9 @@ export function FormatTimeTransfomerEditor({
   options,
   onChange,
 }: TransformerUIProps<FormatTimeTransformerOptions>) {
+  const timeFieldId = useId();
+  const formatId = useId();
+  const setTimezoneId = useId();
   const timeFields: Array<SelectableValue<string>> = [];
   const timeZoneOptions: Array<SelectableValue<string>> = getTimezoneOptions(true);
 
@@ -77,6 +80,7 @@ export function FormatTimeTransfomerEditor({
           grow
         >
           <Select
+            inputId={timeFieldId}
             options={timeFields}
             value={options.timeField}
             onChange={onSelectField}
@@ -101,7 +105,7 @@ export function FormatTimeTransfomerEditor({
           }
           interactive={true}
         >
-          <Input onChange={onFormatChange} value={options.outputFormat} />
+          <Input id={formatId} onChange={onFormatChange} value={options.outputFormat} />
         </InlineField>
         <InlineField
           label={t('transformers.format-time-transfomer-editor.label-set-timezone', 'Set timezone')}
@@ -111,7 +115,13 @@ export function FormatTimeTransfomerEditor({
           )}
           labelWidth={20}
         >
-          <Select options={timeZoneOptions} value={options.timezone} onChange={onTzChange} isClearable />
+          <Select
+            inputId={setTimezoneId}
+            options={timeZoneOptions}
+            value={options.timezone}
+            onChange={onTzChange}
+            isClearable
+          />
         </InlineField>
       </InlineFieldRow>
     </>

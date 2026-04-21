@@ -2,7 +2,7 @@ import { css } from '@emotion/css';
 import { type AnyAction } from '@reduxjs/toolkit';
 import { uniqueId } from 'lodash';
 import * as React from 'react';
-import { type FormEvent, useEffect, useReducer } from 'react';
+import { type FormEvent, useEffect, useId, useReducer } from 'react';
 
 import { type GrafanaTheme2, type SelectableValue } from '@grafana/data';
 import { t } from '@grafana/i18n';
@@ -186,6 +186,7 @@ interface RecoveryThresholdRowProps {
 
 function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnblur }: RecoveryThresholdRowProps) {
   const styles = useStyles2(getStyles);
+  const recoveryThresholdId = useId();
 
   const onUnloadValueChange = (event: FormEvent<HTMLInputElement>, paramIndex: number) => {
     const newValue = parseFloat(event.currentTarget.value);
@@ -379,6 +380,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {
@@ -402,6 +404,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {
@@ -425,6 +428,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {
@@ -448,6 +452,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {
@@ -471,6 +476,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {
@@ -494,6 +500,7 @@ function RecoveryThresholdRow({ isRange, condition, onError, dispatch, allowOnbl
               error={invalidErrorMsg}
             >
               <Input
+                id={recoveryThresholdId}
                 type="number"
                 width={10}
                 onBlur={(event) => {

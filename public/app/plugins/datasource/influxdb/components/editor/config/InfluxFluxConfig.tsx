@@ -39,8 +39,9 @@ export const InfluxFluxConfig = (props: Props) => {
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>
-        <InlineField labelWidth={WIDTH_SHORT} label="Token">
+        <InlineField labelWidth={WIDTH_SHORT} label="Token" htmlFor={`${htmlPrefix}-token`}>
           <SecretInput
+            id={`${htmlPrefix}-token`}
             isConfigured={Boolean(secureJsonFields && secureJsonFields.token)}
             value={secureJsonData?.token || ''}
             label="Token"
@@ -53,8 +54,9 @@ export const InfluxFluxConfig = (props: Props) => {
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>
-        <InlineField labelWidth={WIDTH_SHORT} label="Default Bucket">
+        <InlineField labelWidth={WIDTH_SHORT} label="Default Bucket" htmlFor={`${htmlPrefix}-default-bucket`}>
           <Input
+            id={`${htmlPrefix}-default-bucket`}
             className="width-20"
             placeholder="default bucket"
             value={jsonData.defaultBucket || ''}
@@ -68,10 +70,12 @@ export const InfluxFluxConfig = (props: Props) => {
         <InlineField
           labelWidth={WIDTH_SHORT}
           label="Min time interval"
+          htmlFor={`${htmlPrefix}-min-time-interval`}
           tooltip="A lower limit for the auto group by time interval. Recommended to be set to write frequency,
 				for example 1m if your data is written every minute."
         >
           <Input
+            id={`${htmlPrefix}-min-time-interval`}
             className="width-20"
             placeholder="10s"
             value={jsonData.timeInterval || ''}

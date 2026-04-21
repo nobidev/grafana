@@ -23,6 +23,7 @@ export const PlaylistForm = ({ onSubmit, playlist }: Props) => {
   const [saving, setSaving] = useState(false);
   const playlistNameId = useId();
   const playlistIntervalId = useId();
+  const addByTagId = useId();
   const { title: name, interval, items: propItems } = playlist.spec || {};
   const tagOptions = useMemo(() => {
     return () => getGrafanaSearcher().tags({ kind: ['dashboard'] });
@@ -91,6 +92,7 @@ export const PlaylistForm = ({ onSubmit, playlist }: Props) => {
 
               <Field label={t('playlist-edit.form.add-tag-label', 'Add by tag')}>
                 <TagFilter
+                  inputId={addByTagId}
                   isClearable
                   tags={[]}
                   hideValues

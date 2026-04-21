@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import { type GrafanaTheme2, type SelectableValue } from '@grafana/data';
 import { Trans, t } from '@grafana/i18n';
@@ -43,6 +43,7 @@ const AzureCheatSheet = (props: AzureCheatSheetProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchInputValue, setSearchInputValue] = useState('');
   const styles = useStyles2(getStyles);
+  const categoriesId = useId();
 
   const lang = { grammar: tokenizer, name: 'kql' };
   const dropdownMenu = useMemo(() => {
@@ -155,6 +156,7 @@ const AzureCheatSheet = (props: AzureCheatSheetProps) => {
               className={styles.categoryDropdown}
             >
               <Select
+                inputId={categoriesId}
                 options={dropdownMenu}
                 value={''}
                 onChange={(a) => filterQueriesByCategory(a)}

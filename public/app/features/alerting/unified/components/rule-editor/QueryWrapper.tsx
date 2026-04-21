@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { cloneDeep } from 'lodash';
 import * as React from 'react';
-import { type ChangeEvent, useState } from 'react';
+import { type ChangeEvent, useId, useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 
 import {
@@ -232,6 +232,7 @@ export function MaxDataPointsOption({
   options: AlertQueryOptions;
   onChange: (options: AlertQueryOptions) => void;
 }) {
+  const maxDataPointsId = useId();
   const value = options.maxDataPoints ?? '';
 
   const onMaxDataPointsBlur = (event: ChangeEvent<HTMLInputElement>) => {
@@ -257,6 +258,7 @@ export function MaxDataPointsOption({
       )}
     >
       <Input
+        id={maxDataPointsId}
         type="number"
         width={10}
         placeholder={DEFAULT_MAX_DATA_POINTS.toString()}
@@ -275,6 +277,7 @@ export function MinIntervalOption({
   options: AlertQueryOptions;
   onChange: (options: AlertQueryOptions) => void;
 }) {
+  const intervalId = useId();
   const value = options.minInterval ?? '';
 
   const onMinIntervalBlur = (event: ChangeEvent<HTMLInputElement>) => {
@@ -299,6 +302,7 @@ export function MinIntervalOption({
       }
     >
       <Input
+        id={intervalId}
         type="text"
         width={10}
         placeholder={DEFAULT_MIN_INTERVAL}

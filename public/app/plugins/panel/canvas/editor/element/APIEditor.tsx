@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 
 import {
   type StandardEditorProps,
@@ -53,6 +53,10 @@ const contentTypeOptions: SelectableValue[] = [
 
 export function APIEditor({ value, context, onChange }: Props) {
   const LABEL_WIDTH = 13;
+  const endpointId = useId();
+  const contentTypeId = useId();
+  const successMessageId = useId();
+  const payloadId = useId();
 
   if (!value) {
     value = defaultApiConfig;
@@ -165,6 +169,7 @@ export function APIEditor({ value, context, onChange }: Props) {
       <InlineFieldRow>
         <InlineField label={t('canvas.apieditor.label-endpoint', 'Endpoint')} labelWidth={LABEL_WIDTH} grow={true}>
           <StringValueEditor
+            id={endpointId}
             context={context}
             value={value?.endpoint}
             onChange={onEndpointChange}
@@ -186,6 +191,7 @@ export function APIEditor({ value, context, onChange }: Props) {
             grow={true}
           >
             <Select
+              inputId={contentTypeId}
               options={contentTypeOptions}
               allowCustomValue={true}
               formatCreateLabel={formatCreateLabel}
@@ -205,6 +211,7 @@ export function APIEditor({ value, context, onChange }: Props) {
       </Field>
       <Field label={t('canvas.apieditor.label-successmessage', 'Success message')} noMargin>
         <StringValueEditor
+          id={successMessageId}
           context={context}
           value={value.successMessage}
           onChange={onSuccessMessageChange}
@@ -214,6 +221,7 @@ export function APIEditor({ value, context, onChange }: Props) {
       {value?.method !== HttpRequestMethod.GET && value?.contentType && (
         <Field label={t('canvas.apieditor.label-payload', 'Payload')} noMargin>
           <StringValueEditor
+            id={payloadId}
             context={context}
             value={value?.data ?? '{}'}
             onChange={onDataChange}

@@ -16,6 +16,10 @@ interface Props {
 
 export const Reduce = ({ labelWidth = 'auto', onChange, app, refIds, query }: Props) => {
   const reducer = reducerTypes.find((o) => o.value === query.reducer);
+  const replaceWithId = React.useId();
+  const inputId = React.useId();
+  const functionId = React.useId();
+  const modeId = React.useId();
 
   const onRefIdChange = (value: SelectableValue<string>) => {
     onChange({ ...query, expression: value.value });
@@ -71,7 +75,13 @@ export const Reduce = ({ labelWidth = 'auto', onChange, app, refIds, query }: Pr
         label={t('expressions.reduce.replace-with-number.label-replace-with', 'Replace with')}
         labelWidth={labelWidth}
       >
-        <Input type="number" width={10} onChange={onReplaceWithChanged} value={query.settings?.replaceWithValue ?? 0} />
+        <Input
+          id={replaceWithId}
+          type="number"
+          width={10}
+          onChange={onReplaceWithChanged}
+          value={query.settings?.replaceWithValue ?? 0}
+        />
       </InlineField>
     );
   };
@@ -101,15 +111,15 @@ export const Reduce = ({ labelWidth = 'auto', onChange, app, refIds, query }: Pr
       {strictModeNotification()}
       <InlineFieldRow>
         <InlineField label={t('expressions.reduce.label-input', 'Input')} labelWidth={labelWidth}>
-          <Select onChange={onRefIdChange} options={refIds} value={query.expression} width={'auto'} />
+          <Select inputId={inputId} onChange={onRefIdChange} options={refIds} value={query.expression} width={'auto'} />
         </InlineField>
       </InlineFieldRow>
       <InlineFieldRow>
         <InlineField label={t('expressions.reduce.label-function', 'Function')} labelWidth={labelWidth}>
-          <Select options={reducerTypes} value={reducer} onChange={onSelectReducer} width={20} />
+          <Select inputId={functionId} options={reducerTypes} value={reducer} onChange={onSelectReducer} width={20} />
         </InlineField>
         <InlineField label={t('expressions.reduce.label-mode', 'Mode')} labelWidth={labelWidth}>
-          <Select onChange={onModeChanged} options={reducerModes} value={mode} width={25} />
+          <Select inputId={modeId} onChange={onModeChanged} options={reducerModes} value={mode} width={25} />
         </InlineField>
         {replaceWithNumber()}
       </InlineFieldRow>

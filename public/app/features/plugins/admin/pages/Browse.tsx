@@ -28,6 +28,7 @@ export default function Browse() {
   const navModel = useSelector((state) => getNavModel(state.navIndex, 'plugins'));
   const styles = useStyles2(getStyles);
   const searchId = useId();
+  const typeId = useId();
   const history = useHistory();
   const remotePluginsAvailable = useIsRemotePluginsAvailable();
 
@@ -107,6 +108,7 @@ export default function Browse() {
               {/* Filter by type */}
               <Field label={t('plugins.browse.label-type', 'Type')}>
                 <Select
+                  inputId={typeId}
                   aria-label={t('plugins.browse.aria-label-plugin-type-filter', 'Plugin type filter')}
                   value={filterByType}
                   onChange={onFilterByTypeChange}

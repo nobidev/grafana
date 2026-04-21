@@ -1,7 +1,7 @@
 import { css } from '@emotion/css';
 import { fromPairs, isEmpty, sortBy, take, uniq } from 'lodash';
 import * as React from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { AlertLabels } from '@grafana/alerting/unstable';
@@ -42,6 +42,8 @@ const LokiStateHistory = ({ ruleUID }: Props) => {
   const [stateFrom, setStateFrom] = useState<string>(StateFilterValues.all);
   const [stateTo, setStateTo] = useState<string>(StateFilterValues.all);
   const logsRef = useRef<Map<number, HTMLElement>>(new Map<number, HTMLElement>());
+  const startStateId = useId();
+  const endStateId = useId();
 
   const { getValues, setValue, register, handleSubmit } = useForm({ defaultValues: { query: '' } });
 
@@ -162,6 +164,7 @@ const LokiStateHistory = ({ ruleUID }: Props) => {
         </div>
         <Field noMargin label={t('alerting.loki-state-history.start-state', 'Start state')}>
           <Select
+            inputId={startStateId}
             options={STATE_FILTER_OPTIONS}
             value={stateFrom}
             onChange={(v) => setStateFrom(v.value ?? StateFilterValues.all)}
@@ -170,6 +173,7 @@ const LokiStateHistory = ({ ruleUID }: Props) => {
         </Field>
         <Field noMargin label={t('alerting.loki-state-history.end-state', 'End state')}>
           <Select
+            inputId={endStateId}
             options={STATE_FILTER_OPTIONS}
             value={stateTo}
             onChange={(v) => setStateTo(v.value ?? StateFilterValues.all)}

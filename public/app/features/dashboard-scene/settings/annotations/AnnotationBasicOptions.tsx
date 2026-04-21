@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useId, useMemo, useRef } from 'react';
 
 import { t } from '@grafana/i18n';
 import { usePanelPluginMetas } from '@grafana/runtime/internal';
@@ -18,10 +18,12 @@ export function AnnotationNameInput({ layer, autoFocus }: { layer: AnnotationLay
   const { name } = layer.useState();
   const oldName = useRef(name);
   const inputRef = useEditPaneInputAutoFocus({ autoFocus });
+  const nameId = useId();
 
   return (
     <Field label={t('dashboard.edit-pane.annotation.name', 'Name')} noMargin>
       <Input
+        id={nameId}
         ref={inputRef}
         value={name}
         onFocus={() => {
@@ -44,6 +46,7 @@ export function AnnotationNameInput({ layer, autoFocus }: { layer: AnnotationLay
 
 export function AnnotationEnabledCheckbox({ layer }: { layer: AnnotationLayer }) {
   const { isEnabled } = layer.useState();
+  const enabledId = useId();
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     annotationEditActions.changeAnnotationEnabled({
@@ -62,7 +65,7 @@ export function AnnotationEnabledCheckbox({ layer }: { layer: AnnotationLayer })
       )}
       noMargin
     >
-      <Checkbox value={isEnabled} onChange={onChange} />
+      <Checkbox id={enabledId} value={isEnabled} onChange={onChange} />
     </Field>
   );
 }
@@ -107,6 +110,7 @@ enum AnnotationControlsDisplay {
 
 export function AnnotationControlsDisplayPicker({ layer }: { layer: AnnotationLayer }) {
   const { isHidden, placement } = layer.useState();
+  const displayId = useId();
 
   const onChange = useCallback(
     (option: ComboboxOption<AnnotationControlsDisplay>) => {
@@ -160,7 +164,7 @@ export function AnnotationControlsDisplayPicker({ layer }: { layer: AnnotationLa
 
   return (
     <Field label={t('dashboard.edit-pane.annotation.display', 'Show annotation controls in')} noMargin>
-      <Combobox options={options} value={currentValue} onChange={onChange} width="auto" minWidth={100} />
+      <Combobox id={displayId} options={options} value={currentValue} onChange={onChange} width="auto" minWidth={100} />
     </Field>
   );
 }

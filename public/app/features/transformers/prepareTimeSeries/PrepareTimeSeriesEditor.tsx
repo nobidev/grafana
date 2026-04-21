@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback } from 'react';
+import { useCallback, useId } from 'react';
 import * as React from 'react';
 
 import {
@@ -20,6 +20,7 @@ import { type PrepareTimeSeriesOptions, timeSeriesFormat, getPrepareTimeSeriesTr
 export function PrepareTimeSeriesEditor(props: TransformerUIProps<PrepareTimeSeriesOptions>): React.ReactElement {
   const { options, onChange } = props;
   const styles = useStyles2(getStyles);
+  const formatId = useId();
 
   const wideInfo = {
     label: t('transformers.prepare-time-series-editor.wide-info.label.wide-time-series', 'Wide time series'),
@@ -134,6 +135,7 @@ export function PrepareTimeSeriesEditor(props: TransformerUIProps<PrepareTimeSer
       <InlineFieldRow>
         <InlineField label={t('transformers.prepare-time-series-editor.label-format', 'Format')} labelWidth={12}>
           <Select
+            inputId={formatId}
             width={35}
             options={formats}
             value={

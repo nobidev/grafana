@@ -1,4 +1,4 @@
-import { type ReactElement } from 'react';
+import { type ReactElement, useId } from 'react';
 
 import { type SelectableValue } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
@@ -16,6 +16,7 @@ export function DefaultGroupByValueEditor({
   options = [],
   onChange,
 }: DefaultGroupByValueEditorProps): ReactElement {
+  const defaultGroupById = useId();
   return (
     <Stack
       direction="column"
@@ -31,6 +32,7 @@ export function DefaultGroupByValueEditor({
         noMargin
       >
         <MultiSelect<string>
+          inputId={defaultGroupById}
           aria-label={t('dashboard-scene.default-value-editor.aria-label', 'Default value')}
           placeholder={t('dashboard-scene.default-value-editor.placeholder', 'Choose default values')}
           options={options}

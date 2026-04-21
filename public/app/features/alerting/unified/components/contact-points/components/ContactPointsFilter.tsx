@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { useDebounce } from 'react-use';
 
 import { Trans, t } from '@grafana/i18n';
@@ -9,6 +9,7 @@ import { useURLSearchParams } from '../../../hooks/useURLSearchParams';
 
 const ContactPointsFilter = () => {
   const styles = useStyles2(getStyles);
+  const searchId = useId();
 
   const [searchParams, setSearchParams] = useURLSearchParams();
 
@@ -38,6 +39,7 @@ const ContactPointsFilter = () => {
         label={t('alerting.contact-points-filter.label-search-by-name-or-type', 'Search by name or type')}
       >
         <Input
+          id={searchId}
           aria-label={t('alerting.contact-points-filter.aria-label-search-contact-points', 'search contact points')}
           placeholder={t('alerting.contact-points-filter.placeholder-search', 'Search')}
           width={46}

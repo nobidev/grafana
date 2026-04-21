@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Controller, type FieldErrors, type FieldPath, type UseFormReturn } from 'react-hook-form';
 
 import { selectors } from '@grafana/e2e-selectors';
@@ -39,6 +39,7 @@ export const ImportDashboardFormV2 = ({
   const [isSubmitted, setSubmitted] = useState(false);
   const [uidReset, setUidReset] = useState(false);
   const [selectedDataSources, setSelectedDataSources] = useState<Record<string, DatasourceSelection>>({});
+  const folderId = useId();
 
   /*
     This useEffect is needed for overwriting a dashboard. It
@@ -80,6 +81,7 @@ export const ImportDashboardFormV2 = ({
           render={({ field: { ref, value, onChange, ...field } }) => (
             <FolderPicker
               {...field}
+              inputId={folderId}
               onChange={(uid, title) => {
                 onChange(uid, title);
               }}

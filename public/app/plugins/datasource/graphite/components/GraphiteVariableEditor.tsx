@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { InlineField, Input, Select } from '@grafana/ui';
 
@@ -20,11 +20,14 @@ const GRAPHITE_QUERY_VARIABLE_TYPE_OPTIONS = [
 export const GraphiteVariableEditor = (props: Props) => {
   const { query, onChange } = props;
   const [value, setValue] = useState(convertToGraphiteQueryObject(query));
+  const selectQueryTypeId = useId();
+  const queryId = useId();
 
   return (
     <>
       <InlineField label="Select query type" labelWidth={20}>
         <Select
+          inputId={selectQueryTypeId}
           aria-label="select query type"
           options={GRAPHITE_QUERY_VARIABLE_TYPE_OPTIONS}
           width={25}
@@ -49,6 +52,7 @@ export const GraphiteVariableEditor = (props: Props) => {
       </InlineField>
       <InlineField label="Query" labelWidth={20} grow>
         <Input
+          id={queryId}
           aria-label="Variable editor query input"
           value={value.target}
           onBlur={() => onChange(value, value.target ?? '')}

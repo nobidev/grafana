@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { useId, type JSX } from 'react';
 
 import { type DataSourceJsonData, type DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
@@ -19,6 +19,7 @@ export function SecureSocksProxySettings<T extends SecureSocksProxyConfig>({
   options,
   onOptionsChange,
 }: Props<T>): JSX.Element {
+  const enabledId = useId();
   return (
     <div>
       <h3 className="page-heading">
@@ -37,6 +38,7 @@ export function SecureSocksProxySettings<T extends SecureSocksProxyConfig>({
                 )}
               >
                 <InlineSwitch
+                  id={enabledId}
                   value={options.jsonData.enableSecureSocksProxy ?? false}
                   onChange={(event) =>
                     onOptionsChange({

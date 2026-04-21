@@ -1,4 +1,4 @@
-import { memo, type ChangeEvent } from 'react';
+import { memo, type ChangeEvent, useId } from 'react';
 
 import {
   DataTransformerID,
@@ -18,6 +18,8 @@ import lightImage from '../images/light/concatenate.svg';
 interface ConcatenateTransformerEditorProps extends TransformerUIProps<ConcatenateTransformerOptions> {}
 
 export const ConcatenateTransformerEditor = memo(({ options, onChange }: ConcatenateTransformerEditorProps) => {
+  const nameId = useId();
+  const labelId = useId();
   const onModeChanged = (value: SelectableValue<ConcatenateFrameNameMode>) => {
     const frameNameMode = value.value ?? ConcatenateFrameNameMode.FieldName;
     onChange({
@@ -63,6 +65,7 @@ export const ConcatenateTransformerEditor = memo(({ options, onChange }: Concate
     <div>
       <InlineField label={t('transformers.concatenate-transformer-editor.label-name', 'Name')} labelWidth={16} grow>
         <Select
+          inputId={nameId}
           width={36}
           options={nameModes}
           value={nameModes.find((v) => v.value === frameNameMode)}
@@ -72,6 +75,7 @@ export const ConcatenateTransformerEditor = memo(({ options, onChange }: Concate
       {frameNameMode === ConcatenateFrameNameMode.Label && (
         <InlineField label={t('transformers.concatenate-transformer-editor.label-label', 'Label')} labelWidth={16} grow>
           <Input
+            id={labelId}
             width={36}
             value={options.frameNameLabel ?? ''}
             placeholder={t('transformers.concatenate-transformer-editor.placeholder-frame', 'Frame')}

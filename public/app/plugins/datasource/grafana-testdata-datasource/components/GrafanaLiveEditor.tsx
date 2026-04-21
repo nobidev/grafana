@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { type SelectableValue } from '@grafana/data';
 import { InlineField, InlineFieldRow, Select } from '@grafana/ui';
 
@@ -27,6 +29,7 @@ const liveTestDataChannels = [
 ];
 
 export const GrafanaLiveEditor = ({ onChange, query }: EditorProps) => {
+  const channelId = useId();
   const onChannelChange = ({ value }: SelectableValue<string>) => {
     onChange({ ...query, channel: value });
   };
@@ -35,6 +38,7 @@ export const GrafanaLiveEditor = ({ onChange, query }: EditorProps) => {
     <InlineFieldRow>
       <InlineField label="Channel" labelWidth={14}>
         <Select
+          inputId={channelId}
           width={32}
           onChange={onChannelChange}
           placeholder="Select channel"
