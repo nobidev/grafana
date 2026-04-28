@@ -118,12 +118,8 @@ func TestExtractor_CollapsedRow(t *testing.T) {
 }
 
 func TestExtractor_V2_Structural(t *testing.T) {
-	// V2 (k8s-shape) dashboards have known limitations until the shared
-	// parser is extended:
-	//   - Panel IDs aren't captured → subresource falls back to `panel/pN`
-	//   - Datasource refs aren't captured → no datasource_uids in metadata
-	//   - Query expressions aren't captured → no query content embedded
-	// Title, description, tags, and panel titles/descriptions DO work.
+	// V2 (k8s-shape) dashboards: panel IDs, datasource refs, and query
+	// expressions are all extracted.
 	body := map[string]any{
 		"apiVersion": "dashboard.grafana.app/v2beta1",
 		"metadata": map[string]any{
@@ -151,7 +147,15 @@ func TestExtractor_V2_Structural(t *testing.T) {
 									map[string]any{
 										"kind": "PanelQuery",
 										"spec": map[string]any{
-											"datasource": map[string]any{"uid": "prom-2", "type": "prometheus"},
+											"refId": "A",
+											"query": map[string]any{
+												"kind":       "PrometheusQuery",
+												"group":      "prometheus",
+												"datasource": map[string]any{"name": "prom-2"},
+												"spec": map[string]any{
+													"expr": `sum(rate(http_requests_total[5m]))`,
+												},
+											},
 										},
 									},
 								},
@@ -170,18 +174,74 @@ func TestExtractor_V2_Structural(t *testing.T) {
 
 	assert.Equal(t, "v2-dash", items[0].UID)
 	assert.Equal(t, "Service Health — Request rate", items[0].Title)
-	// V2 panels lack IDs in the shared parser, so subresource is positional.
-	assert.Equal(t, "panel/p0", items[0].Subresource)
+	assert.Equal(t, "panel/1", items[0].Subresource)
 	assert.Equal(t, "folder-eng", items[0].Folder)
 	assert.Contains(t, items[0].Content, "Engineering → Service Health → Request rate")
 	assert.Contains(t, items[0].Content, "Per-route request rate")
 	assert.Contains(t, items[0].Content, "Tags: v2")
+	assert.Contains(t, items[0].Content, "sum(rate(http_requests_total[5m]))")
 
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	// V2 limitation: no datasource_uids / query_languages until upstream fix.
-	assert.Nil(t, md["datasource_uids"])
-	assert.Nil(t, md["query_languages"])
+	assert.Equal(t, []any{"prom-2"}, md["datasource_uids"])
+	assert.Equal(t, []any{"promql"}, md["query_languages"])
+}
+
+func TestExtractor_V2_RowLayout(t *testing.T) {
+	// V2 rows are described separately from elements: spec.layout.spec.rows[]
+	// contains items that point back to element keys via spec.element.name.
+	body := map[string]any{
+		"apiVersion": "dashboard.grafana.app/v2beta1",
+		"metadata": map[string]any{
+			"name": "v2-rows",
+		},
+		"spec": map[string]any{
+			"title": "Grouped",
+			"elements": map[string]any{
+				"panel-a": map[string]any{
+					"kind": "Panel",
+					"spec": map[string]any{
+						"id":    7,
+						"title": "Inside row",
+					},
+				},
+			},
+			"layout": map[string]any{
+				"kind": "RowsLayout",
+				"spec": map[string]any{
+					"rows": []any{
+						map[string]any{
+							"kind": "RowsLayoutRow",
+							"spec": map[string]any{
+								"title": "Latency",
+								"layout": map[string]any{
+									"spec": map[string]any{
+										"items": []any{
+											map[string]any{
+												"spec": map[string]any{
+													"element": map[string]any{"name": "panel-a"},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	value, _ := json.Marshal(body)
+	items, err := New().Extract(context.Background(),
+		&resourcepb.ResourceKey{Name: "v2-rows"}, value)
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	assert.Contains(t, items[0].Content, "Grouped → Latency → Inside row")
+
+	var md map[string]any
+	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
+	assert.Equal(t, "Latency", md["row_name"])
 }
 
 func TestExtractor_DashboardWithoutPanels(t *testing.T) {

@@ -1,48 +1,46 @@
 // Package dashboard implements an embed.Extractor for Grafana dashboards.
-// It reuses pkg/services/store/kind/dashboard for structural parsing (the
-// same code path the bleve search index runs) and supplements with a
-// focused pass to capture query expressions, which the shared parser
-// drops.
+// Walks the dashboard JSON via JSONPath, supporting both classic (v1) and
+// v2 (k8s-shape) dashboards. Produces one embed.Item per panel.
 package dashboard
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 
-	dashparse "github.com/grafana/grafana/pkg/services/store/kind/dashboard"
+	"github.com/PaesslerAG/jsonpath"
+
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 	"github.com/grafana/grafana/pkg/storage/unified/search/embed"
 )
 
-// Extractor produces one Item per panel.
+// Extractor produces one embed.Item per panel.
 type Extractor struct {
-	lookup dashparse.DatasourceLookup
+	logger *slog.Logger
 }
 
 func New() *Extractor {
-	// Empty lookup — the dashboard parser only uses it to resolve
-	// references; query parsing doesn't depend on it.
-	return &Extractor{
-		lookup: dashparse.CreateDatasourceLookup(nil),
-	}
+	return &Extractor{logger: slog.Default()}
 }
 
 func (e *Extractor) Resource() string { return "dashboards" }
 
-// Extract reads the dashboard via the shared streaming parser, supplements
-// with query expressions and folder annotations, and returns one Item per
-// panel.
 func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, value []byte) ([]embed.Item, error) {
-	summary, err := dashparse.ReadDashboard(bytes.NewReader(value), e.lookup)
-	if err != nil {
-		return nil, fmt.Errorf("read dashboard: %w", err)
+	var dashboardJSON map[string]any
+	if err := json.Unmarshal(value, &dashboardJSON); err != nil {
+		return nil, fmt.Errorf("unmarshal dashboard: %w", err)
 	}
 
-	uid := summary.UID
+	content, err := extractDashboardContent(ctx, dashboardJSON, e.logger)
+	if err != nil {
+		return nil, err
+	}
+
+	uid := content.DashboardUID
 	if uid == "" {
 		uid = key.GetName()
 	}
@@ -50,51 +48,25 @@ func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, va
 		return nil, fmt.Errorf("dashboard has no UID")
 	}
 
-	folderTitle, folderUID := folderInfo(value)
-	queries := extractQueries(value)
-
-	items := make([]embed.Item, 0, len(summary.Panels))
-	idx := 0
-	for _, p := range summary.Panels {
-		// Collapsed row: yields children with the row's title as their context.
-		if p.Type == "row" && len(p.Collapsed) > 0 {
-			for _, child := range p.Collapsed {
-				if it, ok := buildItem(summary, child, p.Title, folderTitle, folderUID, uid, queries, idx); ok {
-					items = append(items, it)
-					idx++
-				}
-			}
-			continue
-		}
-		// Empty row marker — no embeddable content of its own.
-		if p.Type == "row" {
-			continue
-		}
-		if it, ok := buildItem(summary, p, "", folderTitle, folderUID, uid, queries, idx); ok {
+	items := make([]embed.Item, 0, len(content.Panels))
+	for idx, p := range content.Panels {
+		if it, ok := buildItem(content, p, uid, idx); ok {
 			items = append(items, it)
-			idx++
 		}
 	}
 	return items, nil
 }
 
-func buildItem(
-	summary *dashparse.DashboardSummaryInfo,
-	p dashparse.PanelSummaryInfo,
-	rowName, folderTitle, folderUID, uid string,
-	queries map[int64][]queryExpr,
-	idx int,
-) (embed.Item, bool) {
-	// Breadcrumb: folder → dashboard → row → panel title → description
+func buildItem(content *dashboardContent, p panelContent, uid string, idx int) (embed.Item, bool) {
 	parts := make([]string, 0, 5)
-	if folderTitle != "" {
-		parts = append(parts, folderTitle)
+	if content.FolderTitle != "" {
+		parts = append(parts, content.FolderTitle)
 	}
-	if summary.Title != "" {
-		parts = append(parts, summary.Title)
+	if content.DashboardTitle != "" {
+		parts = append(parts, content.DashboardTitle)
 	}
-	if rowName != "" {
-		parts = append(parts, rowName)
+	if p.RowName != "" {
+		parts = append(parts, p.RowName)
 	}
 	if p.Title != "" {
 		parts = append(parts, p.Title)
@@ -104,13 +76,12 @@ func buildItem(
 	}
 	breadcrumb := strings.Join(parts, " → ")
 
-	panelQueries := queries[p.ID]
 	var queryLines []string
-	for i, q := range panelQueries {
+	for i, q := range p.Queries {
 		if q.Expression == "" {
 			continue
 		}
-		if len(panelQueries) > 1 {
+		if len(p.Queries) > 1 {
 			queryLines = append(queryLines, fmt.Sprintf("Query %d: %s", i+1, q.Expression))
 		} else {
 			queryLines = append(queryLines, q.Expression)
@@ -121,8 +92,8 @@ func buildItem(
 	if breadcrumb != "" {
 		sections = append(sections, breadcrumb)
 	}
-	if len(summary.Tags) > 0 {
-		sections = append(sections, "Tags: "+strings.Join(summary.Tags, ", "))
+	if len(content.Tags) > 0 {
+		sections = append(sections, "Tags: "+strings.Join(content.Tags, ", "))
 	}
 	sections = append(sections, queryLines...)
 
@@ -132,25 +103,23 @@ func buildItem(
 
 	dsUIDs := map[string]struct{}{}
 	langs := map[string]struct{}{}
-	for _, ds := range p.Datasource {
-		if ds.UID != "" {
-			dsUIDs[ds.UID] = struct{}{}
-		}
-		if l := inferLanguage(ds.Type); l != "" {
-			langs[l] = struct{}{}
-		}
+	if p.DatasourceUID != "" {
+		dsUIDs[p.DatasourceUID] = struct{}{}
 	}
-	for _, q := range panelQueries {
+	for _, q := range p.Queries {
+		if q.DatasourceUID != "" {
+			dsUIDs[q.DatasourceUID] = struct{}{}
+		}
 		if q.Language != "" {
 			langs[q.Language] = struct{}{}
 		}
 	}
 
 	md := map[string]any{
-		"dashboard_title": summary.Title,
+		"dashboard_title": content.DashboardTitle,
 	}
-	if len(summary.Tags) > 0 {
-		md["tags"] = summary.Tags
+	if len(content.Tags) > 0 {
+		md["tags"] = content.Tags
 	}
 	if len(dsUIDs) > 0 {
 		md["datasource_uids"] = sortedKeys(dsUIDs)
@@ -158,28 +127,26 @@ func buildItem(
 	if len(langs) > 0 {
 		md["query_languages"] = sortedKeys(langs)
 	}
-	if rowName != "" {
-		md["row_name"] = rowName
+	if p.RowName != "" {
+		md["row_name"] = p.RowName
 	}
 	mdJSON, _ := json.Marshal(md)
 
 	return embed.Item{
 		UID:         uid,
-		Title:       displayTitle(summary.Title, p.Title, uid),
-		Subresource: subresource(p.ID, idx),
+		Title:       displayTitle(content.DashboardTitle, p.Title, uid),
+		Subresource: subresource(p.PanelID, idx),
 		Content:     strings.Join(sections, "\n"),
 		Metadata:    mdJSON,
-		Folder:      folderUID,
+		Folder:      content.FolderUID,
 	}, true
 }
 
 // subresource is the unique sub-identifier for a panel within its dashboard.
-// V1 panels carry numeric IDs that are stable across edits. The shared
-// parser doesn't capture v2 panel IDs (they all come back as 0), so we
-// fall back to position. When the upstream parser starts capturing v2 IDs,
-// this fallback becomes a no-op for new dashboards while existing v2 rows
-// will need a one-time re-embed to migrate from `panel/p<idx>` to `panel/<id>`.
-func subresource(id int64, idx int) string {
+// V1 panels carry numeric IDs that are stable across edits; v2 panel IDs are
+// captured from spec.id when present. When a panel has no ID we fall back to
+// position.
+func subresource(id int, idx int) string {
 	if id != 0 {
 		return fmt.Sprintf("panel/%d", id)
 	}
@@ -200,132 +167,556 @@ func displayTitle(dashboardTitle, panelTitle, uid string) string {
 	return uid
 }
 
-// folderInfo pulls folder title/UID from either the classic API response
-// (meta.folderTitle/folderUid) or k8s-style v2 (metadata.annotations).
-func folderInfo(value []byte) (title, uid string) {
-	var partial struct {
-		Meta struct {
-			FolderTitle string            `json:"folderTitle"`
-			FolderUID   string            `json:"folderUid"`
-			Annotations map[string]string `json:"annotations"`
-		} `json:"meta"`
-		Metadata struct {
-			Annotations map[string]string `json:"annotations"`
-		} `json:"metadata"`
+func sortedKeys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
 	}
-	if err := json.Unmarshal(value, &partial); err != nil {
-		return "", ""
-	}
-
-	title = partial.Meta.FolderTitle
-	uid = partial.Meta.FolderUID
-
-	if title == "" {
-		title = partial.Meta.Annotations["grafana.app/folderTitle"]
-	}
-	if uid == "" {
-		uid = partial.Meta.Annotations["grafana.app/folder"]
-	}
-	if title == "" {
-		title = partial.Metadata.Annotations["grafana.app/folderTitle"]
-	}
-	if uid == "" {
-		uid = partial.Metadata.Annotations["grafana.app/folder"]
-	}
-	return title, uid
+	sort.Strings(out)
+	return out
 }
 
-// queryExpr holds one query's content + inferred language.
-type queryExpr struct {
-	Expression string
-	Language   string
+// dashboardContent is the intermediate parsed representation.
+type dashboardContent struct {
+	DashboardUID   string
+	DashboardTitle string
+	Description    string
+	FolderTitle    string
+	FolderUID      string
+	Tags           []string
+	Panels         []panelContent
 }
 
-// extractQueries returns query expressions keyed by panel ID. The shared
-// dashboard parser drops these (the bleve index doesn't need them); we walk
-// the JSON ourselves to collect them. V1 only: v2 panels lack stable IDs
-// in the shared parser, so we can't correlate query expressions back to
-// the right `PanelSummaryInfo`. V2 query support needs an upstream change
-// that captures `id` and `data.spec.queries[].spec.query.spec.<expr>` in
-// readV2PanelSpec.
-func extractQueries(value []byte) map[int64][]queryExpr {
-	out := map[int64][]queryExpr{}
+type panelContent struct {
+	PanelID       int
+	Title         string
+	Description   string
+	RowName       string
+	Queries       []queryContent
+	DatasourceUID string
+}
 
-	var raw map[string]any
-	if err := json.Unmarshal(value, &raw); err != nil {
-		return out
-	}
-	body := unwrapSpec(raw)
+type queryContent struct {
+	RefID         string
+	Language      string
+	Expression    string
+	DatasourceUID string
+}
 
-	panels, ok := body["panels"].([]any)
-	if !ok {
-		return out
+// jsonPathGet safely extracts a value using JSONPath, returning nil if not found.
+func jsonPathGet(path string, data any) any {
+	val, err := jsonpath.Get(path, data)
+	if err != nil {
+		return nil
 	}
-	for _, p := range panels {
-		pm, ok := p.(map[string]any)
-		if !ok {
-			continue
-		}
-		collectPanelQueries(pm, out)
-		if nested, ok := pm["panels"].([]any); ok {
-			for _, np := range nested {
-				if npm, ok := np.(map[string]any); ok {
-					collectPanelQueries(npm, out)
+	return val
+}
+
+func extractString(path string, data any) string {
+	return toString(jsonPathGet(path, data))
+}
+
+func extractInt(path string, data any) (int, bool) {
+	return toInt(jsonPathGet(path, data))
+}
+
+func extractArray(path string, data any) []any {
+	if arr, ok := jsonPathGet(path, data).([]any); ok {
+		return arr
+	}
+	return nil
+}
+
+func extractMap(path string, data any) map[string]any {
+	if m, ok := jsonPathGet(path, data).(map[string]any); ok {
+		return m
+	}
+	return nil
+}
+
+// extractFolderInfo extracts folder title and UID from dashboard metadata.
+// Supports both classic (meta.folderTitle/folderUid) and v2
+// (metadata.annotations) shapes.
+func extractFolderInfo(dashboardJSON map[string]any) (folderTitle, folderUID string) {
+	if meta, ok := dashboardJSON["meta"].(map[string]any); ok {
+		folderTitle, _ = meta["folderTitle"].(string)
+		folderUID, _ = meta["folderUid"].(string)
+
+		if folderTitle == "" || folderUID == "" {
+			if annotations, ok := meta["annotations"].(map[string]any); ok {
+				if folderTitle == "" {
+					folderTitle, _ = annotations["grafana.app/folderTitle"].(string)
+				}
+				if folderUID == "" {
+					folderUID, _ = annotations["grafana.app/folder"].(string)
 				}
 			}
 		}
 	}
-	return out
+	if metadata, ok := dashboardJSON["metadata"].(map[string]any); ok {
+		if annotations, ok := metadata["annotations"].(map[string]any); ok {
+			if folderTitle == "" {
+				folderTitle, _ = annotations["grafana.app/folderTitle"].(string)
+			}
+			if folderUID == "" {
+				folderUID, _ = annotations["grafana.app/folder"].(string)
+			}
+		}
+	}
+	return folderTitle, folderUID
 }
 
-// collectPanelQueries reads expressions from one v1 panel's targets[].
-func collectPanelQueries(p map[string]any, out map[int64][]queryExpr) {
-	id, ok := readInt(p["id"])
-	if !ok {
-		return
+// unwrapDashboard returns the dashboard body. Handles the Grafana API
+// response wrapper {"dashboard": {...}} but leaves k8s {"spec": {...}}
+// alone — JSONPath callers handle that explicitly.
+func unwrapDashboard(dashboardJSON map[string]any) map[string]any {
+	if d, ok := dashboardJSON["dashboard"].(map[string]any); ok {
+		return d
 	}
-	dsType, _ := mapAt(p, "datasource")["type"].(string)
-	targets, ok := p["targets"].([]any)
-	if !ok {
-		return
+	return dashboardJSON
+}
+
+// extractDashboardContent parses dashboard JSON into the intermediate
+// representation. Picks v1 vs v2 layout based on shape.
+func extractDashboardContent(ctx context.Context, dashboardJSON map[string]any, logger *slog.Logger) (*dashboardContent, error) {
+	folderTitle, folderUID := extractFolderInfo(dashboardJSON)
+	dashboard := unwrapDashboard(dashboardJSON)
+
+	isV2 := isDashboardV2(dashboardJSON)
+
+	content := &dashboardContent{
+		Panels:      []panelContent{},
+		FolderTitle: folderTitle,
+		FolderUID:   folderUID,
 	}
-	var qs []queryExpr
-	for _, t := range targets {
-		tm, ok := t.(map[string]any)
+
+	if isV2 {
+		return extractV2DashboardContent(ctx, dashboard, content, logger)
+	}
+
+	// Classic v1 may live at the root or under "spec" (k8s-wrapped v1).
+	if _, hasUID := dashboard["uid"]; !hasUID {
+		if _, hasPanels := dashboard["panels"]; !hasPanels {
+			if spec, ok := dashboard["spec"].(map[string]any); ok {
+				dashboard = spec
+			}
+		}
+	}
+
+	content.DashboardUID = extractString("$.uid", dashboard)
+	content.DashboardTitle = extractString("$.title", dashboard)
+	content.Description = extractString("$.description", dashboard)
+	content.Tags = extractTags(dashboard)
+
+	for _, pw := range extractPanelsWithRows(dashboard) {
+		if panel := extractPanelContent(pw.panel, pw.rowName); panel != nil {
+			content.Panels = append(content.Panels, *panel)
+		}
+	}
+	return content, nil
+}
+
+// isDashboardV2 detects v2 (v2beta1, v2beta2, v2, …) by apiVersion or shape.
+func isDashboardV2(dashboardJSON map[string]any) bool {
+	dashboard := unwrapDashboard(dashboardJSON)
+
+	if apiVersion := extractString("$.apiVersion", dashboard); strings.Contains(apiVersion, "dashboard.grafana.app/v2") {
+		return true
+	}
+
+	if extractMap("$.spec.elements", dashboard) != nil {
+		return true
+	}
+
+	elementsMap := extractMap("$.elements", dashboard)
+	if elementsMap == nil {
+		return false
+	}
+
+	for _, element := range elementsMap {
+		if elementMap, ok := element.(map[string]any); ok {
+			if extractString("$.kind", elementMap) == "Panel" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// extractTags extracts tags. Classic uses $.tags; v2 uses spec.tags (array)
+// or spec.labels/metadata.labels (rendered as "key:value" strings).
+func extractTags(dashboardJSON map[string]any) []string {
+	for _, path := range []string{"$.tags", "$.spec.tags"} {
+		if tagsArr := extractArray(path, dashboardJSON); tagsArr != nil {
+			tags := make([]string, 0, len(tagsArr))
+			for _, tag := range tagsArr {
+				if tagStr, ok := tag.(string); ok {
+					tagStr = strings.TrimSpace(tagStr)
+					if tagStr != "" {
+						tags = append(tags, tagStr)
+					}
+				}
+			}
+			if len(tags) > 0 {
+				return tags
+			}
+		}
+	}
+
+	for _, path := range []string{"$.spec.labels", "$.metadata.labels"} {
+		if labelsMap := extractMap(path, dashboardJSON); labelsMap != nil {
+			tags := make([]string, 0, len(labelsMap))
+			for key, value := range labelsMap {
+				if valueStr, ok := value.(string); ok {
+					if valueStr != "" {
+						tags = append(tags, fmt.Sprintf("%s:%s", key, valueStr))
+					} else {
+						tags = append(tags, key)
+					}
+				}
+			}
+			if len(tags) > 0 {
+				sort.Strings(tags)
+				return tags
+			}
+		}
+	}
+
+	return nil
+}
+
+func extractV2Metadata(dashboardJSON map[string]any) (uid, title string) {
+	uid = extractString("$.metadata.name", dashboardJSON)
+	if uid == "" {
+		uid = extractString("$.metadata.uid", dashboardJSON)
+	}
+	if uid == "" {
+		uid = extractString("$.uid", dashboardJSON)
+	}
+
+	title = extractString("$.spec.title", dashboardJSON)
+	if title == "" {
+		title = extractString("$.title", dashboardJSON)
+	}
+	return uid, title
+}
+
+func extractV2ElementsMap(dashboardJSON map[string]any) map[string]any {
+	if elements := extractMap("$.spec.elements", dashboardJSON); elements != nil {
+		return elements
+	}
+	return extractMap("$.elements", dashboardJSON)
+}
+
+func extractV2DashboardContent(ctx context.Context, dashboardJSON map[string]any, content *dashboardContent, logger *slog.Logger) (*dashboardContent, error) {
+	content.DashboardUID, content.DashboardTitle = extractV2Metadata(dashboardJSON)
+	content.Tags = extractTags(dashboardJSON)
+
+	panelToRowMap := extractV2PanelToRowMap(dashboardJSON)
+	elementsMap := extractV2ElementsMap(dashboardJSON)
+
+	if elementsMap == nil {
+		logger.WarnContext(ctx, "no elements map found in v2 dashboard",
+			"hasSpec", extractMap("$.spec", dashboardJSON) != nil,
+			"hasElements", extractMap("$.elements", dashboardJSON) != nil)
+		return content, nil
+	}
+
+	// Sort keys so iteration order — and hence the positional fallback in
+	// subresource() — is deterministic across runs.
+	keys := make([]string, 0, len(elementsMap))
+	for key := range elementsMap {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		element := elementsMap[key]
+		elementMap, ok := element.(map[string]any)
+		if !ok || extractString("$.kind", elementMap) != "Panel" {
+			continue
+		}
+
+		if panel := extractV2PanelContent(elementMap, panelToRowMap[key]); panel != nil {
+			content.Panels = append(content.Panels, *panel)
+		}
+	}
+	return content, nil
+}
+
+func extractV2PanelContent(element map[string]any, rowName string) *panelContent {
+	panel := &panelContent{
+		Queries: []queryContent{},
+		RowName: rowName,
+	}
+
+	spec, ok := element["spec"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	if idInt, ok := extractInt("$.id", spec); ok {
+		panel.PanelID = idInt
+	}
+	panel.Title = extractString("$.title", spec)
+	panel.Description = extractString("$.description", spec)
+
+	if queryList := extractArray("$.data.spec.queries[*]", spec); queryList != nil {
+		for _, q := range queryList {
+			if queryMap, ok := q.(map[string]any); ok {
+				if query := extractV2QueryContent(queryMap); query != nil {
+					panel.Queries = append(panel.Queries, *query)
+					if panel.DatasourceUID == "" && query.DatasourceUID != "" {
+						panel.DatasourceUID = query.DatasourceUID
+					}
+				}
+			}
+		}
+	}
+	return panel
+}
+
+// extractV2PanelToRowMap walks the v2 layout and returns a panel-key → row-title
+// map.
+func extractV2PanelToRowMap(dashboardJSON map[string]any) map[string]string {
+	panelToRow := make(map[string]string)
+
+	layout := extractMap("$.spec.layout", dashboardJSON)
+	if layout == nil {
+		layout = extractMap("$.layout", dashboardJSON)
+	}
+	if layout == nil {
+		return panelToRow
+	}
+
+	rowsList := extractArray("$.spec.rows[*]", layout)
+	if rowsList == nil {
+		return panelToRow
+	}
+
+	for _, row := range rowsList {
+		rowMap, ok := row.(map[string]any)
 		if !ok {
 			continue
 		}
-		// Per-target datasource type wins over the panel's.
-		targetDS := dsType
-		if td, _ := mapAt(tm, "datasource")["type"].(string); td != "" {
-			targetDS = td
+
+		rowSpec := extractMap("$.spec", rowMap)
+		rowTitle := extractString("$.title", rowSpec)
+		if rowTitle == "" {
+			continue
 		}
-		if qe, ok := readQuery(tm, targetDS); ok {
-			qs = append(qs, qe)
+
+		itemsList := extractArray("$.layout.spec.items[*]", rowSpec)
+		if itemsList == nil {
+			continue
+		}
+
+		for _, item := range itemsList {
+			itemMap, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			panelKey := extractString("$.spec.element.name", itemMap)
+			if panelKey != "" {
+				panelToRow[panelKey] = rowTitle
+			}
 		}
 	}
-	if len(qs) > 0 {
-		out[id] = append(out[id], qs...)
-	}
+	return panelToRow
 }
 
-// readQuery pulls the expression and inferred language out of a target.
-// Tries `expr` (PromQL/LogQL), `rawSql`/`rawQuery` (SQL-likes), `query`
+func extractV2QueryContent(queryMap map[string]any) *queryContent {
+	query := &queryContent{}
+
+	querySpec, ok := queryMap["spec"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	query.RefID = extractString("$.refId", querySpec)
+
+	queryObj, ok := querySpec["query"].(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	if ds, ok := queryObj["datasource"].(map[string]any); ok {
+		// V2 datasource refs use `name` (which is the datasource UID in
+		// unified storage). Fall back to `uid` for tolerance.
+		if dsName, ok := ds["name"].(string); ok && dsName != "" {
+			query.DatasourceUID = dsName
+		} else if dsUID, ok := ds["uid"].(string); ok {
+			query.DatasourceUID = dsUID
+		}
+	}
+	if group, ok := queryObj["group"].(string); ok {
+		query.Language = inferLanguage(group)
+	}
+
+	if queryDataSpec, ok := queryObj["spec"].(map[string]any); ok {
+		query.Expression, query.Language = extractQueryExpression(queryDataSpec, query.Language)
+	}
+	return query
+}
+
+// panelWithRow pairs a panel with its row title (empty if the panel is not
+// inside a row).
+type panelWithRow struct {
+	panel   map[string]any
+	rowName string
+}
+
+// extractPanelsWithRows handles both classic shapes:
+//   - old: top-level `rows[]` each with nested `panels[]`
+//   - new: flat `panels[]` with `type:"row"` markers (which may collapse
+//     nested panels)
+func extractPanelsWithRows(dashboard map[string]any) []panelWithRow {
+	var panelsWithRows []panelWithRow
+
+	if rowsList := extractArray("$.rows[*]", dashboard); rowsList != nil {
+		for _, row := range rowsList {
+			if rowMap, ok := row.(map[string]any); ok {
+				rowTitle := extractString("$.title", rowMap)
+				if rowPanelList := extractArray("$.panels[*]", rowMap); rowPanelList != nil {
+					for _, rp := range rowPanelList {
+						if rpMap, ok := rp.(map[string]any); ok {
+							panelsWithRows = append(panelsWithRows, panelWithRow{
+								panel:   rpMap,
+								rowName: rowTitle,
+							})
+						}
+					}
+				}
+			}
+		}
+		if len(panelsWithRows) > 0 {
+			return panelsWithRows
+		}
+	}
+
+	if panelList := extractArray("$.panels[*]", dashboard); panelList != nil {
+		rows := make(map[int]string) // y position → row title
+		var allPanels []map[string]any
+
+		for _, p := range panelList {
+			panelMap, ok := p.(map[string]any)
+			if !ok {
+				continue
+			}
+			if extractString("$.type", panelMap) != "row" {
+				allPanels = append(allPanels, panelMap)
+				continue
+			}
+			// Collapsed row: nested panels carry the row title.
+			if rowPanelList := extractArray("$.panels[*]", panelMap); len(rowPanelList) > 0 {
+				rowTitle := extractString("$.title", panelMap)
+				for _, rp := range rowPanelList {
+					if rpMap, ok := rp.(map[string]any); ok {
+						panelsWithRows = append(panelsWithRows, panelWithRow{
+							panel:   rpMap,
+							rowName: rowTitle,
+						})
+					}
+				}
+				continue
+			}
+			// Plain row marker: remember y-position so flat panels below it
+			// can pick it up.
+			rowTitle := extractString("$.title", panelMap)
+			if gridPos := extractMap("$.gridPos", panelMap); gridPos != nil {
+				if y, ok := gridPos["y"].(float64); ok {
+					rows[int(y)] = rowTitle
+				}
+			}
+		}
+
+		for _, panelMap := range allPanels {
+			rowName := ""
+			if len(rows) > 0 {
+				if gridPos := extractMap("$.gridPos", panelMap); gridPos != nil {
+					if y, ok := gridPos["y"].(float64); ok {
+						panelY := int(y)
+						closestY := -1
+						for rowY, title := range rows {
+							if rowY <= panelY && rowY > closestY {
+								closestY = rowY
+								rowName = title
+							}
+						}
+					}
+				}
+			}
+			panelsWithRows = append(panelsWithRows, panelWithRow{
+				panel:   panelMap,
+				rowName: rowName,
+			})
+		}
+	}
+	return panelsWithRows
+}
+
+func extractPanelContent(panel map[string]any, rowName string) *panelContent {
+	pc := &panelContent{
+		Queries: []queryContent{},
+		RowName: rowName,
+	}
+
+	if idInt, ok := extractInt("$.id", panel); ok {
+		pc.PanelID = idInt
+	}
+	pc.Title = extractString("$.title", panel)
+	pc.Description = extractString("$.description", panel)
+	pc.DatasourceUID = extractString("$.datasource.uid", panel)
+
+	if targetList := extractArray("$.targets[*]", panel); targetList != nil {
+		for _, t := range targetList {
+			if targetMap, ok := t.(map[string]any); ok {
+				if query := extractQueryContent(targetMap, pc.DatasourceUID); query != nil {
+					pc.Queries = append(pc.Queries, *query)
+					if pc.DatasourceUID == "" && query.DatasourceUID != "" {
+						pc.DatasourceUID = query.DatasourceUID
+					}
+				}
+			}
+		}
+	}
+	return pc
+}
+
+func extractQueryContent(target map[string]any, defaultDatasourceUID string) *queryContent {
+	query := &queryContent{}
+
+	query.RefID = extractString("$.refId", target)
+	if dsUID := extractString("$.datasource.uid", target); dsUID != "" {
+		query.DatasourceUID = dsUID
+	} else if defaultDatasourceUID != "" {
+		query.DatasourceUID = defaultDatasourceUID
+	}
+
+	if dsType := extractString("$.datasource.type", target); dsType != "" {
+		query.Language = inferLanguage(dsType)
+	}
+
+	query.Expression, query.Language = extractQueryExpression(target, query.Language)
+	return query
+}
+
+// extractQueryExpression pulls the query string out of a target/query spec.
+// Tries `expr` (PromQL/LogQL), `rawSql`/`rawQuery` (SQL-likes), then `query`
 // (TraceQL).
-func readQuery(t map[string]any, dsType string) (queryExpr, bool) {
-	if s, _ := t["expr"].(string); s != "" {
-		return queryExpr{Expression: s, Language: inferLanguage(dsType)}, true
+func extractQueryExpression(querySpec map[string]any, currentLanguage string) (string, string) {
+	if expr, ok := querySpec["expr"].(string); ok && expr != "" {
+		return expr, currentLanguage
 	}
-	if s, _ := t["rawSql"].(string); s != "" {
-		return queryExpr{Expression: s, Language: "sql"}, true
+	if rawSql, ok := querySpec["rawSql"].(string); ok && rawSql != "" {
+		return rawSql, "sql"
 	}
-	if s, _ := t["rawQuery"].(string); s != "" {
-		return queryExpr{Expression: s, Language: "sql"}, true
+	if rawQuery, ok := querySpec["rawQuery"].(string); ok && rawQuery != "" {
+		return rawQuery, "sql"
 	}
-	if s, _ := t["query"].(string); s != "" {
-		return queryExpr{Expression: s, Language: "traceql"}, true
+	if q, ok := querySpec["query"].(string); ok && q != "" {
+		return q, "traceql"
 	}
-	return queryExpr{}, false
+	return "", currentLanguage
 }
 
 func inferLanguage(dsType string) string {
@@ -337,74 +728,40 @@ func inferLanguage(dsType string) string {
 		return "logql"
 	case strings.Contains(dsType, "tempo"):
 		return "traceql"
-	case strings.Contains(dsType, "sql"),
-		strings.Contains(dsType, "mysql"),
-		strings.Contains(dsType, "postgres"),
-		strings.Contains(dsType, "mssql"),
-		strings.Contains(dsType, "clickhouse"),
-		strings.Contains(dsType, "bigquery"),
-		strings.Contains(dsType, "snowflake"):
+	case strings.Contains(dsType, "mysql") || strings.Contains(dsType, "postgres") ||
+		strings.Contains(dsType, "mssql") || strings.Contains(dsType, "clickhouse") ||
+		strings.Contains(dsType, "bigquery") || strings.Contains(dsType, "snowflake") ||
+		strings.Contains(dsType, "sql"):
 		return "sql"
 	}
 	return ""
 }
 
-// unwrapSpec returns the body that holds the dashboard fields. K8s-wrapped
-// resources put the dashboard under `spec`; `dashboard.ReadDashboard`
-// recurses into that automatically. We have to do it ourselves for the
-// supplemental query pass.
-func unwrapSpec(raw map[string]any) map[string]any {
-	if spec, ok := raw["spec"].(map[string]any); ok {
-		// V2 puts elements/layout directly under spec; v1 wrapped in k8s
-		// puts the whole dashboard under spec. Either shape works for our
-		// targets[]/elements[] traversal.
-		return spec
+func toString(v any) string {
+	if v == nil {
+		return ""
 	}
-	if d, ok := raw["dashboard"].(map[string]any); ok {
-		return d
+	if s, ok := v.(string); ok {
+		return s
 	}
-	return raw
+	return fmt.Sprintf("%v", v)
 }
 
-func sortedKeys(m map[string]struct{}) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
+func toInt(v any) (int, bool) {
+	if v == nil {
+		return 0, false
 	}
-	sort.Strings(out)
-	return out
-}
-
-// mapAt walks `path` and returns a non-nil map, or nil if any step is
-// missing.
-func mapAt(m map[string]any, path ...string) map[string]any {
-	cur := any(m)
-	for _, k := range path {
-		mm, ok := cur.(map[string]any)
-		if !ok {
-			return nil
-		}
-		cur = mm[k]
-	}
-	if mm, ok := cur.(map[string]any); ok {
-		return mm
-	}
-	return nil
-}
-
-func readInt(v any) (int64, bool) {
-	switch x := v.(type) {
+	switch val := v.(type) {
 	case int:
-		return int64(x), true
+		return val, true
 	case int64:
-		return x, true
+		return int(val), true
 	case float64:
-		return int64(x), true
+		return int(val), true
 	case string:
-		// dashboards occasionally serialize IDs as strings; tolerate it.
-		var i int64
-		_, err := fmt.Sscan(x, &i)
-		return i, err == nil
+		if i, err := strconv.Atoi(val); err == nil {
+			return i, true
+		}
 	}
 	return 0, false
 }
