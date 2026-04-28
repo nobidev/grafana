@@ -52,15 +52,16 @@ func TestExtractor_Classic(t *testing.T) {
 				},
 			},
 		},
-		"meta": map[string]any{
-			"folderTitle": "Production",
-			"folderUid":   "folder-prod",
+		"metadata": map[string]any{
+			"annotations": map[string]any{
+				"grafana.app/folder": "folder-prod",
+			},
 		},
 	}
 	value, _ := json.Marshal(body)
 
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Resource: "dashboards", Name: "dash-uid-1"}, value)
+		&resourcepb.ResourceKey{Resource: "dashboards", Name: "dash-uid-1"}, value, "Production")
 	require.NoError(t, err)
 	require.Len(t, items, 2)
 
@@ -77,10 +78,13 @@ func TestExtractor_Classic(t *testing.T) {
 
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	assert.Equal(t, "API Latency", md["dashboard_title"])
-	assert.ElementsMatch(t, []any{"production", "latency"}, md["tags"])
-	assert.Equal(t, []any{"prom-1"}, md["datasource_uids"])
-	assert.Equal(t, []any{"promql"}, md["query_languages"])
+	assert.Equal(t, "dash-uid-1", md["dashboardUid"])
+	assert.Equal(t, "API Latency", md["dashboardTitle"])
+	assert.Equal(t, []any{float64(1)}, md["panelIds"])
+	assert.Equal(t, "Production", md["folderTitle"])
+	assert.Equal(t, "folder-prod", md["folderUid"])
+	assert.Equal(t, "prom-1", md["datasourceUid"])
+	assert.Equal(t, "promql", md["language"])
 }
 
 func TestExtractor_CollapsedRow(t *testing.T) {
@@ -106,7 +110,7 @@ func TestExtractor_CollapsedRow(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "dash-collapsed"}, value)
+		&resourcepb.ResourceKey{Name: "dash-collapsed"}, value, "")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "panel/5", items[0].Subresource)
@@ -114,7 +118,7 @@ func TestExtractor_CollapsedRow(t *testing.T) {
 
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	assert.Equal(t, "Errors", md["row_name"])
+	assert.Equal(t, "Errors", md["rowName"])
 }
 
 func TestExtractor_V2_Structural(t *testing.T) {
@@ -125,8 +129,7 @@ func TestExtractor_V2_Structural(t *testing.T) {
 		"metadata": map[string]any{
 			"name": "v2-dash",
 			"annotations": map[string]any{
-				"grafana.app/folderTitle": "Engineering",
-				"grafana.app/folder":      "folder-eng",
+				"grafana.app/folder": "folder-eng",
 			},
 		},
 		"spec": map[string]any{
@@ -168,7 +171,7 @@ func TestExtractor_V2_Structural(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "v2-dash"}, value)
+		&resourcepb.ResourceKey{Name: "v2-dash"}, value, "Engineering")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 
@@ -183,8 +186,8 @@ func TestExtractor_V2_Structural(t *testing.T) {
 
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	assert.Equal(t, []any{"prom-2"}, md["datasource_uids"])
-	assert.Equal(t, []any{"promql"}, md["query_languages"])
+	assert.Equal(t, "prom-2", md["datasourceUid"])
+	assert.Equal(t, "promql", md["language"])
 }
 
 func TestExtractor_V2_RowLayout(t *testing.T) {
@@ -234,14 +237,14 @@ func TestExtractor_V2_RowLayout(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "v2-rows"}, value)
+		&resourcepb.ResourceKey{Name: "v2-rows"}, value, "")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Contains(t, items[0].Content, "Grouped → Latency → Inside row")
 
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	assert.Equal(t, "Latency", md["row_name"])
+	assert.Equal(t, "Latency", md["rowName"])
 }
 
 func TestExtractor_DashboardWithoutPanels(t *testing.T) {
@@ -251,7 +254,7 @@ func TestExtractor_DashboardWithoutPanels(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "empty"}, value)
+		&resourcepb.ResourceKey{Name: "empty"}, value, "")
 	require.NoError(t, err)
 	assert.Empty(t, items)
 }
@@ -269,7 +272,7 @@ func TestExtractor_MissingUIDFallsBackToKeyName(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "from-key"}, value)
+		&resourcepb.ResourceKey{Name: "from-key"}, value, "")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	assert.Equal(t, "from-key", items[0].UID)
@@ -295,17 +298,17 @@ func TestExtractor_SQLQueries(t *testing.T) {
 	}
 	value, _ := json.Marshal(body)
 	items, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "sql-dash"}, value)
+		&resourcepb.ResourceKey{Name: "sql-dash"}, value, "")
 	require.NoError(t, err)
 	require.Len(t, items, 1)
 	var md map[string]any
 	require.NoError(t, json.Unmarshal(items[0].Metadata, &md))
-	assert.Equal(t, []any{"sql"}, md["query_languages"])
+	assert.Equal(t, "sql", md["language"])
 	assert.Contains(t, items[0].Content, "SELECT date, SUM(amount) FROM orders")
 }
 
 func TestExtractor_InvalidJSON(t *testing.T) {
 	_, err := New().Extract(context.Background(),
-		&resourcepb.ResourceKey{Name: "bad"}, []byte(`{not json`))
+		&resourcepb.ResourceKey{Name: "bad"}, []byte(`{not json`), "")
 	require.Error(t, err)
 }

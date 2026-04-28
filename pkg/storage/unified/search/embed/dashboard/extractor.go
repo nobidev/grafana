@@ -29,7 +29,8 @@ func New() *Extractor {
 
 func (e *Extractor) Resource() string { return "dashboards" }
 
-func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, value []byte) ([]embed.Item, error) {
+// Extract folder title doesn't exist on unified storage resources - so need to provide that
+func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, value []byte, folderTitle string) ([]embed.Item, error) {
 	var dashboardJSON map[string]any
 	if err := json.Unmarshal(value, &dashboardJSON); err != nil {
 		return nil, fmt.Errorf("unmarshal dashboard: %w", err)
@@ -38,6 +39,9 @@ func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, va
 	content, err := extractDashboardContent(ctx, dashboardJSON, e.logger)
 	if err != nil {
 		return nil, err
+	}
+	if folderTitle != "" {
+		content.FolderTitle = folderTitle
 	}
 
 	uid := content.DashboardUID
@@ -50,14 +54,14 @@ func (e *Extractor) Extract(ctx context.Context, key *resourcepb.ResourceKey, va
 
 	items := make([]embed.Item, 0, len(content.Panels))
 	for idx, p := range content.Panels {
-		if it, ok := buildItem(content, p, uid, idx); ok {
+		if it, ok := buildEmbeddableItem(content, p, uid, idx); ok {
 			items = append(items, it)
 		}
 	}
 	return items, nil
 }
 
-func buildItem(content *dashboardContent, p panelContent, uid string, idx int) (embed.Item, bool) {
+func buildEmbeddableItem(content *dashboardContent, p panelContent, uid string, idx int) (embed.Item, bool) {
 	parts := make([]string, 0, 5)
 	if content.FolderTitle != "" {
 		parts = append(parts, content.FolderTitle)
@@ -101,34 +105,30 @@ func buildItem(content *dashboardContent, p panelContent, uid string, idx int) (
 		return embed.Item{}, false
 	}
 
-	dsUIDs := map[string]struct{}{}
-	langs := map[string]struct{}{}
-	if p.DatasourceUID != "" {
-		dsUIDs[p.DatasourceUID] = struct{}{}
-	}
-	for _, q := range p.Queries {
-		if q.DatasourceUID != "" {
-			dsUIDs[q.DatasourceUID] = struct{}{}
-		}
-		if q.Language != "" {
-			langs[q.Language] = struct{}{}
-		}
+	language := ""
+	if len(p.Queries) > 0 && p.Queries[0].Language != "" {
+		language = p.Queries[0].Language
 	}
 
 	md := map[string]any{
-		"dashboard_title": content.DashboardTitle,
+		"dashboardUid":   uid,
+		"dashboardTitle": content.DashboardTitle,
+		"panelIds":       []int{p.PanelID},
 	}
-	if len(content.Tags) > 0 {
-		md["tags"] = content.Tags
+	if content.FolderTitle != "" {
+		md["folderTitle"] = content.FolderTitle
 	}
-	if len(dsUIDs) > 0 {
-		md["datasource_uids"] = sortedKeys(dsUIDs)
-	}
-	if len(langs) > 0 {
-		md["query_languages"] = sortedKeys(langs)
+	if content.FolderUID != "" {
+		md["folderUid"] = content.FolderUID
 	}
 	if p.RowName != "" {
-		md["row_name"] = p.RowName
+		md["rowName"] = p.RowName
+	}
+	if p.DatasourceUID != "" {
+		md["datasourceUid"] = p.DatasourceUID
+	}
+	if language != "" {
+		md["language"] = language
 	}
 	mdJSON, _ := json.Marshal(md)
 
@@ -143,14 +143,13 @@ func buildItem(content *dashboardContent, p panelContent, uid string, idx int) (
 }
 
 // subresource is the unique sub-identifier for a panel within its dashboard.
-// V1 panels carry numeric IDs that are stable across edits; v2 panel IDs are
-// captured from spec.id when present. When a panel has no ID we fall back to
-// position.
+// Mirrors grafana-assistant-app/api/internal/memory/dashboards.buildPanelVectors:
+// non-zero panel ID wins; otherwise fall back to positional index.
 func subresource(id int, idx int) string {
 	if id != 0 {
 		return fmt.Sprintf("panel/%d", id)
 	}
-	return fmt.Sprintf("panel/p%d", idx)
+	return fmt.Sprintf("panel/%d", idx)
 }
 
 // displayTitle is what cross-resource search shows. Combining dashboard +
@@ -165,15 +164,6 @@ func displayTitle(dashboardTitle, panelTitle, uid string) string {
 		return panelTitle
 	}
 	return uid
-}
-
-func sortedKeys(m map[string]struct{}) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // dashboardContent is the intermediate parsed representation.
@@ -234,36 +224,21 @@ func extractMap(path string, data any) map[string]any {
 	return nil
 }
 
-// extractFolderInfo extracts folder title and UID from dashboard metadata.
-// Supports both classic (meta.folderTitle/folderUid) and v2
-// (metadata.annotations) shapes.
-func extractFolderInfo(dashboardJSON map[string]any) (folderTitle, folderUID string) {
-	if meta, ok := dashboardJSON["meta"].(map[string]any); ok {
-		folderTitle, _ = meta["folderTitle"].(string)
-		folderUID, _ = meta["folderUid"].(string)
-
-		if folderTitle == "" || folderUID == "" {
-			if annotations, ok := meta["annotations"].(map[string]any); ok {
-				if folderTitle == "" {
-					folderTitle, _ = annotations["grafana.app/folderTitle"].(string)
-				}
-				if folderUID == "" {
-					folderUID, _ = annotations["grafana.app/folder"].(string)
-				}
-			}
-		}
+// extractFolderUID reads the folder UID from the k8s annotation. Folder
+// title is no longer extracted from JSON — it's passed in by the caller,
+// which resolves it against the folder service (unified-storage values
+// don't carry the title inline).
+func extractFolderUID(dashboardJSON map[string]any) string {
+	metadata, ok := dashboardJSON["metadata"].(map[string]any)
+	if !ok {
+		return ""
 	}
-	if metadata, ok := dashboardJSON["metadata"].(map[string]any); ok {
-		if annotations, ok := metadata["annotations"].(map[string]any); ok {
-			if folderTitle == "" {
-				folderTitle, _ = annotations["grafana.app/folderTitle"].(string)
-			}
-			if folderUID == "" {
-				folderUID, _ = annotations["grafana.app/folder"].(string)
-			}
-		}
+	annotations, ok := metadata["annotations"].(map[string]any)
+	if !ok {
+		return ""
 	}
-	return folderTitle, folderUID
+	uid, _ := annotations["grafana.app/folder"].(string)
+	return uid
 }
 
 // unwrapDashboard returns the dashboard body. Handles the Grafana API
@@ -279,15 +254,13 @@ func unwrapDashboard(dashboardJSON map[string]any) map[string]any {
 // extractDashboardContent parses dashboard JSON into the intermediate
 // representation. Picks v1 vs v2 layout based on shape.
 func extractDashboardContent(ctx context.Context, dashboardJSON map[string]any, logger *slog.Logger) (*dashboardContent, error) {
-	folderTitle, folderUID := extractFolderInfo(dashboardJSON)
 	dashboard := unwrapDashboard(dashboardJSON)
 
 	isV2 := isDashboardV2(dashboardJSON)
 
 	content := &dashboardContent{
-		Panels:      []panelContent{},
-		FolderTitle: folderTitle,
-		FolderUID:   folderUID,
+		Panels:    []panelContent{},
+		FolderUID: extractFolderUID(dashboardJSON),
 	}
 
 	if isV2 {

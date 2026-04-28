@@ -30,7 +30,9 @@ type Extractor interface {
 	Resource() string
 
 	// Extract returns the items for one resource instance. `value` is the raw
-	// JSON bytes of the resource as stored in unified storage. Returning an
-	// empty slice is valid — the resource has no embeddable content.
-	Extract(ctx context.Context, key *resourcepb.ResourceKey, value []byte) ([]Item, error)
+	// JSON bytes of the resource as stored in unified storage. `folderTitle`
+	// is the parent folder's display title, resolved by the caller from the
+	// resource's folder UID; pass "" if unknown. Returning an empty slice is
+	// valid — the resource has no embeddable content.
+	Extract(ctx context.Context, key *resourcepb.ResourceKey, value []byte, folderTitle string) ([]Item, error)
 }
