@@ -262,6 +262,7 @@ func (cfg *Cfg) setUnifiedStorageConfig() {
 		cfg.Logger.Warn("index_snapshot_max_age is smaller than max_file_index_age, overriding", "configured", cfg.IndexSnapshotMaxAge, "max_file_index_age", cfg.MaxFileIndexAge)
 		cfg.IndexSnapshotMaxAge = cfg.MaxFileIndexAge
 	}
+	cfg.IndexSnapshotCleanupGracePeriod = section.Key("index_snapshot_cleanup_grace_period").MustDuration(30 * time.Minute)
 }
 
 // applyMigrationEnforcements enforces unified storage migration configs when migrations should run,
