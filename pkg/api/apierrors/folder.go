@@ -120,12 +120,26 @@ func ToFolderStatusError(err error) k8sErrors.StatusError {
 		return defaultErr
 	}
 
-	return k8sErrors.StatusError{
+	statusErr := k8sErrors.StatusError{
 		ErrStatus: metav1.Status{
 			Message: message,
 			Code:    int32(normResp.Status()),
 		},
 	}
+
+	// Preserve the structured errutil message ID in Status.Details.UID so
+	// downstream consumers (e.g. provisioning's IsFolderValidationAPIError)
+	// can match the rejection without relying on the human-readable message.
+	// errutil.Error.Status() is the source of truth for the message ID; if
+	// the underlying error is one, copy its Details across.
+	var grafanaErr errutil.Error
+	if errors.As(err, &grafanaErr) {
+		if details := grafanaErr.Status().Details; details != nil {
+			statusErr.ErrStatus.Details = details
+		}
+	}
+
+	return statusErr
 }
 
 func getDefaultMessageForStatus(statusCode int) string {
