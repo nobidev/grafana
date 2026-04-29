@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/grafana/grafana/pkg/api/response"
+	"github.com/grafana/grafana/pkg/apimachinery/errutil"
 	"github.com/grafana/grafana/pkg/services/dashboards"
 	"github.com/grafana/grafana/pkg/services/dashboards/dashboardaccess"
 	"github.com/grafana/grafana/pkg/services/folder"
@@ -14,6 +15,23 @@ import (
 	"github.com/stretchr/testify/require"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+// Equivalents of pkg/registry/apis/folders.ErrAPIInvalidUIDChars / ErrAPIUIDTooLong.
+// Reconstructed here because pkg/api/apierrors cannot import that package
+// (folders → apierrors import cycle), and the behaviour we want to verify is
+// that ToFolderErrorResponse handles errutil errors that chain to a
+// dashboardaccess.DashboardErr without losing the legacy /api/folders message.
+var (
+	apiInvalidUIDChars = errutil.BadRequest(
+		"folder.invalid-uid-chars",
+		errutil.WithPublicMessage("uid contains illegal characters"),
+	).Errorf("%w", dashboards.ErrDashboardInvalidUid)
+
+	apiUIDTooLong = errutil.BadRequest(
+		"folder.uid-too-long",
+		errutil.WithPublicMessage("uid too long, max 40 characters"),
+	).Errorf("%w", dashboards.ErrDashboardUidTooLong)
 )
 
 func TestToFolderErrorResponse(t *testing.T) {
@@ -75,9 +93,19 @@ func TestToFolderErrorResponse(t *testing.T) {
 			want:  response.Error(http.StatusBadRequest, "uid contains illegal characters", dashboards.ErrDashboardInvalidUid),
 		},
 		{
+			name:  "dashboard invalid uid (apiserver wrapped)",
+			input: apiInvalidUIDChars,
+			want:  response.Error(http.StatusBadRequest, "uid contains illegal characters", nil),
+		},
+		{
 			name:  "dashboard uid too long",
 			input: dashboards.ErrDashboardUidTooLong,
 			want:  response.Error(http.StatusBadRequest, "uid too long, max 40 characters", dashboards.ErrDashboardUidTooLong),
+		},
+		{
+			name:  "dashboard uid too long (apiserver wrapped)",
+			input: apiUIDTooLong,
+			want:  response.Error(http.StatusBadRequest, "uid too long, max 40 characters", nil),
 		},
 		{
 			name:  "folder cannot be parent of itself",
@@ -246,6 +274,8 @@ func TestErrorsIs_UnwrapsAPIWrappers(t *testing.T) {
 		{"title empty", folder.ErrAPITitleEmpty, folder.ErrTitleEmpty},
 		{"invalid uid", folder.ErrAPIInvalidUID, folder.ErrInvalidUID},
 		{"folder cannot be parent of itself", folder.ErrAPIFolderCannotBeParentOfItself, folder.ErrFolderCannotBeParentOfItself},
+		{"invalid uid chars (apiserver wrapped)", apiInvalidUIDChars, dashboards.ErrDashboardInvalidUid},
+		{"uid too long (apiserver wrapped)", apiUIDTooLong, dashboards.ErrDashboardUidTooLong},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

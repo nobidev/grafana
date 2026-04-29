@@ -2487,6 +2487,20 @@ func TestIntegrationFolderValidationReturns400(t *testing.T) {
 			expectedMsg: "folder cannot be parent of itself",
 		},
 		{
+			name: "uid too long",
+			folder: func(string) *unstructured.Unstructured {
+				return makeFolder("a0123456789012345678901234567890123456789", "Some title", "")
+			},
+			expectedMsg: "uid too long, max 40 characters",
+		},
+		{
+			name: "uid contains illegal characters",
+			folder: func(string) *unstructured.Unstructured {
+				return makeFolder("hello world", "Some title", "")
+			},
+			expectedMsg: "uid contains illegal characters",
+		},
+		{
 			name: "max depth exceeded",
 			setup: func(t *testing.T) string {
 				parentUID := ""

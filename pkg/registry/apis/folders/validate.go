@@ -77,11 +77,11 @@ func validateOnCreate(ctx context.Context, f *folders.Folder, getter parentsGett
 	// that the object name (which maps to the UID) is immutable, so re-validating here
 	// would be redundant.
 	if !util.IsValidShortUID(id) {
-		return dashboards.ErrDashboardInvalidUid
+		return ErrAPIInvalidUIDChars
 	}
 
 	if util.IsShortUIDTooLong(id) {
-		return dashboards.ErrDashboardUidTooLong
+		return ErrAPIUIDTooLong
 	}
 
 	f.Spec.Title = strings.TrimSpace(f.Spec.Title)

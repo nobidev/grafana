@@ -22,13 +22,19 @@ var stableFolderErrSentinels = []error{
 	folder.ErrTitleEmpty,
 	folder.ErrInvalidUID,
 	folder.ErrFolderCannotBeParentOfItself,
+	dashboards.ErrDashboardInvalidUid,
+	dashboards.ErrDashboardUidTooLong,
 }
 
 // ToFolderErrorResponse returns a different response status according to the folder error type
 func ToFolderErrorResponse(err error) response.Response {
 	// --- Dashboard errors ---
+	// Skip when the error is also an errutil wrapper so the stable-sentinel
+	// path below can return the legacy /api/folders message instead of the
+	// bracketed errutil format.
 	var dashboardErr dashboardaccess.DashboardErr
-	if ok := errors.As(err, &dashboardErr); ok {
+	var grafanaErr errutil.Error
+	if errors.As(err, &dashboardErr) && !errors.As(err, &grafanaErr) {
 		return response.Error(dashboardErr.StatusCode, err.Error(), err)
 	}
 
@@ -40,7 +46,6 @@ func ToFolderErrorResponse(err error) response.Response {
 		errors.Is(err, folder.ErrFolderCannotBeParentOfItself) ||
 		errors.Is(err, folder.ErrMaximumDepthReached) ||
 		errors.Is(err, folder.ErrInvalidUID) {
-		var grafanaErr errutil.Error
 		if errors.As(err, &grafanaErr) {
 			for _, s := range stableFolderErrSentinels {
 				if errors.Is(err, s) {
