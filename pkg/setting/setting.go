@@ -166,7 +166,7 @@ type Cfg struct {
 	ProvisioningMaxRepositories               int64         // default 10, 0 in config = unlimited (converted to -1 internally)
 	ProvisioningFolderAPIVersion              string        // "v1" (default for on-prem) or "v1beta1"
 	ProvisioningMaxIncrementalChanges         int           // default 100, 0 in config = unlimited
-	ProvisioningMaxFileSize                   int64         // bytes; default 5 MB; <=0 = unlimited
+	ProvisioningMaxFileSize                   int64         // bytes; default 5 MiB (5242880); <=0 = unlimited
 	ProvisioningWebhookSecretRotationInterval time.Duration // default 30 days
 	DataPath                                  string
 	LogsPath                                  string
