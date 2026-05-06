@@ -2,7 +2,6 @@ package notifier
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
@@ -14,6 +13,8 @@ import (
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/services/ngalert/api/tooling/definitions"
 	"github.com/grafana/grafana/pkg/services/ngalert/models"
+	"github.com/grafana/grafana/pkg/services/ngalert/notifier/legacy_storage"
+	v1 "github.com/grafana/grafana/pkg/services/ngalert/notifier/legacy_storage/v1"
 	"github.com/grafana/grafana/pkg/services/user"
 )
 
@@ -55,7 +56,7 @@ func TestMultiOrgAlertmanager_SaveAndApplyExtraConfiguration(t *testing.T) {
 		ctx := context.Background()
 		require.NoError(t, mam.LoadAndSyncAlertmanagersForOrgs(ctx))
 
-		extraConfig := definitions.ExtraConfiguration{
+		extraConfig := v1.ExtraConfiguration{
 			Identifier: "test-config",
 			AlertmanagerConfig: `route:
   receiver: test-receiver`,
@@ -71,7 +72,7 @@ func TestMultiOrgAlertmanager_SaveAndApplyExtraConfiguration(t *testing.T) {
 		ctx := context.Background()
 		require.NoError(t, mam.LoadAndSyncAlertmanagersForOrgs(ctx))
 
-		extraConfig := definitions.ExtraConfiguration{
+		extraConfig := v1.ExtraConfiguration{
 			Identifier:    "test-alertmanager-config",
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "prod"}},
 			TemplateFiles: map[string]string{"test.tmpl": "{{ define \"test\" }}Test{{ end }}"},
@@ -106,7 +107,7 @@ receivers:
 		ctx := context.Background()
 		require.NoError(t, mam.LoadAndSyncAlertmanagersForOrgs(ctx))
 
-		extraConfig := definitions.ExtraConfiguration{
+		extraConfig := v1.ExtraConfiguration{
 			Identifier:    "dry-run-config",
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "test"}},
 			TemplateFiles: map[string]string{"test.tmpl": "{{ define \"test\" }}Test{{ end }}"},
@@ -134,7 +135,7 @@ receivers:
 		identifier := "test-config"
 
 		// First add a configuration
-		originalConfig := definitions.ExtraConfiguration{
+		originalConfig := v1.ExtraConfiguration{
 			Identifier:    identifier,
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "original"}},
 			AlertmanagerConfig: `route:
@@ -147,7 +148,7 @@ receivers:
 		require.NoError(t, err)
 
 		// Now replace it
-		updatedConfig := definitions.ExtraConfiguration{
+		updatedConfig := v1.ExtraConfiguration{
 			Identifier:    identifier,
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "updated"}},
 			TemplateFiles: map[string]string{"updated.tmpl": "{{ define \"updated\" }}Updated{{ end }}"},
@@ -173,7 +174,7 @@ receivers:
 		ctx := context.Background()
 		require.NoError(t, mam.LoadAndSyncAlertmanagersForOrgs(ctx))
 
-		firstConfig := definitions.ExtraConfiguration{
+		firstConfig := v1.ExtraConfiguration{
 			Identifier:    "first-config",
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "first"}},
 			AlertmanagerConfig: `{
@@ -191,7 +192,7 @@ receivers:
 		_, err := mam.SaveAndApplyExtraConfiguration(ctx, orgID, &user.SignedInUser{}, noopExtraConfigAuthz{}, firstConfig, false, false)
 		require.NoError(t, err)
 
-		secondConfig := definitions.ExtraConfiguration{
+		secondConfig := v1.ExtraConfiguration{
 			Identifier:    "second-config",
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "second"}},
 			AlertmanagerConfig: `{
@@ -229,17 +230,17 @@ receivers:
 
 		identifier := "test-config"
 
-		cfg := &definitions.PostableUserConfig{
-			ManagedRoutes: map[string]*definitions.Route{
+		cfg := v1.AMConfigV1{
+			ManagedRoutes: map[string]*v1.Route{
 				identifier: {Receiver: "initial-receiver"},
 			},
-			AlertmanagerConfig: definitions.PostableApiAlertingConfig{
-				Config: definitions.Config{
-					Route: &definitions.Route{
+			AlertmanagerConfig: v1.PostableApiAlertingConfig{
+				Config: v1.Config{
+					Route: &v1.Route{
 						Receiver: "initial-receiver",
 					},
 				},
-				Receivers: []*definitions.PostableApiReceiver{
+				Receivers: []*v1.PostableApiReceiver{
 					{
 						Receiver: definitions.Receiver{
 							Name: "initial-receiver",
@@ -249,7 +250,7 @@ receivers:
 			},
 		}
 
-		cfgToSave, err := json.Marshal(&cfg)
+		cfgToSave, err := legacy_storage.SerializeAlertmanagerConfig(cfg)
 		require.NoError(t, err)
 
 		err = mam.configStore.SaveAlertmanagerConfiguration(ctx, &models.SaveAlertmanagerConfigurationCmd{
@@ -261,7 +262,7 @@ receivers:
 		})
 		require.NoError(t, err)
 
-		originalConfig := definitions.ExtraConfiguration{
+		originalConfig := v1.ExtraConfiguration{
 			Identifier:    identifier,
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "original"}},
 			AlertmanagerConfig: `route:
@@ -285,7 +286,7 @@ func TestMultiOrgAlertmanager_DeleteExtraConfiguration(t *testing.T) {
 
 		identifier := "test-identifier"
 
-		extraConfig := definitions.ExtraConfiguration{
+		extraConfig := v1.ExtraConfiguration{
 			Identifier:    identifier,
 			MergeMatchers: definitions.Matchers{&labels.Matcher{Type: labels.MatchEqual, Name: "env", Value: "delete"}},
 			AlertmanagerConfig: `route:
@@ -334,7 +335,7 @@ func TestMultiOrgAlertmanager_ExtraConfigurationAuthz(t *testing.T) {
 	orgID := int64(1)
 	ctx := context.Background()
 
-	validConfig := definitions.ExtraConfiguration{
+	validConfig := v1.ExtraConfiguration{
 		Identifier: "config-a",
 		AlertmanagerConfig: `route:
   receiver: test-receiver
@@ -375,7 +376,7 @@ receivers:
 		require.NoError(t, mam.LoadAndSyncAlertmanagersForOrgs(ctx))
 
 		// Save config A first.
-		configA := definitions.ExtraConfiguration{
+		configA := v1.ExtraConfiguration{
 			Identifier: "config-a",
 			AlertmanagerConfig: `route:
   receiver: test-receiver
@@ -386,7 +387,7 @@ receivers:
 		require.NoError(t, err)
 
 		// Try to save config B with replace=true, but delete is denied.
-		configB := definitions.ExtraConfiguration{
+		configB := v1.ExtraConfiguration{
 			Identifier: "config-b",
 			AlertmanagerConfig: `route:
   receiver: test-receiver

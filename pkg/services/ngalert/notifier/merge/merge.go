@@ -16,13 +16,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/grafana/alerting/definition"
 	"github.com/prometheus/alertmanager/config"
 	"github.com/prometheus/alertmanager/dispatch"
 	"github.com/prometheus/alertmanager/pkg/labels"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/grafana/pkg/services/ngalert/api/tooling/definitions"
+	v1 "github.com/grafana/grafana/pkg/services/ngalert/notifier/legacy_storage/v1"
 )
 
 var (
@@ -55,10 +54,10 @@ func ValidateSubtreeMatchers(matchers config.Matchers) error {
 // imported route subtree and inhibit rules separately so callers can register them as
 // managed routes / managed inhibit rules.
 type MergeResult struct {
-	Config definitions.PostableUserConfig
+	Config v1.AMConfigV1
 	RenameResources
 	Identifier        string
-	ExtraRoute        *definition.Route
+	ExtraRoute        *v1.Route
 	ExtraInhibitRules []config.InhibitRule
 }
 
@@ -119,7 +118,7 @@ func (m MergeResult) LogContext() []any {
 //     - All inhibit rules from the extra configuration are copied to the result
 //     - MergeMatchers are added to both source and target matchers of each copied inhibit rule
 //     to maintain proper context separation
-func MergeExtraConfig(_ context.Context, cfg *definitions.PostableUserConfig) (MergeResult, error) {
+func MergeExtraConfig(_ context.Context, cfg *v1.AMConfigV1) (MergeResult, error) {
 	if len(cfg.ExtraConfigs) == 0 {
 		return MergeResult{Config: *cfg}, nil
 	}
@@ -165,7 +164,7 @@ func MergeExtraConfig(_ context.Context, cfg *definitions.PostableUserConfig) (M
 	}
 
 	extraRoute := mcfg.Route
-	RenameResourceUsagesInRoutes([]*definition.Route{extraRoute}, renamed)
+	RenameResourceUsagesInRoutes([]*v1.Route{extraRoute}, renamed)
 
 	route := cfg.AlertmanagerConfig.Route
 	inhibitRules := cfg.AlertmanagerConfig.InhibitRules
@@ -174,10 +173,10 @@ func MergeExtraConfig(_ context.Context, cfg *definitions.PostableUserConfig) (M
 		inhibitRules = MergeInhibitRules(inhibitRules, mcfg.InhibitRules, mimirCfg.MergeMatchers)
 	}
 
-	mergedConfig := definitions.PostableUserConfig{
+	mergedConfig := v1.AMConfigV1{
 		TemplateFiles: cfg.TemplateFiles,
-		AlertmanagerConfig: definition.PostableApiAlertingConfig{
-			Config: definition.Config{
+		AlertmanagerConfig: v1.PostableApiAlertingConfig{
+			Config: v1.Config{
 				Global:            nil, // Grafana does not have global.
 				Route:             route,
 				InhibitRules:      inhibitRules,
@@ -201,7 +200,7 @@ func MergeExtraConfig(_ context.Context, cfg *definitions.PostableUserConfig) (M
 }
 
 // DeduplicateResources merges existing and incoming resources (receivers and time intervals) and ensures unique names by applying suffixes. Returns renamed resources for tracking adjustments made.
-func DeduplicateResources(a, b definition.PostableApiAlertingConfig, suffix string) RenameResources {
+func DeduplicateResources(a, b v1.PostableApiAlertingConfig, suffix string) RenameResources {
 	_, renamedReceivers := MergeReceivers(a.Receivers, b.Receivers, suffix)
 
 	_, renamedTimeIntervals := MergeTimeIntervals(
@@ -220,20 +219,20 @@ func DeduplicateResources(a, b definition.PostableApiAlertingConfig, suffix stri
 // MergeTimeIntervals merges existing and incoming time intervals and mute intervals, ensuring unique names by applying suffixes.
 // It returns a merged list of time intervals and a map of renamed interval names for tracking adjustments made. Mute time intervals are converted to time intervals.
 func MergeTimeIntervals(
-	existingMuteIntervals []config.MuteTimeInterval,
-	existingTimeIntervals []config.TimeInterval,
-	incomingMuteIntervals []config.MuteTimeInterval,
-	incomingTimeIntervals []config.TimeInterval,
+	existingMuteIntervals []v1.MuteTimeInterval,
+	existingTimeIntervals []v1.TimeInterval,
+	incomingMuteIntervals []v1.MuteTimeInterval,
+	incomingTimeIntervals []v1.TimeInterval,
 	suffix string,
-) ([]config.TimeInterval, map[string]string) {
+) ([]v1.TimeInterval, map[string]string) {
 	// combine all incoming intervals into a single list
-	incomingAll := make([]config.TimeInterval, 0, len(incomingTimeIntervals)+len(incomingMuteIntervals))
+	incomingAll := make([]v1.TimeInterval, 0, len(incomingTimeIntervals)+len(incomingMuteIntervals))
 	incomingAll = append(incomingAll, incomingTimeIntervals...)
 	for _, interval := range incomingMuteIntervals {
-		incomingAll = append(incomingAll, config.TimeInterval(interval))
+		incomingAll = append(incomingAll, v1.TimeInterval(interval))
 	}
 	usedNames := createIndexTimeIntervals(existingMuteIntervals, existingTimeIntervals, incomingAll)
-	result := make([]config.TimeInterval, 0, len(existingTimeIntervals)+len(incomingMuteIntervals)+len(incomingTimeIntervals))
+	result := make([]v1.TimeInterval, 0, len(existingTimeIntervals)+len(incomingMuteIntervals)+len(incomingTimeIntervals))
 	result = append(result, existingTimeIntervals...)
 	renames := make(map[string]string)
 	for idx, interval := range incomingAll {
@@ -250,9 +249,9 @@ func MergeTimeIntervals(
 }
 
 func createIndexTimeIntervals(
-	existingMuteIntervals []config.MuteTimeInterval,
-	existingTimeIntervals []config.TimeInterval,
-	incomingTimeIntervals []config.TimeInterval,
+	existingMuteIntervals []v1.MuteTimeInterval,
+	existingTimeIntervals []v1.TimeInterval,
+	incomingTimeIntervals []v1.TimeInterval,
 ) map[string]int {
 	// usedNames is a map of existing interval names where value is the index of the interval that holds the name in the incoming list.
 	usedNames := make(map[string]int, len(existingMuteIntervals)+len(existingTimeIntervals)+len(incomingTimeIntervals))
@@ -270,7 +269,7 @@ func createIndexTimeIntervals(
 	return usedNames
 }
 
-func MergeRoutes(a, b definition.Route, matcher config.Matchers) *definition.Route {
+func MergeRoutes(a, b v1.Route, matcher config.Matchers) *v1.Route {
 	// get a and b by value so we get shallow copies of the top level routes, which we can modify.
 	// make sure "b" route has all defaults set explicitly to avoid inheriting "a"'s default route settings.
 	defaultOpts := dispatch.DefaultRouteOpts
@@ -287,11 +286,11 @@ func MergeRoutes(a, b definition.Route, matcher config.Matchers) *definition.Rou
 		b.RepeatInterval = &ri
 	}
 	b.Matchers = append(slices.Clone(b.Matchers), matcher...)
-	a.Routes = append([]*definition.Route{&b}, a.Routes...)
+	a.Routes = append([]*v1.Route{&b}, a.Routes...)
 	return &a
 }
 
-func checkIfMatchersUsed(matchers config.Matchers, routes []*definition.Route) (bool, error) {
+func checkIfMatchersUsed(matchers config.Matchers, routes []*v1.Route) (bool, error) {
 	// matchers are always equality type. So we can confidently convert them to labelsSet
 	// and check if they are contained in any of the routes.
 	ls := make(model.LabelSet, len(matchers))
@@ -327,7 +326,7 @@ func checkIfMatchersUsed(matchers config.Matchers, routes []*definition.Route) (
 }
 
 // RenameResourceUsagesInRoutes updates the receiver and mute/active time intervals of routes based on the provided rename resources.
-func RenameResourceUsagesInRoutes(routes []*definition.Route, renames RenameResources) {
+func RenameResourceUsagesInRoutes(routes []*v1.Route, renames RenameResources) {
 	for _, r := range routes {
 		if r == nil {
 			continue
@@ -366,8 +365,8 @@ func MergeInhibitRules(a, b []config.InhibitRule, matcher config.Matchers) []con
 // It returns the combined list of receivers and a map of renamed original names to their new unique names.
 // The items of the existing list are added to the result list as is whereas the items of incoming list are copied (shallow copy)
 // and renamed if necessary.
-func MergeReceivers(existing, incoming []*definition.PostableApiReceiver, suffix string) ([]*definition.PostableApiReceiver, map[string]string) {
-	result := make([]*definition.PostableApiReceiver, 0, len(existing)+len(incoming))
+func MergeReceivers(existing, incoming []*v1.PostableApiReceiver, suffix string) ([]*v1.PostableApiReceiver, map[string]string) {
+	result := make([]*v1.PostableApiReceiver, 0, len(existing)+len(incoming))
 	result = append(result, existing...)
 	usedNames := createIndexReceivers(existing, incoming)
 	renames := make(map[string]string)
@@ -387,7 +386,7 @@ func MergeReceivers(existing, incoming []*definition.PostableApiReceiver, suffix
 	return result, renames
 }
 
-func createIndexReceivers(existing, incoming []*definition.PostableApiReceiver) map[string]int {
+func createIndexReceivers(existing, incoming []*v1.PostableApiReceiver) map[string]int {
 	usedNames := make(map[string]int, len(existing)+len(incoming))
 	for _, e := range existing {
 		usedNames[e.Name] = -1
