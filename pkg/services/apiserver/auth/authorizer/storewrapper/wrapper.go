@@ -441,11 +441,10 @@ func (a *authorizedUpdateInfo) UpdatedObject(ctx context.Context, oldObj runtime
 
 	authzStart := time.Now()
 	err = a.authorizer.BeforeUpdate(authzCtx, oldObj, updatedObj)
+	a.observer.Observe(LayerAuthz, OpBeforeUpdate, a.resource, time.Since(authzStart), statusFromError(err))
 	if err != nil {
-		a.observer.Observe(LayerAuthz, OpBeforeUpdate, a.resource, time.Since(authzStart), statusFromError(err))
 		return nil, err
 	}
-	a.observer.Observe(LayerAuthz, OpBeforeUpdate, a.resource, time.Since(authzStart), "success")
 
 	return updatedObj, nil
 }
