@@ -1482,11 +1482,6 @@ export interface FeatureToggles {
   */
   queryEditorNextMultiSelect?: boolean;
   /**
-  * Enables search for team bindings in the app platform API
-  * @default false
-  */
-  kubernetesTeamBindings?: boolean;
-  /**
   * Enables team APIs in the app platform
   * @default false
   */
