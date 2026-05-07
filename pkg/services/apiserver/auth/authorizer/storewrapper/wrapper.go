@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	k8srest "k8s.io/apiserver/pkg/registry/rest"
 
+	"github.com/grafana/grafana/pkg/apimachinery/errutil"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/apiserver/rest"
 )
@@ -32,18 +33,20 @@ var (
 const (
 	tracerName = "github.com/grafana/grafana/pkg/services/apiserver/auth/authorizer/storewrapper"
 
-	OpBeforeCreate = "before_create"
-	OpCreate       = "create"
-	OpBeforeDelete = "before_delete"
-	OpDelete       = "delete"
-	OpDeleteGet    = "delete_get"
-	OpGet          = "get"
-	OpList         = "list"
-	OpBeforeUpdate = "before_update"
-	OpUpdate       = "update"
-	OpWatchSetup   = "watch_setup"
-	OpAfterGet     = "after_get"
-	OpFilterList   = "filter_list"
+	OpBeforeCreate      = "before_create"
+	OpCreate            = "create"
+	OpBeforeDelete      = "before_delete"
+	OpDelete            = "delete"
+	OpDeleteGet         = "delete_get"
+	OpGet               = "get"
+	OpList              = "list"
+	OpBeforeUpdate      = "before_update"
+	OpUpdate            = "update"
+	OpAfterGet          = "after_get"
+	OpFilterList        = "filter_list"
+	OpWatchFilter       = "watch_filter"
+	OpFilterWatchEvents = "filter_watch_events"
+	OpSendWatchEvents   = "send_watch_events"
 )
 
 // WatchEventFilter is a batch filter for watch events. Given a slice of
@@ -204,11 +207,15 @@ func (w *Wrapper) storeCtx(ctx context.Context) context.Context {
 	return srvCtx
 }
 
-func (w *Wrapper) startSpan(ctx context.Context, method string) (context.Context, trace.Span) {
-	return w.tracer.Start(ctx, "authz.storewrapper."+method, trace.WithAttributes(
-		attribute.String("resource.group", w.resource.Group),
-		attribute.String("resource.resource", w.resource.Resource),
+func startSpan(ctx context.Context, tracer trace.Tracer, resource schema.GroupResource, method string) (context.Context, trace.Span) {
+	return tracer.Start(ctx, "authz.storewrapper."+method, trace.WithAttributes(
+		attribute.String("resource.group", resource.Group),
+		attribute.String("resource.resource", resource.Resource),
 	))
+}
+
+func (w *Wrapper) startSpan(ctx context.Context, method string) (context.Context, trace.Span) {
+	return startSpan(ctx, w.tracer, w.resource, method)
 }
 
 func (w *Wrapper) observeAuthz(op string, start time.Time, err error) {
@@ -430,10 +437,7 @@ func (a *authorizedUpdateInfo) UpdatedObject(ctx context.Context, oldObj runtime
 	}
 
 	// Enforce authorization using the original user context
-	authzCtx, span := a.tracer.Start(a.userCtx, "authz.storewrapper.UpdateAuthz", trace.WithAttributes(
-		attribute.String("resource.group", a.resource.Group),
-		attribute.String("resource.resource", a.resource.Resource),
-	))
+	authzCtx, span := startSpan(a.userCtx, a.tracer, a.resource, "UpdateAuthz")
 	defer func() {
 		recordSpanError(span, err)
 		span.End()
@@ -455,7 +459,6 @@ func (w *Wrapper) Watch(ctx context.Context, options *internalversion.ListOption
 		recordSpanError(span, err)
 		span.End()
 	}()
-	innerStart := time.Now()
 
 	// Check if the underlying storage supports Watch
 	watcher, ok := w.inner.(k8srest.Watcher)
@@ -467,7 +470,9 @@ func (w *Wrapper) Watch(ctx context.Context, options *internalversion.ListOption
 	// Build the filter once, before starting the watch, so callers get an immediate
 	// error if authorization state cannot be resolved (e.g. auth backend unavailable).
 	var filter WatchEventFilter
+	watchFilterStart := time.Now()
 	filter, err = w.authorizer.WatchFilter(ctx)
+	w.observeAuthz(OpWatchFilter, watchFilterStart, err)
 	if err != nil {
 		return nil, err
 	}
@@ -486,14 +491,14 @@ func (w *Wrapper) Watch(ctx context.Context, options *internalversion.ListOption
 	}
 
 	if isPassThroughWatchFilter(filter) {
-		w.observeInner(OpWatchSetup, innerStart, nil)
+		span.SetAttributes(attribute.Bool("filtered", false))
 		return inner, nil
 	}
 
 	// Return a new filtered watcher that runs the filter over the buffered events
 	// and forwards the events to the caller.
-	result = newFilteredWatcher(ctx, inner, filter, w.watchFlushInterval)
-	w.observeInner(OpWatchSetup, innerStart, nil)
+	result = newFilteredWatcher(ctx, w.tracer, w.observer, w.resource, inner, filter, w.watchFlushInterval)
+	span.SetAttributes(attribute.Bool("filtered", true))
 	return result, nil
 }
 
@@ -506,12 +511,16 @@ func (w *Wrapper) Watch(ctx context.Context, options *internalversion.ListOption
 // and flushed either when the buffer is full or the ticker fires, amortizing the
 // cost of expensive filter implementations (e.g. BatchCheck RPCs) across bursts.
 type filteredWatcher struct {
+	tracer        trace.Tracer
+	observer      Observer
+	resource      schema.GroupResource
 	inner         watch.Interface  // The underlying watch.Interface.
 	filter        WatchEventFilter // Filter to apply to the buffered events.
 	flushInterval time.Duration    // The interval to flush the buffered events.
 	result        chan watch.Event // Forwarded events to the caller.
 	stopOnce      sync.Once        // Ensures Stop() is called only once to prevent race conditions.
 	done          chan struct{}    // Closed when the watcher Stop() method is called.
+	pending       []watch.Event    // Buffered events awaiting flush; only accessed from run goroutine.
 }
 
 // watchBatchSize is the maximum number of events buffered before a forced flush.
@@ -521,8 +530,17 @@ const watchBatchSize = 100
 // defaultSendTimeout is the timeout for sending an event to the caller.
 var defaultSendTimeout = 1 * time.Second
 
-func newFilteredWatcher(ctx context.Context, inner watch.Interface, filter WatchEventFilter, flushInterval time.Duration) *filteredWatcher {
+func newFilteredWatcher(ctx context.Context,
+	tracer trace.Tracer,
+	observer Observer,
+	resource schema.GroupResource,
+	inner watch.Interface,
+	filter WatchEventFilter,
+	flushInterval time.Duration) *filteredWatcher {
 	fw := &filteredWatcher{
+		tracer:        tracer,
+		observer:      observer,
+		resource:      resource,
 		inner:         inner,
 		filter:        filter,
 		flushInterval: flushInterval,
@@ -533,19 +551,27 @@ func newFilteredWatcher(ctx context.Context, inner watch.Interface, filter Watch
 	return fw
 }
 
+type sendEventResult string
+
+const (
+	sendEventSuccess sendEventResult = "success"
+	sendEventTimeout sendEventResult = "timeout"
+	sendEventStopped sendEventResult = "stopped"
+)
+
 // sendEvent forwards an event to the caller.
 // It returns if the user context is done or the watcher is stopped.
-func (fw *filteredWatcher) sendEvent(ctx context.Context, event watch.Event) bool {
+func (fw *filteredWatcher) sendEvent(ctx context.Context, event watch.Event) sendEventResult {
 	// If we could not send the event on time, emit an Error
 	// and shut down to release backpressure on the inner storage.
 	timer := time.NewTimer(defaultSendTimeout)
 	select {
 	case <-ctx.Done(): // User context is done.
-		return false
+		return sendEventStopped
 	case <-fw.done: // Closed when the watcher Stop() method is called.
-		return false
+		return sendEventStopped
 	case fw.result <- event: // Forward the event to the caller.
-		return true
+		return sendEventSuccess
 	case <-timer.C: // Consumer is too slow, emit Timeout Error and tear down watch.
 		select {
 		case fw.result <- watch.Event{Type: watch.Error, Object: &metaV1.Status{
@@ -556,8 +582,71 @@ func (fw *filteredWatcher) sendEvent(ctx context.Context, event watch.Event) boo
 		}
 		// A bit redundant with run's defer, but it explicits the intent.
 		fw.Stop()
+		return sendEventTimeout
+	}
+}
+
+func (fw *filteredWatcher) filterEvents(ctx context.Context, pending []watch.Event) (allowed []bool, err error) {
+	_, span := startSpan(ctx, fw.tracer, fw.resource, "Watch.FilterEvents")
+	span.SetAttributes(attribute.Int("events_count", len(pending)))
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
+	startTime := time.Now()
+	allowed, err = fw.filter(pending)
+	if err == nil && len(allowed) != len(pending) {
+		err = fmt.Errorf("watch filter contract violation: returned %d entries for %d events", len(allowed), len(pending))
+	}
+	fw.observer.Observe(LayerAuthz, OpFilterWatchEvents, fw.resource, time.Since(startTime), statusFromError(err))
+	return allowed, err
+}
+
+func (fw *filteredWatcher) sendAllowed(ctx context.Context, pending []watch.Event, allowed []bool) bool {
+	_, span := startSpan(ctx, fw.tracer, fw.resource, "Watch.SendEvents")
+	sent := 0
+	start := time.Now()
+	result := sendEventSuccess
+
+	defer func() {
+		span.SetAttributes(attribute.String("send_result", string(result)))
+		span.SetAttributes(attribute.Int("sent_count", sent))
+		if result == sendEventTimeout {
+			recordSpanError(span, errutil.Internal("watch event send timed out"))
+		}
+		span.End()
+		fw.observer.Observe(LayerInner, OpSendWatchEvents, fw.resource, time.Since(start), string(result))
+	}()
+
+	for i, event := range pending {
+		if allowed[i] {
+			result = fw.sendEvent(ctx, event)
+			if result != sendEventSuccess {
+				return false
+			}
+			sent++
+		}
+	}
+	return true
+}
+
+func (fw *filteredWatcher) flush(ctx context.Context) bool {
+	if len(fw.pending) == 0 {
+		return true
+	}
+
+	allowed, err := fw.filterEvents(ctx, fw.pending)
+	if err != nil {
+		errEvent := watch.Event{Type: watch.Error, Object: &metaV1.Status{Status: metaV1.StatusFailure, Message: err.Error()}}
+		_ = fw.sendEvent(ctx, errEvent)
+		fw.inner.Stop()
+		fw.pending = fw.pending[:0]
 		return false
 	}
+	ok := fw.sendAllowed(ctx, fw.pending, allowed)
+	fw.pending = fw.pending[:0]
+	return ok
 }
 
 func (fw *filteredWatcher) run(ctx context.Context) {
@@ -575,34 +664,6 @@ func (fw *filteredWatcher) run(ctx context.Context) {
 		tickerC = t.C
 	}
 
-	var pending []watch.Event
-
-	flush := func() bool {
-		if len(pending) == 0 {
-			return true
-		}
-		// Apply the filter to the buffered events.
-		// No need to time out here, if we are too slow, the upstream storage will close the inner watch anyway.
-		allowed, err := fw.filter(pending)
-		if err != nil {
-			errEvent := watch.Event{Type: watch.Error, Object: &metaV1.Status{Status: metaV1.StatusFailure, Message: err.Error()}}
-			_ = fw.sendEvent(ctx, errEvent)
-
-			fw.inner.Stop()
-			pending = pending[:0]
-			return false
-		}
-		for i, event := range pending {
-			if i < len(allowed) && allowed[i] {
-				if !fw.sendEvent(ctx, event) {
-					return false // Send failed
-				}
-			}
-		}
-		pending = pending[:0]
-		return true
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -615,25 +676,23 @@ func (fw *filteredWatcher) run(ctx context.Context) {
 			}
 			// Protocol events carry no resource data and must never be delayed.
 			if event.Type == watch.Bookmark || event.Type == watch.Error {
-				// Drain pending first to preserve ordering.
-				if flushed := flush(); !flushed {
-					return // Flush failed
+				if !fw.flush(ctx) {
+					return
 				}
-				if !fw.sendEvent(ctx, event) {
-					return // Send failed
+				if fw.sendEvent(ctx, event) != sendEventSuccess {
+					return
 				}
 				continue
 			}
-			pending = append(pending, event)
-			// Flush if the buffer is full or we have no flush interval.
-			if fw.flushInterval == 0 || len(pending) >= watchBatchSize {
-				if flushed := flush(); !flushed {
-					return // Flush failed
+			fw.pending = append(fw.pending, event)
+			if fw.flushInterval == 0 || len(fw.pending) >= watchBatchSize {
+				if !fw.flush(ctx) {
+					return
 				}
 			}
 		case <-tickerC:
-			if flushed := flush(); !flushed {
-				return // Flush failed
+			if !fw.flush(ctx) {
+				return
 			}
 		}
 	}
