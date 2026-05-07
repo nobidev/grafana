@@ -854,7 +854,7 @@ func TestWrapper_Watch(t *testing.T) {
 		fakeWatcher := watch.NewFake()
 		watcherStore := &fakeWatcherStorage{K8sStorage: setup.mockStore, watcher: fakeWatcher}
 		// Re-create the wrapper with a short flush interval so the ticker case fires.
-		setup.wrapper = New(watcherStore, setup.mockAuth, WithWatchFlushInterval(10*time.Millisecond))
+		setup.wrapper = New(watcherStore, testResource, setup.mockAuth, WithWatchFlushInterval(10*time.Millisecond))
 
 		setup.mockAuth.On("WatchFilter", mock.Anything).Return(allowAllWatchFilter, nil)
 
