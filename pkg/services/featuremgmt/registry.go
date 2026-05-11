@@ -1389,14 +1389,6 @@ var (
 			Generate:    Generate{LegacyGo: true, LegacyFrontend: true},
 		},
 		{
-			Name:        "unifiedStorageBigObjectsSupport",
-			Description: "Enables to save big objects in blob storage",
-			Stage:       FeatureStageExperimental,
-			Owner:       grafanaSearchAndStorageSquad,
-			Expression:  "false",
-			Generate:    Generate{LegacyGo: true, LegacyFrontend: true},
-		},
-		{
 			Name:        "timeRangeProvider",
 			Description: "Enables time pickers sync",
 			Stage:       FeatureStageExperimental,
@@ -1407,14 +1399,6 @@ var (
 		{
 			Name:        "timeRangePan",
 			Description: "Enables time range panning functionality",
-			Stage:       FeatureStageGeneralAvailability,
-			Generate:    Generate{LegacyFrontend: true},
-			Owner:       grafanaDatavizSquad,
-			Expression:  "true",
-		},
-		{
-			Name:        "newTimeRangeZoomShortcuts",
-			Description: "Enables new keyboard shortcuts for time range zoom operations",
 			Stage:       FeatureStageGeneralAvailability,
 			Generate:    Generate{LegacyFrontend: true},
 			Owner:       grafanaDatavizSquad,
