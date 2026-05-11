@@ -1389,28 +1389,12 @@ var (
 			Generate:    Generate{LegacyGo: true, LegacyFrontend: true},
 		},
 		{
-			Name:        "unifiedStorageBigObjectsSupport",
-			Description: "Enables to save big objects in blob storage",
-			Stage:       FeatureStageExperimental,
-			Owner:       grafanaSearchAndStorageSquad,
-			Expression:  "false",
-			Generate:    Generate{LegacyGo: true, LegacyFrontend: true},
-		},
-		{
 			Name:        "timeRangeProvider",
 			Description: "Enables time pickers sync",
 			Stage:       FeatureStageExperimental,
 			Owner:       grafanaFrontendPlatformSquad,
 			Expression:  "false",
 			Generate:    Generate{LegacyGo: true, LegacyFrontend: true},
-		},
-		{
-			Name:        "newTimeRangeZoomShortcuts",
-			Description: "Enables new keyboard shortcuts for time range zoom operations",
-			Stage:       FeatureStageGeneralAvailability,
-			Generate:    Generate{LegacyFrontend: true},
-			Owner:       grafanaDatavizSquad,
-			Expression:  "true",
 		},
 		{
 			Name:        "azureMonitorDisableLogLimit",
