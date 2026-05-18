@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/grafana-app-sdk/resource"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	adminconfigv0alpha1 "github.com/grafana/grafana/apps/alerting/adminconfig/pkg/apis/alertingadminconfig/v0alpha1"
 	"github.com/grafana/grafana/pkg/apimachinery/identity"
@@ -170,7 +171,7 @@ func (s *ExternalAMSyncer) FetchExtraConfig(ctx context.Context, orgID int64) (*
 		return nil, 0
 	}
 
-	uid, _, err := s.resolveExternalAMUIDForOrg(ctx, orgID)
+	uid, origin, err := s.resolveExternalAMUIDForOrg(ctx, orgID)
 	if err != nil {
 		s.logger.Warn("Failed to resolve external AM UID", "org_id", orgID, "error", err)
 		return nil, 0
@@ -187,6 +188,7 @@ func (s *ExternalAMSyncer) FetchExtraConfig(ctx context.Context, orgID int64) (*
 		s.logger.Warn("Failed to fetch external AM configuration", "org_id", orgID, "reason", reason, "error", fetchErr)
 		s.metrics.ExternalAMConfigSyncFailures.WithLabelValues(orgIDStr, reason).Inc()
 		s.metrics.ExternalAMConfigSyncDuration.WithLabelValues(orgIDStr).Observe(time.Since(start).Seconds())
+		s.recordSyncResult(ctx, orgID, uid, origin, fetchErr)
 		return nil, 0
 	}
 
@@ -215,11 +217,130 @@ func (s *ExternalAMSyncer) FetchExtraConfig(ctx context.Context, orgID int64) (*
 // and every tick will re-save the same config. Updates the hash gauge here (not
 // inside FetchExtraConfig) so the metric value always reflects the last persisted
 // config rather than the last fetched one.
-func (s *ExternalAMSyncer) MarkSaved(orgID int64, hash uint64) {
+//
+// Also writes a success entry to the AdminConfig resource's .status.sync when the
+// AdminConfig API is enabled. Status writes are best-effort and do not affect the
+// save-side bookkeeping.
+func (s *ExternalAMSyncer) MarkSaved(ctx context.Context, orgID int64, hash uint64) {
 	s.lastSyncHashMu.Lock()
 	s.lastSyncHash[orgID] = hash
 	s.lastSyncHashMu.Unlock()
 	s.metrics.ExternalAMConfigSyncHash.WithLabelValues(fmt.Sprintf("%d", orgID)).Set(float64(hash & mask53))
+	s.writeSyncStatusFor(ctx, orgID, nil)
+}
+
+// MarkFailed records a save-side failure for the given org. Caller (MAM) invokes
+// this when SaveAndApplyExtraConfiguration returns an error for an ExtraConfig
+// produced by FetchExtraConfig. Writes a failure entry to .status.sync on the
+// AdminConfig resource when the API is enabled; status writes are best-effort.
+func (s *ExternalAMSyncer) MarkFailed(ctx context.Context, orgID int64, syncErr error) {
+	s.writeSyncStatusFor(ctx, orgID, syncErr)
+}
+
+// writeSyncStatusFor re-resolves the (uid, origin) tuple for the org and writes
+// the corresponding status. Callers (MarkSaved, MarkFailed, FetchExtraConfig
+// failure branch) use this rather than threading the resolved values through
+// the save path. The extra resolve call is cheap and avoids state coupling.
+func (s *ExternalAMSyncer) writeSyncStatusFor(ctx context.Context, orgID int64, syncErr error) {
+	if s.getAdminConfigClient() == nil {
+		return
+	}
+	uid, origin, err := s.resolveExternalAMUIDForOrg(ctx, orgID)
+	if err != nil {
+		s.logger.Warn("Failed to re-resolve UID for status write", "org_id", orgID, "error", err)
+		return
+	}
+	s.recordSyncResult(ctx, orgID, uid, origin, syncErr)
+}
+
+// recordSyncResult writes the latest sync outcome to .status.sync on the org's
+// AdminConfig resource. Best-effort: on error we log and move on. Status writes
+// run after each meaningful sync event (success, save failure, fetch failure);
+// unified storage's byte-equality no-op detection handles dedup against the
+// previous write, so unchanged status produces no history row.
+//
+// Upsert semantics: when the resource doesn't exist (operator-ini override on a
+// fresh stack), we create it with empty spec and the computed status.
+//
+// Concurrency: optimistic concurrency on resourceVersion. Concurrent spec edits
+// (via the API) are preserved because we re-read the resource before each write.
+// The 5-attempt retry budget is well above the conflict rate we expect at the
+// 1-minute sync cadence.
+func (s *ExternalAMSyncer) recordSyncResult(ctx context.Context, orgID int64, uid string, origin adminconfigv0alpha1.AdminConfigSyncStatusOrigin, syncErr error) {
+	c := s.getAdminConfigClient()
+	if c == nil {
+		return
+	}
+	nsCtx, ns := s.orgServiceContext(ctx, orgID)
+	if ns == "" {
+		return
+	}
+	id := resource.Identifier{Namespace: ns, Name: adminConfigSingletonName}
+	now := time.Now().Unix()
+
+	for retries := 0; retries < 5; retries++ {
+		existing, err := c.Get(nsCtx, id)
+		if k8serrors.IsNotFound(err) {
+			newStatus := computeSyncStatus(nil, uid, origin, syncErr, now)
+			ac := &adminconfigv0alpha1.AdminConfig{
+				ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: adminConfigSingletonName},
+				Status:     adminconfigv0alpha1.AdminConfigStatus{Sync: &newStatus},
+			}
+			if _, createErr := c.Create(nsCtx, ac, resource.CreateOptions{}); createErr != nil {
+				if k8serrors.IsAlreadyExists(createErr) {
+					continue
+				}
+				s.logger.Warn("Failed to create AdminConfig with sync status", "org_id", orgID, "error", createErr)
+				return
+			}
+			return
+		}
+		if err != nil {
+			s.logger.Warn("Failed to get AdminConfig for status write", "org_id", orgID, "error", err)
+			return
+		}
+		newStatus := computeSyncStatus(existing.Status.Sync, uid, origin, syncErr, now)
+		existing.Status.Sync = &newStatus
+		if _, updateErr := c.UpdateStatus(nsCtx, id, existing.Status, resource.UpdateOptions{ResourceVersion: existing.ResourceVersion}); updateErr != nil {
+			if k8serrors.IsConflict(updateErr) {
+				continue
+			}
+			s.logger.Warn("Failed to update AdminConfig sync status", "org_id", orgID, "error", updateErr)
+			return
+		}
+		return
+	}
+	s.logger.Warn("Exhausted retries writing AdminConfig sync status", "org_id", orgID)
+}
+
+// computeSyncStatus folds the outcome of the current sync attempt into the
+// previous status. lastSuccessAt advances only on success; lastError is cleared
+// on success and set on failure; failingSince is set on the first failure after
+// success and preserved across consecutive failures.
+func computeSyncStatus(prev *adminconfigv0alpha1.AdminConfigSyncStatus, uid string, origin adminconfigv0alpha1.AdminConfigSyncStatusOrigin, syncErr error, now int64) adminconfigv0alpha1.AdminConfigSyncStatus {
+	uidCopy := uid
+	originCopy := origin
+	st := adminconfigv0alpha1.AdminConfigSyncStatus{
+		DatasourceUid: &uidCopy,
+		Origin:        &originCopy,
+	}
+	if syncErr == nil {
+		nowCopy := now
+		st.LastSuccessAt = &nowCopy
+		return st
+	}
+	errStr := syncErr.Error()
+	st.LastError = &errStr
+	if prev != nil {
+		st.LastSuccessAt = prev.LastSuccessAt
+	}
+	if prev != nil && prev.LastError != nil && *prev.LastError != "" && prev.FailingSince != nil {
+		st.FailingSince = prev.FailingSince
+	} else {
+		nowCopy := now
+		st.FailingSince = &nowCopy
+	}
+	return st
 }
 
 // fetchExtraConfig looks up the org's external AM datasource and fetches the current

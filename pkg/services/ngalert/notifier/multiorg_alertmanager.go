@@ -431,9 +431,10 @@ func (moa *MultiOrgAlertmanager) syncExternalAMConfigForOrgs(ctx context.Context
 			reason := classifySyncError(err)
 			moa.logger.Warn("Failed to save external AM configuration", "org_id", orgID, "reason", reason, "error", err)
 			moa.metrics.ExternalAMConfigSyncFailures.WithLabelValues(fmt.Sprintf("%d", orgID), reason).Inc()
+			moa.externalAMSyncer.MarkFailed(ctx, orgID, err)
 			continue
 		}
-		moa.externalAMSyncer.MarkSaved(orgID, hash)
+		moa.externalAMSyncer.MarkSaved(ctx, orgID, hash)
 	}
 }
 
