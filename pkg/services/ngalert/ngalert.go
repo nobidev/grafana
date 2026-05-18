@@ -292,6 +292,16 @@ func (ng *AlertNG) init() error {
 		dsRequestValidator = ng.DataProxy.DataSourceRequestValidator
 	}
 
+	externalAMSyncer := notifier.NewExternalAMSyncer(
+		ng.store,
+		ng.DataSourceService,
+		ng.httpClientProvider,
+		dsRequestValidator,
+		ng.Cfg,
+		multiOrgMetrics,
+		moaLogger,
+	)
+
 	moa, err := notifier.NewMultiOrgAlertmanager(
 		ng.Cfg,
 		ng.store,
@@ -308,10 +318,7 @@ func (ng *AlertNG) init() error {
 		ng.FeatureToggles,
 		notificationHistorian,
 		skipClustering,
-		ng.store,
-		ng.DataSourceService,
-		ng.httpClientProvider,
-		dsRequestValidator,
+		externalAMSyncer,
 		opts...,
 	)
 	if err != nil {

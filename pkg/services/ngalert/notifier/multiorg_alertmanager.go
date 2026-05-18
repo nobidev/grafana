@@ -21,10 +21,8 @@ import (
 
 	alertingNotify "github.com/grafana/alerting/notify"
 
-	"github.com/grafana/grafana/pkg/infra/httpclient"
 	"github.com/grafana/grafana/pkg/infra/kvstore"
 	"github.com/grafana/grafana/pkg/infra/log"
-	"github.com/grafana/grafana/pkg/services/datasources"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	apimodels "github.com/grafana/grafana/pkg/services/ngalert/api/tooling/definitions"
 	"github.com/grafana/grafana/pkg/services/ngalert/metrics"
@@ -32,7 +30,6 @@ import (
 	"github.com/grafana/grafana/pkg/services/ngalert/store"
 	"github.com/grafana/grafana/pkg/services/notifications"
 	"github.com/grafana/grafana/pkg/services/secrets"
-	"github.com/grafana/grafana/pkg/services/validations"
 	"github.com/grafana/grafana/pkg/setting"
 )
 
@@ -159,10 +156,7 @@ func NewMultiOrgAlertmanager(
 	featureManager featuremgmt.FeatureToggles,
 	notificationHistorian nfstatus.NotificationHistorian,
 	skipClustering bool,
-	adminConfigStore store.AdminConfigurationStore,
-	datasourceService datasources.DataSourceService,
-	httpClientProvider httpclient.Provider,
-	requestValidator validations.DataSourceRequestValidator,
+	externalAMSyncer *ExternalAMSyncer,
 	opts ...Option,
 ) (*MultiOrgAlertmanager, error) {
 	moa := &MultiOrgAlertmanager{
@@ -182,18 +176,10 @@ func NewMultiOrgAlertmanager(
 		metrics:                     m,
 		ns:                          ns,
 		peer:                        &NilPeer{},
+		// Fetch responsibilities live on ExternalAMSyncer; MOA drives it per-org inside
+		// SyncAlertmanagersForOrgs and owns the save+apply via SaveAndApplyExtraConfiguration.
+		externalAMSyncer: externalAMSyncer,
 	}
-	// Fetch responsibilities live on ExternalAMSyncer; MOA drives it per-org inside
-	// SyncAlertmanagersForOrgs and owns the save+apply via SaveAndApplyExtraConfiguration.
-	moa.externalAMSyncer = NewExternalAMSyncer(
-		adminConfigStore,
-		datasourceService,
-		httpClientProvider,
-		requestValidator,
-		cfg,
-		m,
-		l,
-	)
 
 	if skipClustering {
 		moa.logger.Info("Not setting up clustering for the multi-org Alertmanager")
