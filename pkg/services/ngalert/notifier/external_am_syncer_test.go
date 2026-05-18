@@ -106,7 +106,7 @@ func buildSyncTestMOA(
 			ExternalAlertmanagerUID:        operatorUID,
 		},
 	}
-	syncer := NewExternalAMSyncer(adminCfgStore, dsService, httpclient.NewProvider(), v, cfg, m.GetMultiOrgAlertmanagerMetrics(), log.New("test.external_am_sync"))
+	syncer := NewExternalAMSyncer(adminCfgStore, dsService, httpclient.NewProvider(), v, cfg, m.GetMultiOrgAlertmanagerMetrics(), log.New("test.external_am_sync"), nil, nil, false)
 	moa, err := NewMultiOrgAlertmanager(
 		cfg,
 		cs,

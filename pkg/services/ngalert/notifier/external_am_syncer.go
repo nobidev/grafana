@@ -13,8 +13,14 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
+	"github.com/grafana/grafana-app-sdk/resource"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
+	adminconfigv0alpha1 "github.com/grafana/grafana/apps/alerting/adminconfig/pkg/apis/alertingadminconfig/v0alpha1"
+	"github.com/grafana/grafana/pkg/apimachinery/identity"
 	"github.com/grafana/grafana/pkg/infra/httpclient"
 	"github.com/grafana/grafana/pkg/infra/log"
+	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	"github.com/grafana/grafana/pkg/services/datasources"
 	"github.com/grafana/grafana/pkg/services/featuremgmt"
 	apimodels "github.com/grafana/grafana/pkg/services/ngalert/api/tooling/definitions"
@@ -24,6 +30,11 @@ import (
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/open-feature/go-sdk/openfeature"
 )
+
+// adminConfigSingletonName is the fixed object name for the singleton-per-org
+// AdminConfig resource. Per-org namespacing means each org has exactly one
+// resource at this name.
+const adminConfigSingletonName = "default"
 
 // mimirConfigResponse is the Mimir/Cortex alertmanager configuration API response.
 type mimirConfigResponse struct {
@@ -61,10 +72,25 @@ type ExternalAMSyncer struct {
 
 	lastSyncHashMu sync.RWMutex
 	lastSyncHash   map[int64]uint64
+
+	// AdminConfig k8s API integration. When useAdminConfigAPI is true, the
+	// syncer reads `spec.externalAlertmanagerUid` from the AdminConfig
+	// resource instead of the legacy admin_config table, and persists status
+	// to `status.sync`. clientGenerator + namespaceMapper are nil when the
+	// experimental feature flag is off.
+	clientGenerator   resource.ClientGenerator
+	namespaceMapper   request.NamespaceMapper
+	useAdminConfigAPI bool
+
+	adminCfgClientOnce sync.Once
+	adminCfgClient     *adminconfigv0alpha1.AdminConfigClient
 }
 
 // NewExternalAMSyncer constructs an ExternalAMSyncer. requestValidator may not be
 // nil; pass &validations.OSSDataSourceRequestValidator{} for the no-op default.
+// clientGenerator + namespaceMapper may be nil when the AdminConfig API feature
+// flag is off; in that case the syncer falls back to the legacy admin_config
+// store for UID resolution and skips status writes.
 func NewExternalAMSyncer(
 	adminConfigStore store.AdminConfigurationStore,
 	datasourceService datasources.DataSourceService,
@@ -73,6 +99,9 @@ func NewExternalAMSyncer(
 	settings *setting.Cfg,
 	m *metrics.MultiOrgAlertmanager,
 	logger log.Logger,
+	clientGenerator resource.ClientGenerator,
+	namespaceMapper request.NamespaceMapper,
+	useAdminConfigAPI bool,
 ) *ExternalAMSyncer {
 	return &ExternalAMSyncer{
 		adminConfigStore:   adminConfigStore,
@@ -83,7 +112,42 @@ func NewExternalAMSyncer(
 		metrics:            m,
 		logger:             logger,
 		lastSyncHash:       make(map[int64]uint64),
+		clientGenerator:    clientGenerator,
+		namespaceMapper:    namespaceMapper,
+		useAdminConfigAPI:  useAdminConfigAPI,
 	}
+}
+
+// getAdminConfigClient returns the lazily-initialised AdminConfig k8s client.
+// Returns nil when the AdminConfig API flag is off, when no client generator is
+// wired (test paths), or when client construction fails (e.g. apiserver not
+// ready). On failure the caller should fall back to the legacy admin_config
+// path; subsequent calls retry construction.
+func (s *ExternalAMSyncer) getAdminConfigClient() *adminconfigv0alpha1.AdminConfigClient {
+	if !s.useAdminConfigAPI || s.clientGenerator == nil {
+		return nil
+	}
+	s.adminCfgClientOnce.Do(func() {
+		c, err := adminconfigv0alpha1.NewAdminConfigClientFromGenerator(s.clientGenerator)
+		if err != nil {
+			s.logger.Warn("Failed to construct AdminConfig client, falling back to legacy admin_config", "error", err)
+			return
+		}
+		s.adminCfgClient = c
+	})
+	return s.adminCfgClient
+}
+
+// orgServiceContext returns ctx wrapped with a service identity scoped to the
+// org's namespace, suitable for in-process k8s client calls on behalf of the
+// sync worker. Returns the unmodified ctx and an empty namespace when
+// namespaceMapper is nil.
+func (s *ExternalAMSyncer) orgServiceContext(ctx context.Context, orgID int64) (context.Context, string) {
+	if s.namespaceMapper == nil {
+		return ctx, ""
+	}
+	ns := s.namespaceMapper(orgID)
+	return identity.WithServiceIdentityForSingleNamespaceContext(ctx, ns), ns
 }
 
 // FetchExtraConfig fetches the external Alertmanager configuration for the given
@@ -106,7 +170,7 @@ func (s *ExternalAMSyncer) FetchExtraConfig(ctx context.Context, orgID int64) (*
 		return nil, 0
 	}
 
-	uid, err := s.resolveExternalAMUIDForOrg(orgID)
+	uid, _, err := s.resolveExternalAMUIDForOrg(ctx, orgID)
 	if err != nil {
 		s.logger.Warn("Failed to resolve external AM UID", "org_id", orgID, "error", err)
 		return nil, 0
@@ -194,34 +258,66 @@ func (s *ExternalAMSyncer) fetchExtraConfig(ctx context.Context, orgID int64, ui
 }
 
 // resolveExternalAMUIDForOrg returns the datasource UID to use for external AM
-// sync for the given org. The operator-level ExternalAlertmanagerUID setting takes
-// precedence over the per-org DB value. Returns "" when neither is set (sync
-// should be skipped). Returns an error only on storage failure looking up the
-// per-org config.
-func (s *ExternalAMSyncer) resolveExternalAMUIDForOrg(orgID int64) (string, error) {
+// sync for the given org and where it came from. The operator-level
+// ExternalAlertmanagerUID ini setting takes precedence over per-org config.
+// Per-org config comes from the AdminConfig k8s resource when the AdminConfig
+// API feature flag is enabled; otherwise it falls back to the legacy
+// admin_config table. Returns "" when neither is set (sync should be skipped).
+// Returns an error only on storage failure looking up the per-org config.
+func (s *ExternalAMSyncer) resolveExternalAMUIDForOrg(ctx context.Context, orgID int64) (string, adminconfigv0alpha1.AdminConfigSyncStatusOrigin, error) {
 	if uid := s.settings.UnifiedAlerting.ExternalAlertmanagerUID; uid != "" {
-		return uid, nil
+		return uid, adminconfigv0alpha1.AdminConfigSyncStatusOriginOperator, nil
 	}
+
+	if c := s.getAdminConfigClient(); c != nil {
+		nsCtx, ns := s.orgServiceContext(ctx, orgID)
+		ac, err := c.Get(nsCtx, resource.Identifier{Namespace: ns, Name: adminConfigSingletonName})
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return "", adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
+			}
+			return "", "", err
+		}
+		if ac.Spec.ExternalAlertmanagerUid == nil {
+			return "", adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
+		}
+		return *ac.Spec.ExternalAlertmanagerUid, adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
+	}
+
 	cfg, err := s.adminConfigStore.GetAdminConfiguration(orgID)
 	if err != nil {
 		if errors.Is(err, store.ErrNoAdminConfiguration) {
-			return "", nil
+			return "", adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
 		}
-		return "", err
+		return "", "", err
 	}
 	if cfg.ExternalAlertmanagerUID == nil {
-		return "", nil
+		return "", adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
 	}
-	return *cfg.ExternalAlertmanagerUID, nil
+	return *cfg.ExternalAlertmanagerUID, adminconfigv0alpha1.AdminConfigSyncStatusOriginSpec, nil
 }
 
-// IsConfiguredForOrg reports whether external Alertmanager sync is configured for
-// the given org. True when the operator-level ini setting is non-empty (applies to
-// all orgs) OR the org's admin configuration has a non-empty ExternalAlertmanagerUID.
-func (s *ExternalAMSyncer) IsConfiguredForOrg(orgID int64) (bool, error) {
+// IsConfiguredForOrg reports whether external Alertmanager sync is configured
+// for the given org. True when the operator-level ini setting is non-empty
+// (applies to all orgs) OR a non-empty externalAlertmanagerUid is set on the
+// AdminConfig resource (or legacy admin_config table when the API flag is off).
+func (s *ExternalAMSyncer) IsConfiguredForOrg(ctx context.Context, orgID int64) (bool, error) {
 	if s.settings.UnifiedAlerting.ExternalAlertmanagerUID != "" {
 		return true, nil
 	}
+
+	if c := s.getAdminConfigClient(); c != nil {
+		nsCtx, ns := s.orgServiceContext(ctx, orgID)
+		ac, err := c.Get(nsCtx, resource.Identifier{Namespace: ns, Name: adminConfigSingletonName})
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return false, nil
+			}
+			return false, err
+		}
+		return ac.Spec.ExternalAlertmanagerUid != nil && *ac.Spec.ExternalAlertmanagerUid != "", nil
+	}
+
 	cfg, err := s.adminConfigStore.GetAdminConfiguration(orgID)
 	if err != nil && !errors.Is(err, store.ErrNoAdminConfiguration) {
 		return false, err

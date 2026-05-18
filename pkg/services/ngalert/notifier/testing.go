@@ -650,7 +650,7 @@ func NewTestMultiOrgAlertmanager(t *testing.T, opts ...TestMultiOrgAlertmanagerO
 		nil,
 		false,
 		// Sync deps are nil — tests do not enable the sync feature flag.
-		NewExternalAMSyncer(nil, nil, nil, &validations.OSSDataSourceRequestValidator{}, cfg, m.GetMultiOrgAlertmanagerMetrics(), log.New("testlogger")),
+		NewExternalAMSyncer(nil, nil, nil, &validations.OSSDataSourceRequestValidator{}, cfg, m.GetMultiOrgAlertmanagerMetrics(), log.New("testlogger"), nil, nil, false),
 		moaOpts...,
 	)
 	require.NoError(t, err)

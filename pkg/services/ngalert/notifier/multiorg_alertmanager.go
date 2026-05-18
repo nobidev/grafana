@@ -595,8 +595,8 @@ func (moa *MultiOrgAlertmanager) Peer() alertingNotify.ClusterPeer {
 // Thin wrapper around ExternalAMSyncer.IsConfiguredForOrg kept here so the
 // Alertmanager interface used by the convert API does not need to know about
 // ExternalAMSyncer.
-func (moa *MultiOrgAlertmanager) IsExternalAMSyncConfiguredForOrg(_ context.Context, orgID int64) (bool, error) {
-	return moa.externalAMSyncer.IsConfiguredForOrg(orgID)
+func (moa *MultiOrgAlertmanager) IsExternalAMSyncConfiguredForOrg(ctx context.Context, orgID int64) (bool, error) {
+	return moa.externalAMSyncer.IsConfiguredForOrg(ctx, orgID)
 }
 
 // AlertmanagerFor returns the Alertmanager instance for the organization provided.

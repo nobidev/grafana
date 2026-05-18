@@ -14,6 +14,7 @@ import (
 	notificationHistorian "github.com/grafana/alerting/notify/historian"
 	"github.com/grafana/alerting/notify/historian/lokiclient"
 	"github.com/grafana/alerting/notify/nfstatus"
+	"github.com/grafana/grafana-app-sdk/resource"
 
 	"github.com/grafana/grafana/pkg/services/ngalert/lokiconfig"
 	"github.com/grafana/grafana/pkg/services/ngalert/notifier/inhibition_rules"
@@ -30,6 +31,7 @@ import (
 	"github.com/grafana/grafana/pkg/infra/tracing"
 	"github.com/grafana/grafana/pkg/services/accesscontrol"
 	"github.com/grafana/grafana/pkg/services/annotations"
+	"github.com/grafana/grafana/pkg/services/apiserver/endpoints/request"
 	"github.com/grafana/grafana/pkg/services/dashboards"
 	"github.com/grafana/grafana/pkg/services/datasourceproxy"
 	"github.com/grafana/grafana/pkg/services/datasources"
@@ -96,6 +98,7 @@ func ProvideService(
 	routeResourcePermissions accesscontrol.RoutePermissionsService,
 	userService user.Service,
 	orgService org.Service,
+	clientGenerator resource.ClientGenerator,
 ) (*AlertNG, error) {
 	ng := &AlertNG{
 		Cfg:                      cfg,
@@ -128,6 +131,7 @@ func ProvideService(
 		RouteResourcePermissions: routeResourcePermissions,
 		userService:              userService,
 		orgService:               orgService,
+		ClientGenerator:          clientGenerator,
 	}
 
 	if ng.IsDisabled() {
@@ -182,6 +186,7 @@ type AlertNG struct {
 	store                    *store.DBstore
 	userService              user.Service
 	orgService               org.Service
+	ClientGenerator          resource.ClientGenerator
 
 	bus          bus.Bus
 	pluginsStore pluginstore.Store
@@ -292,6 +297,8 @@ func (ng *AlertNG) init() error {
 		dsRequestValidator = ng.DataProxy.DataSourceRequestValidator
 	}
 
+	//nolint:staticcheck // experimental feature, not yet migrated to OpenFeature
+	useAdminConfigAPI := ng.FeatureToggles.IsEnabledGlobally(featuremgmt.FlagAlertingAdminConfigAPI)
 	externalAMSyncer := notifier.NewExternalAMSyncer(
 		ng.store,
 		ng.DataSourceService,
@@ -300,6 +307,9 @@ func (ng *AlertNG) init() error {
 		ng.Cfg,
 		multiOrgMetrics,
 		moaLogger,
+		ng.ClientGenerator,
+		request.GetNamespaceMapper(ng.Cfg),
+		useAdminConfigAPI,
 	)
 
 	moa, err := notifier.NewMultiOrgAlertmanager(
