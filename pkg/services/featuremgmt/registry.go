@@ -3120,6 +3120,16 @@ var (
 			Expression:      "false",
 		},
 		{
+			Name:            "alerting.adminConfigAPI",
+			Description:     "Enables the alerting AdminConfig k8s API (per-org admin config + sync status, persisted in unified storage)",
+			Stage:           FeatureStageExperimental,
+			Generate:        Generate{Go: true},
+			Owner:           grafanaAlertingSquad,
+			HideFromDocs:    true,
+			RequiresRestart: true,
+			Expression:      "false",
+		},
+		{
 			Name:         "grafana.enableScopesFirstMode",
 			Description:  "Enables UI changes for integrations that require a scope to always be selected (for example, hides the scope selector's Remove all button)",
 			Stage:        FeatureStageExperimental,

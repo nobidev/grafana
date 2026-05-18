@@ -132,6 +132,21 @@
     },
     {
       "metadata": {
+        "name": "alerting.adminConfigAPI",
+        "resourceVersion": "1779141075954",
+        "creationTimestamp": "2026-05-18T21:51:15Z"
+      },
+      "spec": {
+        "description": "Enables the alerting AdminConfig k8s API (per-org admin config + sync status, persisted in unified storage)",
+        "stage": "experimental",
+        "codeowner": "@grafana/alerting-squad",
+        "requiresRestart": true,
+        "hideFromDocs": true,
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "alerting.disableV0ReceiverConversion",
         "resourceVersion": "1777923303116",
         "creationTimestamp": "2026-05-04T19:35:03Z",

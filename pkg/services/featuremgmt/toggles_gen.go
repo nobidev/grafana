@@ -969,4 +969,8 @@ const (
 	// FlagAlertingSyncExternalAlertmanager
 	// Automatically syncs external Alertmanager datasource configuration as ExtraConfiguration in Grafana
 	FlagAlertingSyncExternalAlertmanager = "alerting.syncExternalAlertmanager"
+
+	// FlagAlertingAdminConfigAPI
+	// Enables the alerting AdminConfig k8s API (per-org admin config + sync status, persisted in unified storage)
+	FlagAlertingAdminConfigAPI = "alerting.adminConfigAPI"
 )
