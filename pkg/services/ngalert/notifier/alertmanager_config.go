@@ -125,9 +125,9 @@ func (moa *MultiOrgAlertmanager) PrepareConfig(
 			managedRoutes = make(map[string]*v1.Route)
 		}
 
-		managedInhibitionRules := maps.Clone(prepared.ManagedInhibitionRules)
+		managedInhibitionRules := maps.Clone(prepared.InhibitionRules)
 		if managedInhibitionRules == nil {
-			managedInhibitionRules = make(v1.ManagedInhibitionRules)
+			managedInhibitionRules = make(map[v1.ResourceUID]v1.InhibitionRule)
 		}
 
 		if mergeResult.ExtraRoute != nil {
@@ -145,7 +145,9 @@ func (moa *MultiOrgAlertmanager) PrepareConfig(
 			}
 		}
 		preparedConfig.Route = legacy_storage.WithManagedRoutes(preparedConfig.Route, managedRoutes)
-		preparedConfig.InhibitRules = legacy_storage.WithManagedInhibitionRules(preparedConfig.InhibitRules, managedInhibitionRules)
+		prepared.InhibitionRules = managedInhibitionRules // We have never supported preparedConfig.InhibitRules, so no need to include them in the final map.
+	} else {
+		prepared.InhibitionRules = nil // Legacy behaviour doesn't use the managed inhibition rules if the flag is disabled.
 	}
 
 	if err := AddAutogenConfig(ctx, moa.logger, moa.configStore, orgID, &preparedConfig, onInvalid, moa.featureManager); err != nil {

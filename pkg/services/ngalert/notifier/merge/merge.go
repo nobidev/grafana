@@ -138,8 +138,8 @@ func MergeExtraConfig(_ context.Context, cfg *v1.AMConfigV1) (MergeResult, error
 			},
 			Receivers: mergedReceivers,
 		},
-		ManagedRoutes:          cfg.ManagedRoutes,
-		ManagedInhibitionRules: cfg.ManagedInhibitionRules,
+		ManagedRoutes:   cfg.ManagedRoutes,
+		InhibitionRules: cfg.InhibitionRules,
 	}
 
 	return MergeResult{
@@ -284,10 +284,10 @@ func createIndexReceivers(existing, incoming []*v1.PostableApiReceiver) map[stri
 	return usedNames
 }
 
-func BuildManagedInhibitionRules(identifier string, rules []config.InhibitRule) (v1.ManagedInhibitionRules, error) {
+func BuildManagedInhibitionRules(identifier string, rules []config.InhibitRule) (map[v1.ResourceUID]v1.InhibitionRule, error) {
 	scopedRules := applyManagedRouteMatcher(identifier, rules)
 
-	res := make(v1.ManagedInhibitionRules, len(scopedRules))
+	res := make(map[v1.ResourceUID]v1.InhibitionRule, len(scopedRules))
 	for i, rule := range scopedRules {
 		namePrefix := fmt.Sprintf("%s-imported-inhibition-rule-", identifier)
 
@@ -297,11 +297,12 @@ func BuildManagedInhibitionRules(identifier string, rules []config.InhibitRule) 
 		}
 		name := fmt.Sprintf(namePrefix+intFmt, i)
 
-		ir, err := v1.InhibitRuleToInhibitionRule(name, rule, v1.Provenance(models.ProvenanceConvertedPrometheus))
-		if err != nil {
+		ir := v1.NewInhibitionRule(name, v1.MatchersToModel(rule.SourceMatchers), v1.MatchersToModel(rule.TargetMatchers), rule.Equal, models.ProvenanceConvertedPrometheus)
+		if err := ir.Validate(); err != nil {
 			return nil, err
 		}
-		res[name] = ir
+
+		res[ir.UID] = ir
 	}
 
 	return res, nil

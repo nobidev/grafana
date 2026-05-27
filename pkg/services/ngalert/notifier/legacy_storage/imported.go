@@ -139,7 +139,7 @@ func (e ImportedConfigRevision) GetManagedRoute() (*ManagedRoute, error) {
 	return mr, nil
 }
 
-func (e ImportedConfigRevision) GetInhibitRules() (v1.ManagedInhibitionRules, error) {
+func (e ImportedConfigRevision) GetInhibitRules() (map[v1.ResourceUID]v1.InhibitionRule, error) {
 	if e.importedConfig == nil {
 		return nil, nil
 	}
