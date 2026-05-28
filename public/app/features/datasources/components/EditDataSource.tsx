@@ -29,7 +29,7 @@ import {
   useTestDataSource,
   useUpdateDatasource,
 } from '../state/hooks';
-import { setIsDefault, setDataSourceName, dataSourceLoaded, testDataSourceFailed } from '../state/reducers';
+import { dataSourceLoaded, testDataSourceFailed } from '../state/reducers';
 import { trackDsConfigClicked, trackDsConfigUpdated } from '../tracking';
 import { type DataSourceRights } from '../types';
 
@@ -62,8 +62,6 @@ export function EditDataSource({ uid, pageId }: Props) {
   const onDelete = useDeleteLoadedDataSource();
   const onTest = useTestDataSource(uid);
   const onUpdate = useUpdateDatasource();
-  const onDefaultChange = (value: boolean) => dispatch(setIsDefault(value));
-  const onNameChange = (name: string) => dispatch(setDataSourceName(name));
   const onOptionsChange = (ds: DataSourceSettingsType) => dispatch(dataSourceLoaded(ds));
 
   return (
@@ -75,8 +73,6 @@ export function EditDataSource({ uid, pageId }: Props) {
       dataSourceRights={dataSourceRights}
       exploreUrl={exploreUrl}
       onDelete={onDelete}
-      onDefaultChange={onDefaultChange}
-      onNameChange={onNameChange}
       onOptionsChange={onOptionsChange}
       onTest={onTest}
       onUpdate={onUpdate}
@@ -92,8 +88,6 @@ export type ViewProps = {
   dataSourceRights: DataSourceRights;
   exploreUrl: string;
   onDelete: () => void;
-  onDefaultChange: (isDefault: boolean) => AnyAction;
-  onNameChange: (name: string) => AnyAction;
   onOptionsChange: (dataSource: DataSourceSettingsType) => AnyAction;
   onTest: () => void;
   onUpdate: (dataSource: DataSourceSettingsType) => Promise<DataSourceSettingsType>;
@@ -107,8 +101,6 @@ export function EditDataSourceView({
   dataSourceRights,
   exploreUrl,
   onDelete,
-  onDefaultChange,
-  onNameChange,
   onOptionsChange,
   onTest,
   onUpdate,

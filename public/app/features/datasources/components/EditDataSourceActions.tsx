@@ -19,7 +19,7 @@ import { useDispatch } from 'app/types/store';
 import * as api from '../api';
 import { ALLOWED_DATASOURCE_EXTENSION_PLUGINS } from '../constants';
 import { useDataSource, useDataSourceRights } from '../state/hooks';
-import { setIsDefault } from '../state/reducers';
+import { setDefaultAndVersion } from '../state/reducers';
 import { trackDsConfigClicked, trackExploreClicked } from '../tracking';
 import { constructDataSourceExploreUrl } from '../utils';
 
@@ -82,9 +82,17 @@ const DefaultButton = ({ uid }: { uid: string }) => {
 
     try {
       // Make manual API calls to avoid pre-emptively saving other changes from the EditDataSource form
+      // Use the original version from the Redux state to ensure we don't overwrite other default changes
       const ds = await api.getDataSourceByUid(uid);
-      await api.updateDataSource({ ...ds, isDefault: value });
-      dispatch(setIsDefault(value));
+      const up = await api.updateDataSource({ ...ds, isDefault: value, version: dataSource.version });
+
+      // Update the Redux state with the new default and version to allow the EditDataSource form to submit
+      dispatch(
+        setDefaultAndVersion({
+          isDefault: up.isDefault,
+          version: up.version,
+        })
+      );
     } catch (error) {
       dispatch(
         notifyApp(
