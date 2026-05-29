@@ -133,7 +133,7 @@ export const ImportDashboardFormV2 = ({
 
           return (
             <Field
-              label={input.name}
+              label={input.label || input.name}
               description={input.description}
               key={dataSourceOption}
               invalid={!!errors[dataSourceOption]}
