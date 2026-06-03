@@ -960,7 +960,7 @@ func Test_isDefaultConfiguration(t *testing.T) {
 				}
 				return c
 			}(),
-			expected: true,
+			expected: false,
 		},
 		{
 			name: "default config with ManagedInhibitionRules and FF enabled",
