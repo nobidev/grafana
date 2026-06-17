@@ -68,6 +68,12 @@ func testGetLegacyID(t *testing.T, anno *annotationV0.Annotation) int64 {
 	return getLegacyID(anno)
 }
 
+// testGetLegacyData is a test helper that extracts the legacy data blob from an annotation.
+func testGetLegacyData(t *testing.T, anno *annotationV0.Annotation) string {
+	t.Helper()
+	return getLegacyData(anno)
+}
+
 // TestToAPIError covers the helper in isolation: each sentinel maps to the
 // matching apierror predicate, wrapped sentinels still classify, already-typed
 // apierrors pass through, and unknown errors stay raw so apiserver wraps as 500.
@@ -238,6 +244,63 @@ func TestK8sAdapter_Create(t *testing.T) {
 			assert.False(t, dup, "duplicate ID: %d", id)
 			seen[id] = struct{}{}
 		}
+	})
+
+	t.Run("preserves caller-supplied legacy data", func(t *testing.T) {
+		adapter := newTestAdapterWithLegacyID(NewMemoryStore(), allowAll)
+		ctx := k8srequest.WithNamespace(identity.WithServiceIdentityContext(t.Context(), 1), ns)
+
+		obj := &annotationV0.Annotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "with-data",
+				Namespace:   ns,
+				Annotations: map[string]string{AnnotationKeyLegacyData: `{"foo":"bar"}`},
+			},
+			Spec: annotationV0.AnnotationSpec{Text: "hello", Time: 1000},
+		}
+		result, err := adapter.Create(ctx, obj, nil, &metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		assert.Equal(t, `{"foo":"bar"}`, testGetLegacyData(t, result.(*annotationV0.Annotation)))
+	})
+
+	t.Run("no legacy data when none supplied", func(t *testing.T) {
+		adapter := newTestAdapterWithLegacyID(NewMemoryStore(), allowAll)
+		ctx := k8srequest.WithNamespace(identity.WithServiceIdentityContext(t.Context(), 1), ns)
+
+		obj := &annotationV0.Annotation{
+			ObjectMeta: metav1.ObjectMeta{Name: "no-data", Namespace: ns},
+			Spec:       annotationV0.AnnotationSpec{Text: "hello", Time: 1000},
+		}
+		result, err := adapter.Create(ctx, obj, nil, &metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		assert.Empty(t, testGetLegacyData(t, result.(*annotationV0.Annotation)))
+	})
+}
+
+func TestK8sAdapter_Get(t *testing.T) {
+	ns := "org-1"
+	allowAll := &fakeAccessClient{fn: func(_ authtypes.BatchCheckItem) bool { return true }}
+
+	t.Run("returns the stored legacy data", func(t *testing.T) {
+		adapter := newTestAdapterWithLegacyID(NewMemoryStore(), allowAll)
+		ctx := k8srequest.WithNamespace(identity.WithServiceIdentityContext(t.Context(), 1), ns)
+
+		obj := &annotationV0.Annotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        "with-data",
+				Namespace:   ns,
+				Annotations: map[string]string{AnnotationKeyLegacyData: `{"foo":"bar"}`},
+			},
+			Spec: annotationV0.AnnotationSpec{Text: "hello", Time: 1000},
+		}
+		_, err := adapter.Create(ctx, obj, nil, &metav1.CreateOptions{})
+		require.NoError(t, err)
+
+		got, err := adapter.Get(ctx, "with-data", &metav1.GetOptions{})
+		require.NoError(t, err)
+		assert.Equal(t, `{"foo":"bar"}`, testGetLegacyData(t, got.(*annotationV0.Annotation)))
 	})
 }
 
