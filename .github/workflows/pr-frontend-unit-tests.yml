@@ -231,4 +231,7 @@ jobs:
         touch devenv/frontend-service/configs/grafana-api.local.ini
         touch devenv/frontend-service/configs/frontend-service.local.ini
     - name: Test frontend-service Tiltfile
-      run: tilt ci --file devenv/frontend-service/Tiltfile
+      # Cold CI builds (yarn install + serial plugin builds + main webpack compile)
+      # can exceed the default readiness window before yarn start is ready, so give
+      # tilt ci a generous timeout.
+      run: tilt ci --timeout 20m --file devenv/frontend-service/Tiltfile
