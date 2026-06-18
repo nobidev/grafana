@@ -124,14 +124,9 @@ export class DashboardDatasourceBehaviour extends SceneObjectBase<DashboardDatas
       // We trigger when:
       // 1. requestId changed (new query completed)
       // 2. isStreaming (continuous data updates)
-      // 3. the source delivered fresh data while it was already finished — a
-      //    terminal -> terminal (Done/Error) transition. This happens when the
-      //    source is itself a "-- Dashboard --" panel (chained dashboard DS): it
-      //    forwards fresh data from its own upstream on its already-open
-      //    subscription without re-running, so the requestId stays the same.
-      //    Without this the consumer never re-runs and stays stale.
-      // A cancel is deliberately excluded: it is a Loading -> Done transition with
-      // the same requestId and no new data, so oldState is not terminal.
+      // 3. a terminal -> terminal (Done/Error) transition: a chained dashboard-DS
+      //    source forwarded fresh data under an unchanged requestId. A cancel
+      //    (Loading -> Done) is excluded since oldState is not terminal.
       const isTerminal = (state?: LoadingState) => state === LoadingState.Done || state === LoadingState.Error;
       const onSourceDataChange = (
         newState: { data?: typeof sourcePanelQueryRunner.state.data },

@@ -1282,18 +1282,11 @@ describe('DashboardDatasourceBehaviour', () => {
   });
 
   describe('Chained dashboard datasource', () => {
-    // A "chained" dashboard datasource is a dashboard-DS panel whose source panel
-    // is itself a dashboard-DS panel (deeper panel -> intermediate -> consumer).
-    //
-    // When the intermediate panel's own upstream finishes, the intermediate
-    // forwards the fresh data on its ALREADY-OPEN subscription without re-running,
-    // so its request.requestId stays constant across the stale -> fresh content
-    // change (a SceneQueryRunner stamps one requestId per run and reuses it for
-    // every emission of that run). The consumer's behaviour keys its re-run on the
-    // requestId changing, so it never re-runs and the consumer stays stale.
-    //
-    // This differs from the cancel scenario (same requestId, NO new data) because
-    // here the series content genuinely changes — the consumer must re-run.
+    // A "chained" dashboard datasource is a dashboard-DS panel whose source is itself
+    // a dashboard-DS panel. The intermediate forwards fresh upstream data on its
+    // already-open subscription without re-running, so its requestId stays constant
+    // across the stale -> fresh change. The consumer must still re-run (unlike a
+    // cancel, which keeps the same requestId but brings no new data).
     it('Should re-run consumer when a source panel emits new Done data under the same requestId', async () => {
       jest.spyOn(console, 'error').mockImplementation();
 
@@ -1377,16 +1370,12 @@ describe('DashboardDatasourceBehaviour', () => {
       });
 
       // The consumer must re-run to pick up the fresh forwarded data.
-      // BUG: today it does not, because the requestId did not change.
       expect(spy).toHaveBeenCalledTimes(1);
     });
 
-    // When the intermediate panel has NO transformations it runs through the
-    // branch added in #118629, which subscribes to the source's SceneQueryRunner
-    // directly. The two tests below cover that branch:
-    //   1. the new "re-run on fresh Done under same requestId" behaviour, and
-    //   2. a guardrail that the #116767 cancel behaviour still holds there
-    //      (the fix edits the shared onSourceDataChange used by both branches).
+    // With no transformations the intermediate runs through the #118629 branch that
+    // subscribes to the source's SceneQueryRunner directly. The two tests below cover
+    // re-running on a fresh Done under the same requestId, and the #116767 cancel guard.
     it('Should re-run consumer when a no-transformations source emits new Done data under the same requestId', async () => {
       jest.spyOn(console, 'error').mockImplementation();
 
@@ -1469,7 +1458,7 @@ describe('DashboardDatasourceBehaviour', () => {
         },
       });
 
-      // BUG: today this is not called because the requestId did not change.
+      // The consumer must re-run to pick up the fresh forwarded data.
       expect(spy).toHaveBeenCalledTimes(1);
     });
 

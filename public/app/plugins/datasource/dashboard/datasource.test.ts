@@ -197,19 +197,10 @@ describe('DashboardDatasource', () => {
   });
 
   it('Once a stale Done is latched, a later fresh frame on the same stream is dropped', async () => {
-    // Characterization test for chained dashboard datasources — a dashboard-DS
-    // panel whose source panel is itself a dashboard-DS panel. The intermediate
-    // panel re-stamps the data it forwards with its OWN current request range, so
-    // a stale frame it forwards arrives carrying the CURRENT range — identical to
-    // a fresh one. The Mixed stale-Done filter compares ranges, so it cannot tell
-    // them apart and keeps the stale frame; `first(Done)` then latches it and
-    // COMPLETES the substream.
-    //
-    // This documents why a single query() pass cannot self-heal: once the stale
-    // frame is latched, the intermediate forwarding the genuinely fresh frame on
-    // the same (already-completed) stream is never delivered. Recovery has to come
-    // from DashboardDatasourceBehaviour re-running the consumer — which opens a
-    // fresh query() that reads the updated upstream — not from this operator.
+    // A chained dashboard-DS panel re-stamps a stale frame with the current range,
+    // so it passes the Mixed stale-Done filter and is latched by first(Done). A
+    // later fresh frame on the same (completed) stream is then dropped, so recovery
+    // must come from DashboardDatasourceBehaviour re-running the consumer.
     const range = makeRange('2026-05-04T00:00:00Z', '2026-05-08T00:00:00Z');
 
     const { observable, upstreamStream } = setupWithControllableUpstream(
@@ -218,9 +209,7 @@ describe('DashboardDatasource', () => {
       range
     );
 
-    // Stale content, but stamped with the CURRENT request range (the re-stamp the
-    // intermediate dashboard-DS panel applies). The range matches the request, so
-    // the filter keeps it and first(Done) latches it.
+    // Stale content stamped with the current range: kept by the filter, latched by first(Done).
     upstreamStream.next(makeResult(LoadingState.Done, arrayToDataFrame([1]), range));
 
     const emissions: DataQueryResponse[] = [];
@@ -232,9 +221,7 @@ describe('DashboardDatasource', () => {
     expect(emissions[0].state).toBe(LoadingState.Done);
     expect(emissions[0].data[0].fields[0].values).toEqual([1]);
 
-    // The intermediate later forwards the genuinely fresh frame — same (current)
-    // range, new content. The Mixed substream has already completed, so it is
-    // dropped: the consumer is stuck with the stale [1] until something re-runs it.
+    // A later fresh frame on the same (completed) substream is dropped: the consumer stays stale.
     upstreamStream.next(makeResult(LoadingState.Done, arrayToDataFrame([2, 3]), range));
 
     await waitForDebounce();
