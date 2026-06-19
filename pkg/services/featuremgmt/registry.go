@@ -2433,8 +2433,8 @@ var (
 		},
 		{
 			Name:        "multiPropsVariables",
-			Description: "Enables support for variables whose values can have multiple properties",
-			Stage:       FeatureStageGeneralAvailability,
+			Description: "Deprecated. Enables support for variables whose values can have multiple properties",
+			Stage:       FeatureStageDeprecated,
 			Generate:    Generate{LegacyFrontend: true},
 			Owner:       grafanaDashboardsSquad,
 			Expression:  "true", // enabled by default
