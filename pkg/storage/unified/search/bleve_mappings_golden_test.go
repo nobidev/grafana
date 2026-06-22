@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/grafana/grafana/pkg/storage/unified/resource"
-	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 	"github.com/grafana/grafana/pkg/storage/unified/search"
 	"github.com/grafana/grafana/pkg/storage/unified/search/builders"
 )
@@ -44,67 +43,17 @@ var updateGolden = flag.Bool("update-golden", false, "regenerate bleve mapping g
 // manifest-driven search-fields work moves the source of truth from column
 // definitions to SearchFieldsProvider declarations.
 func TestBleveMappingsGoldenJSON(t *testing.T) {
-	filterableStringFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		f, err := resource.NewSearchableDocumentFields([]*resourcepb.ResourceTableColumnDefinition{
-			{
-				// A typical per-kind custom field: filterable STRING. Today's
-				// inner-loop output is a single keyword mapping at fields.<name>.
-				Name: "panel_types",
-				Type: resourcepb.ResourceTableColumnDefinition_STRING,
-				Properties: &resourcepb.ResourceTableColumnDefinition_Properties{
-					Filterable: true,
-				},
-			},
-			{
-				// A non-filterable STRING: no explicit mapping today.
-				Name: "panel_title",
-				Type: resourcepb.ResourceTableColumnDefinition_STRING,
-			},
-			{
-				// A non-string column: no explicit mapping today.
-				Name: "schema_version",
-				Type: resourcepb.ResourceTableColumnDefinition_INT32,
-			},
-		})
-		require.NoError(t, err)
-		return f
-	}
-
-	dashboardFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		info, err := builders.DashboardBuilder(nil)
-		require.NoError(t, err)
-		return info.Fields
-	}
-	userFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		info, err := builders.GetUserBuilder()
-		require.NoError(t, err)
-		return info.Fields
-	}
-	teamFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		info, err := builders.GetTeamSearchBuilder()
-		require.NoError(t, err)
-		return info.Fields
-	}
-	teamBindingFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		info, err := builders.GetTeamBindingBuilder()
-		require.NoError(t, err)
-		return info.Fields
-	}
-	externalGroupMappingFields := func(t *testing.T) resource.SearchableDocumentFields {
-		t.Helper()
-		info, err := builders.GetExternalGroupMappingBuilder()
-		require.NoError(t, err)
-		return info.Fields
+	builderProvider := func(name string, build func() (resource.DocumentBuilderInfo, error)) func(t *testing.T) (resource.SearchFieldsProvider, string, string) {
+		return func(t *testing.T) (resource.SearchFieldsProvider, string, string) {
+			t.Helper()
+			info, err := build()
+			require.NoError(t, err, "build %s", name)
+			return info.SearchFieldsProvider, info.GroupResource.Group, info.GroupResource.Resource
+		}
 	}
 
 	cases := []struct {
 		name             string
-		fields           func(t *testing.T) resource.SearchableDocumentFields
 		provider         func(t *testing.T) (resource.SearchFieldsProvider, string, string)
 		selectableFields []string
 		path             string
@@ -114,39 +63,34 @@ func TestBleveMappingsGoldenJSON(t *testing.T) {
 			path: "testdata/bleve_mapping_empty.json",
 		},
 		{
-			name:   "filterable_string_field",
-			fields: filterableStringFields,
-			path:   "testdata/bleve_mapping_filterable_string.json",
-		},
-		{
 			name:             "selectable_fields",
 			selectableFields: []string{"spec.title", "spec.description"},
 			path:             "testdata/bleve_mapping_selectable_fields.json",
 		},
 		{
-			name:   "dashboard",
-			fields: dashboardFields,
-			path:   "testdata/bleve_mapping_dashboard.json",
+			name:     "dashboard",
+			provider: builderProvider("dashboard", func() (resource.DocumentBuilderInfo, error) { return builders.DashboardBuilder(nil) }),
+			path:     "testdata/bleve_mapping_dashboard.json",
 		},
 		{
-			name:   "user",
-			fields: userFields,
-			path:   "testdata/bleve_mapping_user.json",
+			name:     "user",
+			provider: builderProvider("user", builders.GetUserBuilder),
+			path:     "testdata/bleve_mapping_user.json",
 		},
 		{
-			name:   "team",
-			fields: teamFields,
-			path:   "testdata/bleve_mapping_team.json",
+			name:     "team",
+			provider: builderProvider("team", builders.GetTeamSearchBuilder),
+			path:     "testdata/bleve_mapping_team.json",
 		},
 		{
-			name:   "team_binding",
-			fields: teamBindingFields,
-			path:   "testdata/bleve_mapping_team_binding.json",
+			name:     "team_binding",
+			provider: builderProvider("team_binding", builders.GetTeamBindingBuilder),
+			path:     "testdata/bleve_mapping_team_binding.json",
 		},
 		{
-			name:   "external_group_mapping",
-			fields: externalGroupMappingFields,
-			path:   "testdata/bleve_mapping_external_group_mapping.json",
+			name:     "external_group_mapping",
+			provider: builderProvider("external_group_mapping", builders.GetExternalGroupMappingBuilder),
+			path:     "testdata/bleve_mapping_external_group_mapping.json",
 		},
 		{
 			// Provider-driven path: a kind whose bleve mapping comes from
@@ -178,17 +122,13 @@ func TestBleveMappingsGoldenJSON(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var fields resource.SearchableDocumentFields
-			if tc.fields != nil {
-				fields = tc.fields(t)
-			}
 			var provider resource.SearchFieldsProvider
 			var group, kindResource string
 			if tc.provider != nil {
 				provider, group, kindResource = tc.provider(t)
 			}
 
-			mappings, err := search.GetBleveMappings(fields, provider, group, kindResource, tc.selectableFields)
+			mappings, err := search.GetBleveMappings(provider, group, kindResource, tc.selectableFields)
 			require.NoError(t, err)
 
 			got, err := json.MarshalIndent(mappings, "", "  ")
