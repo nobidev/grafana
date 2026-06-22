@@ -411,7 +411,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -467,7 +467,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -523,7 +523,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -1791,7 +1791,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -2194,7 +2194,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -2250,7 +2250,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },

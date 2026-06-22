@@ -126,7 +126,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "csvContent": "Name,Value,Type,Quota, Warning\nTemperature,25,degree,50,30\nPressure,100,Pa,300,200\nSpeed,30,km/h,150,130",
@@ -324,7 +324,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "csvContent": "Name, City, Country, Value\nSensorA, Stockholm, Sweden, 20\nSensorB, London, England, 50\nSensorC, New York, USA,100",
@@ -410,7 +410,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "csvContent": "Name,Value,Unit,Color\nTemperature,10,degree,green\nPressure,100,bar,blue\nSpeed,30,km/h,red",
@@ -496,7 +496,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "csvContent": "Name,Value,Unit,min,max, threshold1\nTemperature,10,degree,0,50,30\nPressure,100,Pa,0,300,200\nSpeed,30,km/h,0,150,110",
@@ -753,7 +753,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "csvContent": "Name,Value,Unit,Min,Max\nTemperature,20,degree,0,50\nPressure,150,Pa,0,300\nSpeed,100,km/h,0,110",

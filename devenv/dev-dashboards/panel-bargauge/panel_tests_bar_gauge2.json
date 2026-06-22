@@ -48,7 +48,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Inside",
@@ -68,7 +68,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Outhouse",
@@ -87,7 +87,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -105,7 +105,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -123,7 +123,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -203,7 +203,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Inside",
@@ -223,7 +223,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Outhouse",
@@ -242,7 +242,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -260,7 +260,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -278,7 +278,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -358,7 +358,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "csv_metric_values",
@@ -377,7 +377,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -395,7 +395,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -413,7 +413,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -431,7 +431,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -449,7 +449,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -467,7 +467,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -485,7 +485,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -503,7 +503,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -587,7 +587,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Inside",
@@ -607,7 +607,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Outhouse",
@@ -626,7 +626,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -644,7 +644,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -662,7 +662,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -742,7 +742,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Inside",
@@ -762,7 +762,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "alias": "Outhouse",
@@ -781,7 +781,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -799,7 +799,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -817,7 +817,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -897,7 +897,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -915,7 +915,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -933,7 +933,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -951,7 +951,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -969,7 +969,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -987,7 +987,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -1005,7 +1005,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -1023,7 +1023,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -1041,7 +1041,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -1059,7 +1059,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"
@@ -1077,7 +1077,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "scenarioId": "random_walk"

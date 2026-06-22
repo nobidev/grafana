@@ -48,7 +48,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -159,7 +159,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -293,7 +293,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -408,7 +408,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -542,7 +542,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -654,7 +654,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 80,
@@ -768,7 +768,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {}
                     },
@@ -876,7 +876,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -987,7 +987,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -1121,7 +1121,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 20,
@@ -1255,7 +1255,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 80,
@@ -1400,7 +1400,7 @@
                       "group": "grafana-testdata-datasource",
                       "version": "v0",
                       "datasource": {
-                        "name": "testdata-type-uid"
+                        "name": "PD8C576611E62080A"
                       },
                       "spec": {
                         "max": 80,
