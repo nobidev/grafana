@@ -30,8 +30,8 @@ const LATEST_VERSION_OUTPUT_DIR = "testdata/output/latest_version"
 // DEV_DASHBOARDS_INPUT_DIR points at the preserved v1 gdev dashboard corpus rather
 // than devenv/dev-dashboards. The provisioned devenv set is now v2-schema (no top-level
 // schemaVersion), so it can no longer exercise the v1->latest migration path. The corpus
-// is the original v1 set (kept in sync with the shipped v2 via the gendevdashboards
-// generator) so this test continues to cover legacy migration over real dashboards.
+// is the original v1 set, preserved here so this test continues to cover the v1->latest
+// migration path over real dashboards.
 const DEV_DASHBOARDS_INPUT_DIR = "testdata/v1_dev_dashboards"
 const DEV_DASHBOARDS_OUTPUT_DIR = "testdata/dev-dashboards-output"
 
