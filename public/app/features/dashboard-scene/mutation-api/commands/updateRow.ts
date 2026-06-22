@@ -18,7 +18,7 @@ import { payloads } from './schemas';
 import { enterEditModeIfNeeded, requiresNewDashboardLayouts, type MutationCommand } from './types';
 import { isSectionVariablesFeatureEnabled } from './variableScope';
 
-export const updateRowPayloadSchema = payloads.updateRow;
+const updateRowPayloadSchema = payloads.updateRow;
 
 export type UpdateRowPayload = z.infer<typeof updateRowPayloadSchema>;
 

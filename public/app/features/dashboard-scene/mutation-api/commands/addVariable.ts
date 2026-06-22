@@ -15,7 +15,7 @@ import { enterEditModeIfNeeded, requiresEdit, type MutationCommand } from './typ
 import { buildVariableChangePath, getEffectiveVariableParentPath, resolveVariableScope } from './variableScope';
 import { getScopeVariableArray, replaceScopeVariableSet } from './variableUtils';
 
-export const addVariablePayloadSchema = payloads.addVariable;
+const addVariablePayloadSchema = payloads.addVariable;
 
 export type AddVariablePayload = z.infer<typeof addVariablePayloadSchema>;
 

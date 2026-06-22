@@ -21,7 +21,7 @@ import {
 } from './variableScope';
 import { dashboardHasVariableNamed, getScopeVariableArray, replaceScopeVariableSet } from './variableUtils';
 
-export const updateVariablePayloadSchema = payloads.updateVariable;
+const updateVariablePayloadSchema = payloads.updateVariable;
 
 export type UpdateVariablePayload = z.infer<typeof updateVariablePayloadSchema>;
 

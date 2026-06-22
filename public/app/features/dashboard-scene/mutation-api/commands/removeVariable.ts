@@ -17,7 +17,7 @@ import {
 } from './variableScope';
 import { dashboardHasVariableNamed, getScopeVariableArray, replaceScopeVariableSet } from './variableUtils';
 
-export const removeVariablePayloadSchema = payloads.removeVariable;
+const removeVariablePayloadSchema = payloads.removeVariable;
 
 export type RemoveVariablePayload = z.infer<typeof removeVariablePayloadSchema>;
 
