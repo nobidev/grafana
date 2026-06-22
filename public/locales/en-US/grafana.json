@@ -13548,7 +13548,7 @@
       "resources": "Resources",
       "status": "Status:",
       "unhealthy": "Unhealthy",
-      "view-folder": "View Folder",
+      "view-resources": "View {{resources}}",
       "webhook": "Webhook",
       "webhook-events": "Events:",
       "webhook-id": "ID:",
@@ -13593,6 +13593,17 @@
       "pure-git": "Pure Git",
       "pure-git-description": "Connect to any Git repository",
       "pure-git-tooltip": "Connects to any Git repository using Smart HTTP protocol v2. Core sync workflow without provider-specific features (webhooks, PR comments, deep links)."
+    },
+    "resource-descriptor": {
+      "dashboards-count_one": "{{count}} dashboard",
+      "dashboards-count_other": "{{count}} dashboards",
+      "dashboards-label": "Dashboards",
+      "folders-count_one": "{{count}} folder",
+      "folders-count_other": "{{count}} folders",
+      "folders-label": "Folders",
+      "playlists-count_one": "{{count}} playlist",
+      "playlists-count_other": "{{count}} playlists",
+      "playlists-label": "Playlists"
     },
     "resource-tree": {
       "header-hash": "Hash",

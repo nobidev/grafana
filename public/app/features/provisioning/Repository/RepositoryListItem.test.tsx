@@ -103,4 +103,37 @@ describe('RepositoryListItem', () => {
       expect(screen.getByText('/var/lib/grafana/repos/test')).toBeInTheDocument();
     });
   });
+
+  describe('resource stats', () => {
+    it('renders known kinds with a friendly label and a route', () => {
+      const repo = createMockRepository({
+        status: {
+          health: { healthy: true, checked: Date.now() },
+          sync: { state: 'success', message: [] },
+          stats: [
+            { group: 'dashboard.grafana.app', resource: 'dashboards', count: 2 },
+            { group: 'playlist.grafana.app', resource: 'playlists', count: 1 },
+          ],
+        },
+      });
+      render(<RepositoryListItem repository={repo} />);
+
+      expect(screen.getByRole('link', { name: '2 dashboards' })).toHaveAttribute('href', '/dashboards/f/test-repo');
+      expect(screen.getByRole('link', { name: '1 playlist' })).toHaveAttribute('href', '/playlists');
+    });
+
+    it('renders a non-interactive badge with the raw name for unknown kinds', () => {
+      const repo = createMockRepository({
+        status: {
+          health: { healthy: true, checked: Date.now() },
+          sync: { state: 'success', message: [] },
+          stats: [{ group: 'example.grafana.app', resource: 'widgets', count: 3 }],
+        },
+      });
+      render(<RepositoryListItem repository={repo} />);
+
+      expect(screen.queryByRole('link', { name: /widgets/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '3 widgets' })).toBeDisabled();
+    });
+  });
 });

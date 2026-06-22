@@ -3,8 +3,20 @@ import { useBooleanFlagValue } from '@openfeature/react-sdk';
 import { useMemo } from 'react';
 
 import { textUtil, type GrafanaTheme2 } from '@grafana/data';
-import { Trans } from '@grafana/i18n';
-import { Box, Card, type CellProps, Grid, InteractiveTable, LinkButton, Stack, Text, useStyles2 } from '@grafana/ui';
+import { t, Trans } from '@grafana/i18n';
+import {
+  Box,
+  Card,
+  type CellProps,
+  Grid,
+  Icon,
+  type IconName,
+  InteractiveTable,
+  LinkButton,
+  Stack,
+  Text,
+  useStyles2,
+} from '@grafana/ui';
 import { type Repository, type ResourceCount } from 'app/api/clients/provisioning/v0alpha1';
 
 import { RecentJobs } from '../Job/RecentJobs';
@@ -12,6 +24,7 @@ import { QuotaLimitNote } from '../Shared/QuotaLimitNote';
 import { MissingFolderMetadataBanner } from '../components/Folders/MissingFolderMetadataBanner';
 import { hasMissingFolderMetadata } from '../utils/folderMetadata';
 import { isQuotaReachedOrExceeded } from '../utils/quota';
+import { getResourceDescriptor } from '../utils/resourceDescriptor';
 import { formatTimestamp } from '../utils/time';
 
 import { RepositoryHealthCard } from './RepositoryHealthCard';
@@ -35,6 +48,7 @@ export function RepositoryOverview({ repo }: { repo: Repository }) {
   const { conditions, quota } = status ?? {};
   const webhookURL = getWebhookURL(repo);
   const { lgColumn, xxlColumn } = getColumnCount(Boolean(status?.webhook));
+  const viewActions = useMemo(() => getResourceViewActions(repo), [repo]);
 
   const resourceColumns = useMemo(
     () => [
@@ -42,7 +56,13 @@ export function RepositoryOverview({ repo }: { repo: Repository }) {
         id: 'Resource',
         header: 'Resource Type',
         cell: ({ row: { original } }: StatCell<'resource'>) => {
-          return <span>{original.resource}</span>;
+          const descriptor = getResourceDescriptor(original);
+          return (
+            <Stack direction="row" gap={1} alignItems="center">
+              <Icon name={descriptor.icon} />
+              <span>{descriptor.label}</span>
+            </Stack>
+          );
         },
         size: 'auto',
       },
@@ -83,11 +103,15 @@ export function RepositoryOverview({ repo }: { repo: Repository }) {
                   </Box>
                 )}
               </Card.Description>
-              <Card.Actions className={styles.actions}>
-                <LinkButton size="md" href={getFolderURL(repo)} icon="folder-open" variant="secondary">
-                  <Trans i18nKey="provisioning.repository-overview.view-folder">View Folder</Trans>
-                </LinkButton>
-              </Card.Actions>
+              {viewActions.length > 0 && (
+                <Card.Actions className={styles.actions}>
+                  {viewActions.map((action) => (
+                    <LinkButton key={action.url} size="md" href={action.url} icon={action.icon} variant="secondary">
+                      {action.label}
+                    </LinkButton>
+                  ))}
+                </Card.Actions>
+              )}
             </Card>
           </div>
 
@@ -162,11 +186,41 @@ export function RepositoryOverview({ repo }: { repo: Repository }) {
   );
 }
 
-function getFolderURL(repo: Repository) {
-  if (repo.spec?.sync.target === 'folder') {
-    return `/dashboards/f/${repo.metadata?.name}`;
+interface ResourceViewAction {
+  url: string;
+  label: string;
+  icon: IconName;
+}
+
+// Builds "view" links from the repository's resource stats, driven by the per-kind
+// descriptor. Resources that share a destination (e.g. folders and dashboards in a
+// folder-target repo) are merged into a single button; unknown kinds with no route
+// are skipped.
+function getResourceViewActions(repo: Repository): ResourceViewAction[] {
+  const byUrl = new Map<string, { labels: string[]; icon: IconName }>();
+
+  for (const stat of repo.status?.stats ?? []) {
+    const descriptor = getResourceDescriptor(stat);
+    const url = descriptor.getListUrl(repo);
+    if (!url) {
+      continue;
+    }
+
+    const entry = byUrl.get(url);
+    if (entry) {
+      entry.labels.push(descriptor.label);
+    } else {
+      byUrl.set(url, { labels: [descriptor.label], icon: descriptor.icon });
+    }
   }
-  return '/dashboards';
+
+  return Array.from(byUrl, ([url, { labels, icon }]) => ({
+    url,
+    icon,
+    label: t('provisioning.repository-overview.view-resources', 'View {{resources}}', {
+      resources: labels.join(', '),
+    }),
+  }));
 }
 
 const getStyles = (theme: GrafanaTheme2) => {
