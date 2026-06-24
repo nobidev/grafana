@@ -54,11 +54,26 @@ export class GrafanaJavascriptAgentBackend
       ignoreUrls.unshift(new RegExp(`.*${escapeRegex(options.customEndpoint)}.*`));
     }
 
+    const sessionReplayEnabled = getFeatureFlagClient().getBooleanValue(FlagKeys.FaroSessionReplay, false);
+
     const transports: BaseTransport[] = [new EchoSrvTransport({ ignoreUrls })];
 
     // If in cross origin iframe, default to writing to instance logging endpoint
     if (options.customEndpoint && !isCrossOriginIframe()) {
-      transports.push(new FetchTransport({ url: options.customEndpoint, apiKey: options.apiKey }));
+      transports.push(
+        new FetchTransport({
+          url: options.customEndpoint,
+          apiKey: options.apiKey,
+          // The browser's ~64KB keepalive budget is shared across all in-flight keepalive
+          // requests. faro keeps each request under it, but session replay's frequent sends can
+          // have several in flight at once that collectively exceed the budget, leaving requests
+          // stuck "pending" and dropping segments. Disable keepalive only when replay is enabled,
+          // so normal telemetry keeps keepalive's unload-flush behaviour.
+          requestOptions: {
+            keepalive: !sessionReplayEnabled,
+          },
+        })
+      );
     }
 
     // initialize GrafanaJavascriptAgent so it can set up its hooks and start collecting errors
@@ -98,7 +113,7 @@ export class GrafanaJavascriptAgentBackend
 
     const faro = initializeFaro(grafanaJavaScriptAgentOptions);
 
-    if (faro && getFeatureFlagClient().getBooleanValue(FlagKeys.FaroSessionReplay, false)) {
+    if (faro && sessionReplayEnabled) {
       this.initReplayAfterDomRendered(faro);
     }
   }
