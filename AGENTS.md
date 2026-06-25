@@ -26,6 +26,7 @@ Grafana is a monitoring and observability platform. Go backend, TypeScript/React
 
 - Only add a comment when it explains **why** something is done or reveals non-obvious logic that a reader must know to safely change the code. If the code is self-explanatory, no comment is needed.
 - Never include links (Slack, GitHub, Jira, etc.) in code comments.
+- Never enumerate callers or call relationships in a comment (e.g. "used by X and Y", "callers that do Z"). They go stale as call sites change. Describe the code's own contract instead.
 
 ## Human Review Gates
 
