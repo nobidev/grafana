@@ -71,6 +71,10 @@ export class GrafanaJavascriptAgentBackend
           // dropping session replay segments. When replay is enabled, force keepalive off for this
           // transport; otherwise leave faro's default untouched.
           ...(sessionReplayEnabled ? { requestOptions: { keepalive: false } } : {}),
+          // Gzip-compress request bodies via the browser's CompressionStream, shrinking
+          // telemetry and session replay payloads. Falls back to uncompressed when
+          // CompressionStream is unavailable.
+          requestCompression: true,
         })
       );
     }
