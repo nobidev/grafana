@@ -4,16 +4,20 @@ import { memo, forwardRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom-v5-compat';
 
 import { usePatchUserPreferencesMutation } from '@grafana/api-clients/internal/rtkq/legacy/preferences/user';
+import { useUpdatePreferencesMutation } from '@grafana/api-clients/rtkq/preferences/v1alpha1';
 import { type GrafanaTheme2, type NavModelItem } from '@grafana/data';
 import { selectors } from '@grafana/e2e-selectors';
 import { t } from '@grafana/i18n';
 import { reportInteraction } from '@grafana/runtime';
+import { useFlagGrafanaNewPreferencesPage, useFlagGrafanaVisualDesignRefresh } from '@grafana/runtime/internal';
 import { ScrollContainer, useStyles2 } from '@grafana/ui';
 import { useGrafana } from 'app/core/context/GrafanaContext';
 import { setBookmark } from 'app/core/reducers/navBarTree';
 import { HOME_NAV_ID } from 'app/core/reducers/navModel';
 import { useSyncStarredItemsInNav } from 'app/features/stars/hooks';
 import { useDispatch, useSelector } from 'app/types/store';
+
+import { contextSrv } from '../../../services/context_srv';
 
 import { MegaMenuExtensionPoint } from './MegaMenuExtensionPoint';
 import { MegaMenuHeader } from './MegaMenuHeader';
@@ -31,11 +35,14 @@ export const MegaMenu = memo(
   forwardRef<HTMLDivElement, Props>(({ onClose, ...restProps }, ref) => {
     const navTree = useSelector((state) => state.navBarTree);
     const styles = useStyles2(getStyles);
+    const visualRefreshEnabled = useFlagGrafanaVisualDesignRefresh();
+    const newPrefsEnabled = useFlagGrafanaNewPreferencesPage();
     const location = useLocation();
     const { chrome } = useGrafana();
     const dispatch = useDispatch();
     const state = chrome.useState();
     const [patchPreferences] = usePatchUserPreferencesMutation();
+    const [patchPreferencesK8s] = useUpdatePreferencesMutation();
     const pinnedItems = usePinnedItems();
     const { isLoading: starredItemsLoading, isError: starredItemsError } = useSyncStarredItemsInNav();
 
@@ -91,17 +98,34 @@ export const MegaMenu = memo(
         reportInteraction(interactionName, {
           path: url,
         });
-        patchPreferences({
-          patchPrefsCmd: {
-            navbar: {
-              bookmarkUrls: newItems,
+        if (newPrefsEnabled) {
+          patchPreferencesK8s({
+            name: `user-${contextSrv.user.uid}`,
+            patch: {
+              spec: {
+                navbar: {
+                  bookmarkUrls: newItems,
+                },
+              },
             },
-          },
-        }).then((data) => {
-          if (!data.error) {
-            dispatch(setBookmark({ item: item, isSaved: !isSaved }));
-          }
-        });
+          }).then((data) => {
+            if (!data.error) {
+              dispatch(setBookmark({ item: item, isSaved: !isSaved }));
+            }
+          });
+        } else {
+          patchPreferences({
+            patchPrefsCmd: {
+              navbar: {
+                bookmarkUrls: newItems,
+              },
+            },
+          }).then((data) => {
+            if (!data.error) {
+              dispatch(setBookmark({ item: item, isSaved: !isSaved }));
+            }
+          });
+        }
       }
     };
 
@@ -109,7 +133,7 @@ export const MegaMenu = memo(
       <div data-testid={selectors.components.NavMenu.Menu} ref={ref} {...restProps}>
         <MegaMenuHeader handleDockedMenu={handleDockedMenu} onClose={onClose} />
         <nav className={styles.content}>
-          <ScrollContainer height="100%" overflowX="hidden" showScrollIndicators>
+          <ScrollContainer height="100%" overflowX="hidden" showScrollIndicators={!visualRefreshEnabled}>
             <>
               <ul className={styles.itemList} aria-label={t('navigation.megamenu.list-label', 'Navigation')}>
                 {navItems.map((link, index) => (
@@ -144,16 +168,6 @@ const getStyles = (theme: GrafanaTheme2) => {
       minHeight: 0,
       flexGrow: 1,
       position: 'relative',
-    }),
-    mobileHeader: css({
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: theme.spacing(1, 1, 1, 2),
-      borderBottom: `1px solid ${theme.colors.border.weak}`,
-
-      [theme.breakpoints.up('md')]: {
-        display: 'none',
-      },
     }),
     itemList: css({
       boxSizing: 'border-box',
