@@ -2966,9 +2966,9 @@ __metadata:
     "@rc-component/drawer": "npm:^1.3.0"
     "@rc-component/slider": "npm:^1.0.1"
     "@rc-component/tooltip": "npm:^1.4.0"
-    "@react-aria/dialog": "npm:3.5.31"
-    "@react-aria/focus": "npm:3.21.2"
-    "@react-aria/overlays": "npm:3.30.0"
+    "@react-aria/dialog": "npm:^3.5.31"
+    "@react-aria/focus": "npm:^3.21.2"
+    "@react-aria/overlays": "npm:^3.30.0"
     "@rollup/plugin-node-resolve": "npm:16.0.1"
     "@storybook/addon-a11y": "npm:10.3.6"
     "@storybook/addon-docs": "npm:10.3.6"
@@ -6760,7 +6760,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-aria/dialog@npm:3.5.31":
+"@react-aria/dialog@npm:3.5.31, @react-aria/dialog@npm:^3.5.31":
   version: 3.5.31
   resolution: "@react-aria/dialog@npm:3.5.31"
   dependencies:
@@ -6774,19 +6774,6 @@ __metadata:
     react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
     react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
   checksum: 10/ea5d197b13d1441b45b5288382f9f25cf4ecec07ea6c8e989ce62b5f0ce2eaa7e6afe7e40fc808451b040eda2c41aa64f8e510d5205b26a5a07324b86468e53d
-  languageName: node
-  linkType: hard
-
-"@react-aria/dialog@npm:^3.6.0":
-  version: 3.6.1
-  resolution: "@react-aria/dialog@npm:3.6.1"
-  dependencies:
-    "@swc/helpers": "npm:^0.5.0"
-    react-aria: "npm:^3.48.0"
-  peerDependencies:
-    react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-    react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-  checksum: 10/40c2fc34631c7bbb2c5cfad7583608fda3f78d3e2fc9f336918739b5b0ce782f56876aeb0cec59d1402ab886578849f9b0e04c0aeacde9de4087608e4ff23648
   languageName: node
   linkType: hard
 
@@ -7006,19 +6993,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-spectrum/dialog@npm:^3.10.0":
-  version: 3.10.1
-  resolution: "@react-spectrum/dialog@npm:3.10.1"
-  dependencies:
-    "@adobe/react-spectrum": "npm:^3.47.0"
-    "@swc/helpers": "npm:^0.5.0"
-  peerDependencies:
-    react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-    react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-  checksum: 10/3a92c20d7d25b4860ffa398d7b263e50779646633e490dae6120dc47d69b6afc63a85668a29a5bbedddf5312045f33b2dae5921c532ea080ce93ae065463ed70
-  languageName: node
-  linkType: hard
-
 "@react-spectrum/overlays@npm:^5.10.0":
   version: 5.10.1
   resolution: "@react-spectrum/overlays@npm:5.10.1"
@@ -7082,16 +7056,14 @@ __metadata:
   linkType: hard
 
 "@react-types/dialog@npm:^3.5.22":
-  version: 3.6.0
-  resolution: "@react-types/dialog@npm:3.6.0"
+  version: 3.5.22
+  resolution: "@react-types/dialog@npm:3.5.22"
   dependencies:
-    "@react-aria/dialog": "npm:^3.6.0"
-    "@react-spectrum/dialog": "npm:^3.10.0"
+    "@react-types/overlays": "npm:^3.9.2"
+    "@react-types/shared": "npm:^3.32.1"
   peerDependencies:
-    "@react-spectrum/provider": ^3.0.0
     react: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-    react-dom: ^16.8.0 || ^17.0.0-rc.1 || ^18.0.0 || ^19.0.0-rc.1
-  checksum: 10/0155c4fffb990d2202d407d6a707a00f722818295cdfb76b761ed4c4173807c568fb1f580d2e91682dce6c8dd360ae36f262948eb10ad37f305869a98ef6cfd1
+  checksum: 10/dedac6cf8a85568344242eb6e7f9c6f9dd9fff31711d23586374a1cfc4f3b7b7bed43fdff633d54135792dcdd9941a8a15a34bbbec1a9d4caff7b869b35dd71e
   languageName: node
   linkType: hard
 
