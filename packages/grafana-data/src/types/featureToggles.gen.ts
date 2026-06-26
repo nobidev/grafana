@@ -489,11 +489,6 @@ export interface FeatureToggles {
   */
   sqlExpressionsCodeMirror?: boolean;
   /**
-  * Enable groupBy variable support in scenes dashboards
-  * @default false
-  */
-  groupByVariable?: boolean;
-  /**
   * Enable grafana's embedded kube-aggregator
   * @default false
   */
@@ -503,6 +498,11 @@ export interface FeatureToggles {
   * @default false
   */
   kubernetesAggregatorCapTokenAuth?: boolean;
+  /**
+  * Enable groupBy variable support in scenes dashboards
+  * @default false
+  */
+  groupByVariable?: boolean;
   /**
   * Enables the use of scope filters in Grafana
   * @default false
