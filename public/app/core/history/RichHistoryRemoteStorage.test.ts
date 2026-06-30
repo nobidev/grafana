@@ -34,6 +34,11 @@ jest.mock('@grafana/runtime', () => ({
   getDataSourceSrv: () => dsMock,
 }));
 
+jest.mock('@grafana/runtime/unstable', () => ({
+  ...jest.requireActual('@grafana/runtime/unstable'),
+  getDataSourceInstanceSettings: (name: string) => Promise.resolve(dsMock.getInstanceSettings(name)),
+}));
+
 const preferencesServiceMock = {
   patch: jest.fn(),
   load: jest.fn(),
