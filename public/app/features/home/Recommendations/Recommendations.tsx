@@ -54,13 +54,18 @@ export default function Recommendations() {
   const [collapsed, setCollapsed] = useState(false);
 
   const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
   useEffect(() => {
+    if (paused) {
+      return;
+    }
+
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % recommendations.length);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [paused]);
 
   return (
     <div>
@@ -109,6 +114,34 @@ export default function Recommendations() {
                 onClick={() => setIndex((prev) => (prev - 1 + recommendations.length) % recommendations.length)}
                 aria-label={t('home.recommendations.previous', 'Previous')}
               />
+
+              {recommendations.map((_, i) =>
+                i === index ? (
+                  <Button
+                    key={i}
+                    variant="secondary"
+                    size="sm"
+                    fill="solid"
+                    icon={paused ? 'play' : 'pause'}
+                    onClick={() => setPaused(!paused)}
+                    aria-label={
+                      paused ? t('home.recommendations.resume', 'Resume') : t('home.recommendations.pause', 'Pause')
+                    }
+                    data-paused={paused ? true : undefined}
+                    className={cx(styles.dot, styles.active)}
+                  />
+                ) : (
+                  <Button
+                    key={i}
+                    variant="secondary"
+                    size="sm"
+                    fill="solid"
+                    onClick={() => setIndex(i)}
+                    aria-label={t('home.recommendations.go-to', 'Go to recommendation {{index}}', { index: i + 1 })}
+                    className={styles.dot}
+                  />
+                )
+              )}
 
               <Button
                 variant="secondary"
@@ -164,6 +197,47 @@ const getStyles = (theme: GrafanaTheme2) => ({
   heading: css({
     '> span': {
       flex: 1,
+    },
+  }),
+  dot: css({
+    background: theme.colors.background.secondary,
+    lineHeight: 0,
+    padding: 0,
+    width: theme.spacing(1),
+    height: theme.spacing(1),
+    borderRadius: theme.shape.radius.pill,
+    [theme.transitions.handleMotion('no-preference', 'reduce')]: {
+      transition: theme.transitions.create(['background-color', 'width', 'height'], {
+        duration: theme.transitions.duration.short,
+      }),
+    },
+  }),
+  active: css({
+    width: theme.spacing(3),
+
+    '&, &:hover, &:focus': {
+      background: theme.colors.text.maxContrast,
+      color: theme.colors.background.secondary,
+    },
+
+    '&:hover, &[data-paused]': {
+      height: theme.spacing(2),
+    },
+
+    '& > svg': {
+      margin: '0 auto',
+
+      [theme.transitions.handleMotion('no-preference', 'reduce')]: {
+        transition: theme.transitions.create(['opacity'], {
+          duration: theme.transitions.duration.short,
+        }),
+      },
+    },
+
+    '&:not(:hover):not([data-paused])': {
+      '& > svg': {
+        opacity: 0,
+      },
     },
   }),
   outer: css({
