@@ -2501,6 +2501,20 @@
     },
     {
       "metadata": {
+        "name": "grafana.homepageRecommendations",
+        "resourceVersion": "1782913620784",
+        "creationTimestamp": "2026-07-01T13:47:00Z"
+      },
+      "spec": {
+        "description": "Enables next step recommendations on the unified homepage",
+        "stage": "experimental",
+        "codeowner": "@grafana/grafana-frontend-navigation",
+        "frontend": true,
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "grafana.kubernetesAnnotationsClient",
         "resourceVersion": "1779440584464",
         "creationTimestamp": "2026-05-22T09:03:04Z"

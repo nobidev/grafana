@@ -47,6 +47,8 @@ export const FlagKeys = {
   GrafanaCustomizableMegaMenu: "grafana.customizableMegaMenu",
   /** Enables UI changes for integrations that require a scope to always be selected (for example, hides the scope selector's Remove all button) */
   GrafanaEnableScopesFirstMode: "grafana.enableScopesFirstMode",
+  /** Enables next step recommendations on the unified homepage */
+  GrafanaHomepageRecommendations: "grafana.homepageRecommendations",
   /** Enables usage of the new annotations API client */
   GrafanaKubernetesAnnotationsClient: "grafana.kubernetesAnnotationsClient",
   /** Enables log level inference from log line contents when level is not defined as a field or a label */
@@ -306,6 +308,17 @@ export const useFlagGrafanaCustomizableMegaMenu = (options?: ReactFlagEvaluation
  */
 export const useFlagGrafanaEnableScopesFirstMode = (options?: ReactFlagEvaluationOptions): boolean => {
   return useFlag("grafana.enableScopesFirstMode", false, options).value;
+};
+
+/**
+ * Enables next step recommendations on the unified homepage
+ *
+ * **Details:**
+ * - flag key: `grafana.homepageRecommendations`
+ * - default value: `false`
+ */
+export const useFlagGrafanaHomepageRecommendations = (options?: ReactFlagEvaluationOptions): boolean => {
+  return useFlag("grafana.homepageRecommendations", false, options).value;
 };
 
 /**

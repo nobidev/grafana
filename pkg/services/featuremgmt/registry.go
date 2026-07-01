@@ -3147,6 +3147,14 @@ var (
 			Expression:   "false",
 			Generate:     Generate{Go: true},
 		},
+		{
+			Name:        "grafana.homepageRecommendations",
+			Description: "Enables next step recommendations on the unified homepage",
+			Stage:       FeatureStageExperimental,
+			Owner:       grafanaFrontendNavigation,
+			Generate:    Generate{React: true},
+			Expression:  "false",
+		},
 		// tl;dr: name your new flag `component.featureName`, specify Go and/or React generation targets, and use with OpenFeature!
 		//
 		// Adding a new feature flag? Be sure to check out the updated docs at /contribute/feature-toggles.md#Steps-to-adding-a-feature-toggle
