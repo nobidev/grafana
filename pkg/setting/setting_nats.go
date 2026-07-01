@@ -31,6 +31,11 @@ type NATSSettings struct {
 	ClusterPort      int
 	AdvertiseAddress string
 
+	// NotifierShadow runs a NATS-backed notifier alongside the storage backend's
+	// primary notifier for testing. It records comparison metrics only and never
+	// feeds the watch pipeline, so it does not change watch behavior.
+	NotifierShadow bool
+
 	TLS  NATSTLSSettings
 	Auth NATSAuthSettings
 }
@@ -73,6 +78,7 @@ func readNATSSettings(cfg *Cfg) error {
 		ClientPort:       section.Key("client_port").MustInt(4222),
 		ClusterPort:      section.Key("cluster_port").MustInt(6222),
 		AdvertiseAddress: section.Key("advertise_address").MustString(""),
+		NotifierShadow:   section.Key("notifier_shadow").MustBool(false),
 		TLS: NATSTLSSettings{
 			Enabled:            section.Key("tls_enabled").MustBool(false),
 			CACertPath:         section.Key("tls_ca_cert_path").MustString(""),
