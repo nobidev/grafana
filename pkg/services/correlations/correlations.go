@@ -262,7 +262,8 @@ func (s *CorrelationsK8sService) GetCorrelation(ctx context.Context, cmd GetCorr
 }
 
 func (s *CorrelationsK8sService) GetCorrelationsBySourceUID(ctx context.Context, cmd GetCorrelationsBySourceUIDQuery) ([]Correlation, error) {
-	appPlatformCorrs, err := s.k8sClient.List(ctx, cmd.OrgId, v1.ListOptions{LabelSelector: "correlations.grafana.app/sourceDS-ref=" + cmd.SourceUID})
+	appPlatformCorrs, err := s.k8sClient.List(ctx, cmd.OrgId, v1.ListOptions{FieldSelector: fmt.Sprintf("spec.source.name=%s,spec.source.group=%s", cmd.SourceUID, cmd.SourceType)})
+
 	if err != nil {
 		return []Correlation{}, err
 	}

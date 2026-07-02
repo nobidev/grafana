@@ -251,8 +251,9 @@ type GetCorrelationResponse struct {
 // 500: internalServerError
 func (s *CorrelationsService) getCorrelationsBySourceUIDHandler(c *contextmodel.ReqContext) response.Response {
 	query := GetCorrelationsBySourceUIDQuery{
-		SourceUID: web.Params(c.Req)[":uid"],
-		OrgId:     c.GetOrgID(),
+		SourceUID:  web.Params(c.Req)[":uid"],
+		SourceType: web.Params(c.Req)[":type"],
+		OrgId:      c.GetOrgID(),
 	}
 
 	correlations, err := s.GetCorrelationsBySourceUID(c.Req.Context(), query)

@@ -261,8 +261,9 @@ type GetCorrelationQuery struct {
 
 // GetCorrelationsBySourceUIDQuery is the query to retrieve all correlations originating by the given Data Source
 type GetCorrelationsBySourceUIDQuery struct {
-	SourceUID string `json:"-"`
-	OrgId     int64  `json:"-"`
+	SourceUID  string `json:"-"`
+	SourceType string `json:"-"`
+	OrgId      int64  `json:"-"`
 }
 
 // GetCorrelationsQuery is the query to retrieve all correlations
