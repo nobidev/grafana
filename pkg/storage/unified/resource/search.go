@@ -386,10 +386,16 @@ func (s *searchServer) ListManagedObjects(ctx context.Context, req *resourcepb.L
 	}
 
 	rsp := &resourcepb.ListManagedObjectsResponse{}
+	if req.Namespace == "" {
+		rsp.Error = NewBadRequestError("missing namespace")
+		return rsp, nil
+	}
 	nsr := NamespacedResource{
 		Namespace: req.Namespace,
 	}
-	resourceStats, err := s.storage.GetResourceStats(ctx, nsr, 0)
+	// Discover which resource types exist in the namespace, then query each
+	// managed-object index. Discovery avoids the cost of counting via stats.
+	stored, err := s.storage.ListStoredResources(ctx, nsr)
 	if err != nil {
 		rsp.Error = AsErrorResult(err)
 		return rsp, nil
@@ -398,7 +404,7 @@ func (s *searchServer) ListManagedObjects(ctx context.Context, req *resourcepb.L
 	stats := NewSearchStats("ListManagedObjects")
 	defer s.logStats(ctx, stats, span, "namespace", req.Namespace)
 
-	for _, info := range resourceStats {
+	for _, info := range stored {
 		idx, err := s.getOrCreateIndex(ctx, stats, NamespacedResource{
 			Namespace: req.Namespace,
 			Group:     info.Group,
@@ -472,16 +478,22 @@ func (s *searchServer) CountManagedObjects(ctx context.Context, req *resourcepb.
 	defer s.logStats(ctx, stats, span, "namespace", req.Namespace)
 
 	rsp := &resourcepb.CountManagedObjectsResponse{}
+	if req.Namespace == "" {
+		rsp.Error = NewBadRequestError("missing namespace")
+		return rsp, nil
+	}
 	nsr := NamespacedResource{
 		Namespace: req.Namespace,
 	}
-	resourceStats, err := s.storage.GetResourceStats(ctx, nsr, 0)
+	// Discover which resource types exist in the namespace, then count
+	// managed objects from each index. Discovery avoids the cost of counting via stats.
+	stored, err := s.storage.ListStoredResources(ctx, nsr)
 	if err != nil {
 		rsp.Error = AsErrorResult(err)
 		return rsp, nil
 	}
 
-	for _, info := range resourceStats {
+	for _, info := range stored {
 		idx, err := s.getOrCreateIndex(ctx, stats, NamespacedResource{
 			Namespace: req.Namespace,
 			Group:     info.Group,
@@ -950,31 +962,20 @@ func (s *searchServer) GetStats(ctx context.Context, req *resourcepb.ResourceSta
 	nsr := NamespacedResource{
 		Namespace: req.Namespace,
 	}
-	resourceStats, err := s.storage.GetResourceStats(ctx, nsr, 0)
+	// Discover the stored resource types, then count each via its index. This
+	// mirrors the explicit-Kinds path above and avoids counting through stats.
+	stored, err := s.storage.ListStoredResources(ctx, nsr)
 	if err != nil {
 		return &resourcepb.ResourceStatsResponse{
 			Error: AsErrorResult(err),
 		}, nil
 	}
-	rsp.Stats = make([]*resourcepb.ResourceStatsResponse_Stats, len(resourceStats))
-
-	// When not filtered by folder, we can use the results directly
-	if len(folderSet) == 0 {
-		for i, stat := range resourceStats {
-			rsp.Stats[i] = &resourcepb.ResourceStatsResponse_Stats{
-				Group:    stat.Group,
-				Resource: stat.Resource,
-				Count:    stat.Count,
-			}
-		}
-		return rsp, nil
-	}
-
-	for i, stat := range resourceStats {
+	rsp.Stats = make([]*resourcepb.ResourceStatsResponse_Stats, len(stored))
+	for i, sr := range stored {
 		index, err := s.getOrCreateIndex(ctx, stats, NamespacedResource{
 			Namespace: req.Namespace,
-			Group:     stat.Group,
-			Resource:  stat.Resource,
+			Group:     sr.Group,
+			Resource:  sr.Resource,
 		}, "getStats")
 		if err != nil {
 			rsp.Error = AsErrorResult(err)
@@ -986,8 +987,8 @@ func (s *searchServer) GetStats(ctx context.Context, req *resourcepb.ResourceSta
 			return rsp, nil
 		}
 		rsp.Stats[i] = &resourcepb.ResourceStatsResponse_Stats{
-			Group:    stat.Group,
-			Resource: stat.Resource,
+			Group:    sr.Group,
+			Resource: sr.Resource,
 			Count:    count,
 		}
 	}
