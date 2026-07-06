@@ -46,11 +46,14 @@ import (
 	"github.com/grafana/grafana/pkg/middleware/csrf"
 	"github.com/grafana/grafana/pkg/middleware/loggermw"
 	apiregistry "github.com/grafana/grafana/pkg/registry/apis"
+	collectionsmigration "github.com/grafana/grafana/pkg/registry/apis/collections"
 	legacystars "github.com/grafana/grafana/pkg/registry/apis/collections/legacy"
 	dashboardmigration "github.com/grafana/grafana/pkg/registry/apis/dashboard"
 	dashboardlegacy "github.com/grafana/grafana/pkg/registry/apis/dashboard/legacy"
 	dashboardmigrator "github.com/grafana/grafana/pkg/registry/apis/dashboard/migrator"
+	dsmigration "github.com/grafana/grafana/pkg/registry/apis/datasource"
 	dsmigrator "github.com/grafana/grafana/pkg/registry/apis/datasource/migrator"
+	preferencesmigration "github.com/grafana/grafana/pkg/registry/apis/preferences"
 	legacypreferences "github.com/grafana/grafana/pkg/registry/apis/preferences/legacy"
 	secretclock "github.com/grafana/grafana/pkg/registry/apis/secret/clock"
 	secretcontracts "github.com/grafana/grafana/pkg/registry/apis/secret/contracts"
@@ -631,9 +634,9 @@ func provideMigrationRegistry(
 	r.Register(dashboardmigration.FoldersDashboardsMigration(dashMigrator))
 	r.Register(playlistmigration.PlaylistMigration(playlistMigrator))
 	r.Register(shorturlmigration.ShortURLMigration(shortURLMigrator))
-	r.Register(dsmigrator.DataSourceMigration(dataSourceMigrator))
-	r.Register(legacystars.StarsMigrationDefinition(starsMigrator))
-	r.Register(legacypreferences.PreferencesMigrationDefinition(preferencesMigrator))
+	r.Register(dsmigration.DataSourceMigration(dataSourceMigrator))
+	r.Register(collectionsmigration.StarsMigration(starsMigrator))
+	r.Register(preferencesmigration.PreferencesMigration(preferencesMigrator))
 	r.Register(querycachingmigration.QueryCacheConfigMigration(queryCacheConfigMigrator))
 	return r
 }
