@@ -695,6 +695,7 @@ i18next.config.ts @grafana/grafana-frontend-platform
 /packages/grafana-runtime/src/utils/userStorage* @grafana/grafana-catalog @grafana/grafana-frontend-platform
 /packages/grafana-runtime/src/utils/useFavoriteDatasources* @grafana/grafana-catalog
 /packages/grafana-runtime/src/utils/getCachedPromise* @grafana/grafana-frontend-platform
+/packages/grafana-runtime/src/utils/openfeature* @grafana/grafana-frontend-platform
 
 # @grafana/schema
 /packages/grafana-schema/ @grafana/grafana-app-platform-squad
@@ -902,6 +903,7 @@ playwright.storybook.config.ts @grafana/grafana-frontend-platform
 /public/app/core/hooks/useMediaQueryMinWidth.ts @grafana/grafana-frontend-platform
 /public/app/core/hooks/useNavModel.ts @grafana/grafana-frontend-navigation
 /public/app/core/hooks/useQueryParams.ts @grafana/grafana-frontend-platform
+/public/app/core/hooks/useStoredBoolean.ts @grafana/grafana-frontend-platform @grafana/grafana-frontend-navigation
 /public/app/core/icons/ @grafana/grafana-frontend-platform
 /public/app/core/lifecycle-hooks.ts @grafana/grafana-frontend-platform
 /public/app/core/monacoEnv.ts @grafana/grafana-frontend-platform @grafana/grafana-catalog
