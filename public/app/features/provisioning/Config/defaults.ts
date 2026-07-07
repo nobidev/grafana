@@ -23,7 +23,7 @@ export function getDefaultValues({
       signingMethod: '',
       commitSigningKey: '',
       smimeCertificate: '',
-      commit: { signerName: '', signerEmail: '' },
+      commit: { signerName: '', signerEmail: '', signerIsAuthor: false, authorName: '', authorEmail: '' },
       url: '',
       branch: '',
       generateDashboardPreviews: false,

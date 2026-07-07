@@ -154,6 +154,9 @@ export const FinishStep = memo(function FinishStep() {
             smimeCertificateName="repository.smimeCertificate"
             signerNameName="repository.commit.signerName"
             signerEmailName="repository.commit.signerEmail"
+            signerIsAuthorName="repository.commit.signerIsAuthor"
+            authorNameName="repository.commit.authorName"
+            authorEmailName="repository.commit.authorEmail"
           />
           {/* Pull requests are not supported by the pure git type. */}
           {type !== 'git' && (

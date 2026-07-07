@@ -55,6 +55,20 @@ const getProviderConfigs = (): Record<RepoType, Record<string, FieldConfig>> => 
       description: t('provisioning.shared.commit-signer-email-description', 'Must match the signing key identity.'),
       placeholder: t('provisioning.shared.commit-signer-email-placeholder', 'noreply@grafana.com'),
     },
+    signerIsAuthor: {
+      label: t('provisioning.shared.signer-is-author-label', 'Use signer as commit author'),
+      description: t('provisioning.shared.signer-is-author-description', 'Author commits as the signer.'),
+    },
+    commitAuthorName: {
+      label: t('provisioning.shared.commit-author-name-label', 'Author name'),
+      description: t('provisioning.shared.commit-author-name-description', 'Name of the commit author.'),
+      placeholder: t('provisioning.shared.commit-author-name-placeholder', 'Grafana'),
+    },
+    commitAuthorEmail: {
+      label: t('provisioning.shared.commit-author-email-label', 'Author email'),
+      description: t('provisioning.shared.commit-author-email-description', 'Email of the commit author.'),
+      placeholder: t('provisioning.shared.commit-author-email-placeholder', 'noreply@grafana.com'),
+    },
   };
 
   // Shared field descriptions used across multiple providers
@@ -344,6 +358,9 @@ export const getGitProviderFields = (
       smimeCertificateConfig?: FieldConfig;
       commitSignerNameConfig?: FieldConfig;
       commitSignerEmailConfig?: FieldConfig;
+      signerIsAuthorConfig?: FieldConfig;
+      commitAuthorNameConfig?: FieldConfig;
+      commitAuthorEmailConfig?: FieldConfig;
       urlConfig: FieldConfig;
       branchConfig: FieldConfig;
       pathConfig: FieldConfig;
@@ -363,6 +380,9 @@ export const getGitProviderFields = (
   const smimeCertificateConfig = configs.smimeCertificate; // Paired with commitSigningKey when format is smime
   const commitSignerNameConfig = configs.commitSignerName; // Paired with commitSigningKey
   const commitSignerEmailConfig = configs.commitSignerEmail; // Paired with commitSigningKey
+  const signerIsAuthorConfig = configs.signerIsAuthor; // Paired with commitSigningKey
+  const commitAuthorNameConfig = configs.commitAuthorName; // Optional, only for git-based providers
+  const commitAuthorEmailConfig = configs.commitAuthorEmail; // Optional, only for git-based providers
   const urlConfig = configs.url;
   const branchConfig = configs.branch;
   const pathConfig = configs.path;
@@ -380,6 +400,9 @@ export const getGitProviderFields = (
     smimeCertificateConfig,
     commitSignerNameConfig,
     commitSignerEmailConfig,
+    signerIsAuthorConfig,
+    commitAuthorNameConfig,
+    commitAuthorEmailConfig,
     urlConfig,
     branchConfig,
     pathConfig,

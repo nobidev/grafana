@@ -41,6 +41,9 @@ interface Props<T extends FieldValues> {
   smimeCertificateName: Path<T>;
   signerNameName: Path<T>;
   signerEmailName: Path<T>;
+  signerIsAuthorName: Path<T>;
+  authorNameName: Path<T>;
+  authorEmailName: Path<T>;
   defaultSigningKeyConfigured?: boolean;
 }
 
@@ -62,12 +65,19 @@ export function CommitOptionsSection<T extends FieldValues>({
   smimeCertificateName,
   signerNameName,
   signerEmailName,
+  signerIsAuthorName,
+  authorNameName,
+  authorEmailName,
   defaultSigningKeyConfigured,
 }: Props<T>) {
   const gitConventionsEnabled = useBooleanFlagValue('provisioning.gitConventions', false);
   const [signingKeyConfigured, setSigningKeyConfigured] = useState(Boolean(defaultSigningKeyConfigured));
   const signingMethod = useWatch({ control, name: signingMethodName });
+  const signerIsAuthor = useWatch({ control, name: signerIsAuthorName });
+  const signerName = useWatch({ control, name: signerNameName });
+  const signerEmail = useWatch({ control, name: signerEmailName });
   const signingEnabled = Boolean(signingMethod);
+  const authorMirrorsSigner = signingEnabled && Boolean(signerIsAuthor);
   const signingRequired = signingEnabled && !signingKeyConfigured;
   const hasTokenInstructions = getHasTokenInstructions(type);
   const gitFields = getGitProviderFields(type);
@@ -79,6 +89,8 @@ export function CommitOptionsSection<T extends FieldValues>({
     setValue(smimeCertificateName, empty);
     setValue(signerNameName, empty);
     setValue(signerEmailName, empty);
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    setValue(signerIsAuthorName, false as PathValue<T, Path<T>>);
     setSigningKeyConfigured(false);
   };
 
@@ -268,7 +280,61 @@ export function CommitOptionsSection<T extends FieldValues>({
                 )}
               />
             )}
+            {gitFields.signerIsAuthorConfig && (
+              <Field noMargin>
+                <Checkbox
+                  {...register(signerIsAuthorName)}
+                  label={gitFields.signerIsAuthorConfig.label}
+                  description={gitFields.signerIsAuthorConfig.description}
+                />
+              </Field>
+            )}
           </>
+        )}
+        {gitFields?.commitAuthorNameConfig && (
+          <Controller
+            name={authorNameName}
+            control={control}
+            render={({ field: { ref, ...field } }) => (
+              <Field
+                noMargin
+                htmlFor="commit-author-name"
+                label={gitFields.commitAuthorNameConfig?.label}
+                description={gitFields.commitAuthorNameConfig?.description}
+              >
+                <Input
+                  {...field}
+                  id="commit-author-name"
+                  disabled={authorMirrorsSigner}
+                  value={authorMirrorsSigner ? (signerName ?? '') : (field.value ?? '')}
+                  placeholder={gitFields.commitAuthorNameConfig?.placeholder}
+                />
+              </Field>
+            )}
+          />
+        )}
+        {gitFields?.commitAuthorEmailConfig && (
+          <Controller
+            name={authorEmailName}
+            control={control}
+            render={({ field: { ref, ...field } }) => (
+              <Field
+                noMargin
+                htmlFor="commit-author-email"
+                label={gitFields.commitAuthorEmailConfig?.label}
+                description={gitFields.commitAuthorEmailConfig?.description}
+              >
+                <Input
+                  {...field}
+                  id="commit-author-email"
+                  type="email"
+                  disabled={authorMirrorsSigner}
+                  value={authorMirrorsSigner ? (signerEmail ?? '') : (field.value ?? '')}
+                  placeholder={gitFields.commitAuthorEmailConfig?.placeholder}
+                />
+              </Field>
+            )}
+          />
         )}
       </Stack>
     </ControlledCollapse>

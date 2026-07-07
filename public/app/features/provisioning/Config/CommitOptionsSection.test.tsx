@@ -29,6 +29,9 @@ function Wrapper({ defaultSigningKeyConfigured, defaultValues, onSubmit = () => 
         smimeCertificateName="smimeCertificate"
         signerNameName="commit.signerName"
         signerEmailName="commit.signerEmail"
+        signerIsAuthorName="commit.signerIsAuthor"
+        authorNameName="commit.authorName"
+        authorEmailName="commit.authorEmail"
         defaultSigningKeyConfigured={defaultSigningKeyConfigured}
       />
       <button type="submit">Submit</button>
@@ -91,8 +94,16 @@ describe('CommitOptionsSection', () => {
 
     await user.click(screen.getByText('Commit options'));
 
-    expect(screen.getByRole('textbox')).toHaveAttribute('name', 'commit.singleResourceMessageTemplate');
-    expect(screen.getByRole('checkbox')).toHaveAttribute('name', 'commit.enforceTemplate');
+    expect(screen.getByRole('textbox', { name: /commit message template/i })).toHaveAttribute(
+      'name',
+      'commit.singleResourceMessageTemplate'
+    );
+    expect(screen.getByRole('checkbox', { name: /enforce commit message template/i })).toHaveAttribute(
+      'name',
+      'commit.enforceTemplate'
+    );
+    expect(screen.getByRole('textbox', { name: /author name/i })).toHaveAttribute('name', 'commit.authorName');
+    expect(screen.getByRole('textbox', { name: /author email/i })).toHaveAttribute('name', 'commit.authorEmail');
   });
 
   it('hides the enforce option when the gitConventions flag is off but keeps the message template', async () => {
