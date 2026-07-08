@@ -122,7 +122,8 @@ type kvStorageBackend struct {
 }
 
 type kvBackendMetrics struct {
-	ConflictErrors *prometheus.CounterVec
+	ConflictErrors      *prometheus.CounterVec
+	NatsNotifierDropped *prometheus.CounterVec
 }
 
 func newKVBackendMetrics(reg prometheus.Registerer) *kvBackendMetrics {
@@ -132,6 +133,10 @@ func newKVBackendMetrics(reg prometheus.Registerer) *kvBackendMetrics {
 			Name:      "optimistic_lock_conflicts_total",
 			Help:      "Total number of optimistic lock conflict errors in the KV storage backend",
 		}, []string{"resource", "action"}),
+		NatsNotifierDropped: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "storage_server_nats_notifier_dropped_events_total",
+			Help: "Notifications dropped by the NATS notifier before delivery, by reason (unmarshal_error, unknown_type, buffer_full).",
+		}, []string{"reason"}),
 	}
 }
 
@@ -185,6 +190,10 @@ type KVBackendOptions struct {
 	// metrics only, never feeds the watch pipeline. Requires EventSubscriber set
 	// and enabled.
 	EnableNatsNotifierShadow bool
+	// UseNatsNotifier feeds the watch pipeline directly from the bus instead of
+	// polling. Requires EventSubscriber set and enabled; falls back to the
+	// polling notifier otherwise.
+	UseNatsNotifier bool
 	// Adding RvManager overrides the RV generated with snowflake in order to keep backwards compatibility with
 	// unified/sql
 	RvManager *rvmanager.ResourceVersionManager
@@ -277,11 +286,17 @@ func NewKVStorageBackend(opts KVBackendOptions) (KVBackend, error) {
 	}
 
 	backend := &kvStorageBackend{
-		kv:                      kv,
-		bulkLock:                NewBulkLock(),
-		dataStore:               newDataStore(kv, metrics),
-		eventStore:              eventStore,
-		notifier:                newNotifier(eventStore, notifierOptions{log: logger, useChannelNotifier: opts.UseChannelNotifier}),
+		kv:         kv,
+		bulkLock:   NewBulkLock(),
+		dataStore:  newDataStore(kv, metrics),
+		eventStore: eventStore,
+		notifier: newNotifier(eventStore, notifierOptions{
+			log:                logger,
+			useChannelNotifier: opts.UseChannelNotifier,
+			useNatsNotifier:    opts.UseNatsNotifier,
+			eventSubscriber:    opts.EventSubscriber,
+			natsDropped:        metrics.NatsNotifierDropped,
+		}),
 		eventPublisher:          opts.EventPublisher,
 		watchOpts:               opts.WatchOptions.normalize(),
 		snowflake:               s,
