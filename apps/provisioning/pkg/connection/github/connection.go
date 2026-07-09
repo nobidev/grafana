@@ -197,14 +197,8 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 				Errors: []provisioning.ErrorDetails{
 					{
 						Type:     metav1.CauseTypeFieldValueInvalid,
-						Field:    field.NewPath("spec", string(c.obj.Spec.Type), "appID").String(),
-						Detail:   "verify appID is correct",
-						BadValue: c.cfg.AppID(),
-					},
-					{
-						Type:   metav1.CauseTypeFieldValueInvalid,
-						Field:  field.NewPath("secure", "privateKey").String(),
-						Detail: "verify privateKey is correct",
+						Detail:   fmt.Sprintf("authentication failed. The privateKey is not authorized to GET appID %s. Verify the privateKey and appID are correct.", c.cfg.AppID()),
+						BadValue: fmt.Sprintf("appID: %s, privateKey: ****", c.cfg.AppID()),
 					},
 				},
 			}, nil
@@ -241,7 +235,7 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 				},
 			}, nil
 		default:
-			// Generic error - invalid spec
+			// Generic error
 			return &provisioning.TestResults{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: provisioning.APIVERSION,
@@ -251,15 +245,8 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 				Success: false,
 				Errors: []provisioning.ErrorDetails{
 					{
-						Type:     metav1.CauseTypeFieldValueInvalid,
-						Field:    field.NewPath("spec", string(c.obj.Spec.Type), "appID").String(),
-						Detail:   "verify appID is correct",
-						BadValue: c.cfg.AppID(),
-					},
-					{
 						Type:   metav1.CauseTypeFieldValueInvalid,
-						Field:  field.NewPath("secure", "privateKey").String(),
-						Detail: "verify privateKey is correct",
+						Detail: fmt.Errorf("failed to GET app: %w", err).Error(),
 					},
 				},
 			}, nil
@@ -358,7 +345,7 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 				},
 			}, nil
 		default:
-			// Generic error - invalid spec
+			// Generic error
 			return &provisioning.TestResults{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: provisioning.APIVERSION,
@@ -368,10 +355,8 @@ func (c *Connection) Test(ctx context.Context) (*provisioning.TestResults, error
 				Success: false,
 				Errors: []provisioning.ErrorDetails{
 					{
-						Type:     metav1.CauseTypeFieldValueInvalid,
-						Field:    field.NewPath("spec", string(c.obj.Spec.Type), "installationID").String(),
-						Detail:   "invalid installation ID",
-						BadValue: c.cfg.InstallationID(),
+						Type:   metav1.CauseTypeFieldValueInvalid,
+						Detail: fmt.Errorf("failed to GET app installation: %w", err).Error(),
 					},
 				},
 			}, nil
