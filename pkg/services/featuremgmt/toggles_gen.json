@@ -303,6 +303,21 @@
     },
     {
       "metadata": {
+        "name": "alertingDeletedFolderRuleCleanup",
+        "resourceVersion": "1783968380064",
+        "creationTimestamp": "2026-07-13T18:46:20Z",
+        "deletionTimestamp": "2026-07-13T19:40:39Z"
+      },
+      "spec": {
+        "description": "Periodically deletes alert rules whose folder no longer exists in the folder API server",
+        "stage": "experimental",
+        "codeowner": "@grafana/alerting-squad",
+        "hideFromDocs": true,
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "alertingDisableDMAinUI",
         "resourceVersion": "1779440584464",
         "creationTimestamp": "2026-05-22T09:03:04Z"
@@ -1925,6 +1940,20 @@
         "stage": "experimental",
         "codeowner": "@grafana/dataviz-squad",
         "frontend": true,
+        "hideFromDocs": true,
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
+        "name": "deletedFolderResourceCleanup",
+        "resourceVersion": "1783971639610",
+        "creationTimestamp": "2026-07-13T19:40:39Z"
+      },
+      "spec": {
+        "description": "Periodically deletes resources (alert rules, library panels) whose folder no longer exists in the folder API server",
+        "stage": "experimental",
+        "codeowner": "@grafana/search-and-storage",
         "hideFromDocs": true,
         "expression": "false"
       }
