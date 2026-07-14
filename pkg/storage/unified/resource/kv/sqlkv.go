@@ -127,6 +127,12 @@ func (k *SqlKV) withBusyRetry(ctx context.Context, fn func() error) error {
 		}
 		b.Wait()
 	}
+	// The loop can terminate without ever calling fn (e.g. ctx already
+	// canceled), leaving err nil; surface the backoff/context error so callers
+	// don't mistake it for a successful read.
+	if err == nil {
+		return b.Err()
+	}
 	return err
 }
 

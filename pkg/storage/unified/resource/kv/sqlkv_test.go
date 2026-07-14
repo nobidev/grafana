@@ -337,6 +337,18 @@ func TestSQLKVWithBusyRetry(t *testing.T) {
 		require.Equal(t, 1, calls)
 	})
 
+	t.Run("returns context error when never run", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		calls := 0
+		err := k.withBusyRetry(ctx, func() error {
+			calls++
+			return nil
+		})
+		require.Error(t, err)
+		require.Equal(t, 0, calls)
+	})
+
 	t.Run("skips retry inside caller-owned transaction", func(t *testing.T) {
 		ctx := ContextWithDBTX(context.Background(), &sql.Tx{})
 		calls := 0
