@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lib/pq"
 
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/grafana-app-sdk/logging"
 
 	"github.com/grafana/grafana/pkg/util/sqlite"
@@ -83,6 +84,12 @@ type SqlKV struct {
 	DriverName string // TODO: remove when backwards compatibility is no longer needed.
 }
 
+var sqliteBusyBackoff = backoff.Config{
+	MinBackoff: 50 * time.Millisecond,
+	MaxBackoff: 500 * time.Millisecond,
+	MaxRetries: 5,
+}
+
 const (
 	// Match the existing SQL backend sqlite cap so both bulk import paths chunk the same way.
 	dataImportBatchSQLiteMaxRows  = 8
@@ -105,6 +112,22 @@ func NewSQLKV(db *sql.DB, driverName string) (KV, error) {
 		log:        logging.DefaultLogger.With("logger", "sqlkv"),
 		DriverName: driverName, // for usage in datastore
 	}, nil
+}
+
+// withBusyRetry retries fn on transient SQLite busy/locked errors.
+// Only retries for autocommit pool operations (no tx in ctx).
+func (k *SqlKV) withBusyRetry(ctx context.Context, fn func() error) error {
+	_, inTx := dbtxFromCtx(ctx)
+	b := backoff.New(ctx, sqliteBusyBackoff)
+	var err error
+	for b.Ongoing() {
+		err = fn()
+		if err == nil || inTx || !sqlite.IsBusyOrLocked(err) {
+			return err
+		}
+		b.Wait()
+	}
+	return err
 }
 
 // getQueryBuilder creates a query builder for the given section
@@ -346,10 +369,12 @@ func (k *SqlKV) Get(ctx context.Context, section string, key string) (io.ReadClo
 
 	keyPath := getKeyPath(section, key)
 	query, args := qb.buildGetQuery(keyPath)
-	row := k.conn(ctx).QueryRowContext(ctx, query, args...)
 
 	var value []byte
-	if err := row.Scan(&value); err != nil {
+	err = k.withBusyRetry(ctx, func() error {
+		return k.conn(ctx).QueryRowContext(ctx, query, args...).Scan(&value)
+	})
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNotFound
 		}

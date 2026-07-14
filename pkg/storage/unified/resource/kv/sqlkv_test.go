@@ -9,6 +9,8 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/grafana/pkg/util/sqlite"
 )
 
 func setupSQLKVMock(t *testing.T, driverName string) (*SqlKV, *sql.DB, sqlmock.Sqlmock) {
@@ -307,4 +309,42 @@ func TestSQLKVInsertDataImportBatchRejectsMixedLegacyRows(t *testing.T) {
 			require.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
+}
+
+func TestSQLKVWithBusyRetry(t *testing.T) {
+	k := &SqlKV{}
+
+	t.Run("retries transient busy then succeeds", func(t *testing.T) {
+		calls := 0
+		err := k.withBusyRetry(context.Background(), func() error {
+			calls++
+			if calls < 3 {
+				return sqlite.ErrTestBusy
+			}
+			return nil
+		})
+		require.NoError(t, err)
+		require.Equal(t, 3, calls)
+	})
+
+	t.Run("does not retry non-busy errors", func(t *testing.T) {
+		calls := 0
+		err := k.withBusyRetry(context.Background(), func() error {
+			calls++
+			return errors.New("boom")
+		})
+		require.ErrorContains(t, err, "boom")
+		require.Equal(t, 1, calls)
+	})
+
+	t.Run("skips retry inside caller-owned transaction", func(t *testing.T) {
+		ctx := ContextWithDBTX(context.Background(), &sql.Tx{})
+		calls := 0
+		err := k.withBusyRetry(ctx, func() error {
+			calls++
+			return sqlite.ErrTestBusy
+		})
+		require.ErrorIs(t, err, sqlite.ErrTestBusy)
+		require.Equal(t, 1, calls)
+	})
 }
