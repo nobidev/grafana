@@ -157,6 +157,23 @@ func SearchFieldsHashesForProviders(providers map[LowerGroupResource]SearchField
 	return out
 }
 
+// SearchFieldsForManifests builds a SearchFieldsRegistry's three inputs from one
+// manifest list, so a reload can rebuild them together and keep them consistent.
+func SearchFieldsForManifests(manifests []app.Manifest) (
+	selectable map[LowerGroupResource][]string,
+	hashes map[LowerGroupResource]string,
+	providers map[LowerGroupResource]SearchFieldsProvider,
+	err error,
+) {
+	providers, err = SearchFieldProviders(manifests)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	hashes = SearchFieldsHashesForProviders(providers)
+	selectable = SelectableFieldsForManifests(manifests)
+	return selectable, hashes, providers, nil
+}
+
 // MergeManifestsByKind combines manifest sources for the search wiring, given
 // in increasing order of priority. Only kinds that declare search fields take
 // part: when more than one source declares search fields for the same kind

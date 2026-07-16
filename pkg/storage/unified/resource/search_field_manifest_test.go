@@ -238,3 +238,24 @@ func TestMergeManifestsByKind(t *testing.T) {
 		require.Nil(t, merged[0].ManifestData)
 	})
 }
+
+func TestSearchFieldsForManifests(t *testing.T) {
+	kind := mergeTestKind("Foo", "one")
+	kind.SelectableFields = []string{"spec.two"}
+	manifests := []app.Manifest{mergeTestManifest("app", "g.test", app.ManifestVersion{Name: "v1", Kinds: []app.ManifestVersionKind{kind}})}
+
+	selectable, hashes, providers, err := SearchFieldsForManifests(manifests)
+	require.NoError(t, err)
+
+	// The three inputs all come from the same manifests.
+	wantProviders, err := SearchFieldProviders(manifests)
+	require.NoError(t, err)
+	require.Equal(t, wantProviders, providers)
+	require.Equal(t, SearchFieldsHashesForProviders(wantProviders), hashes)
+	require.Equal(t, SelectableFieldsForManifests(manifests), selectable)
+
+	// The kind declares both search and selectable fields, so none is empty.
+	require.NotEmpty(t, providers)
+	require.NotEmpty(t, hashes)
+	require.NotEmpty(t, selectable)
+}
