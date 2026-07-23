@@ -329,3 +329,78 @@ func TestIntegrationServerCheck(t *testing.T) {
 		assert.False(t, res.GetAllowed())
 	})
 }
+
+func TestIntegrationServerCheckGenericDatasourceCreate(t *testing.T) {
+	testutil.SkipIntegrationTestInShortMode(t)
+
+	server := setupOpenFGAServer(t)
+	setup(t, server)
+
+	newReq := func(group, resource, subresource, name string) *authzv1.CheckRequest {
+		return &authzv1.CheckRequest{
+			Namespace:   namespace,
+			Subject:     "user:u1",
+			Verb:        utils.VerbCreate,
+			Group:       group,
+			Resource:    resource,
+			Subresource: subresource,
+			Name:        name,
+		}
+	}
+
+	t.Run("allows the granted query subresource", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, datasourceResource, datasourceQuerySubresource, "ds-1",
+		))
+		require.NoError(t, err)
+		assert.True(t, res.GetAllowed())
+	})
+
+	t.Run("denies another datasource UID", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, datasourceResource, datasourceQuerySubresource, "ds-2",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+
+	t.Run("denies the base datasource resource", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, datasourceResource, "", "ds-1",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+
+	t.Run("denies another group", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			"prometheus.datasource.grafana.app", datasourceResource, datasourceQuerySubresource, "ds-1",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+
+	t.Run("denies another resource", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, "connections", datasourceQuerySubresource, "ds-1",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+
+	t.Run("denies another subresource", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, datasourceResource, "metadata", "ds-1",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+
+	t.Run("does not grant group-wide datasource create", func(t *testing.T) {
+		res, err := server.Check(newContextWithNamespace(), newReq(
+			datasourceGroup, datasourceResource, "", "",
+		))
+		require.NoError(t, err)
+		assert.False(t, res.GetAllowed())
+	})
+}
