@@ -22,10 +22,16 @@ const harCaptureHeader = "X-Grafana-HAR-Capture"
 // For core (in-process) plugins: injects a capturing RoundTripper as contextual middleware
 // so the existing ContextualMiddleware in the HTTP client chain picks it up.
 //
-// For external gRPC plugins: sets X-Grafana-HAR-Capture on the request headers. NOTE: this is
-// currently inert — the SDK-side middleware that reads this header and emits __har__ response frames
-// is not released yet, so out-of-process plugin traffic is NOT captured until Grafana is bumped to
-// an SDK version that includes it. The header is set now only for forward compatibility.
+// For external gRPC plugins: sets X-Grafana-HAR-Capture on the request headers. Whether that
+// produces capture depends on the *plugin's* SDK version, not on Grafana's: the middleware that reads
+// this header and emits __har__ response frames runs in the plugin process, and it ships in
+// grafana-plugin-sdk-go v0.293.0, wired into the SDK's default handler middleware chain (see
+// backend/serve.go). A plugin therefore picks it up by building against v0.293.0 or newer, with no
+// plugin-side code. Until a given plugin ships such a build, its traffic is absent from the bundle.
+//
+// Nothing here is gated on Grafana's own SDK dependency: the header is a plain string, and the
+// consumer side matches __har__ with a locally declared prefix (see harResponseRefIDPrefix in
+// pkg/services/diagnostics), so no SDK symbol is involved on either end.
 func NewHTTPCaptureMiddleware() backend.HandlerMiddleware {
 	return backend.HandlerMiddlewareFunc(func(next backend.Handler) backend.Handler {
 		return &HTTPCaptureMiddleware{BaseHandler: backend.NewBaseHandler(next)}

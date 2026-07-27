@@ -660,11 +660,13 @@ func HasCapturedHAR(resp *backend.QueryDataResponse, harBuffer *harcapture.Buffe
 // plugins. Returns (nil, nil) when nothing was captured, and a non-nil error if traffic was
 // captured but could not be serialized (so the caller can fail rather than return an empty bundle).
 //
-// NOTE: the __har__ frame path is inert until the SDK-side HTTP capture middleware that emits those
-// frames ships and Grafana is bumped to that SDK version — until then external (out-of-process)
-// plugin traffic is NOT captured. Externally-sourced frames are merged VERBATIM: redaction is
-// intentionally deferred (see the harcapture package doc), so — exactly like in-process capture —
-// the recorded headers/cookies/query/URLs/bodies are not sanitized.
+// NOTE: whether the __har__ frame path yields anything depends on the *plugin's* SDK version, not on
+// Grafana's. The middleware that emits those frames runs in the plugin process and ships in
+// grafana-plugin-sdk-go v0.293.0, wired into the SDK's default handler middleware chain, so a plugin
+// picks it up by building against v0.293.0 or newer. Until a given plugin ships such a build, its
+// traffic is absent here. Externally-sourced frames are merged VERBATIM: redaction is intentionally
+// deferred (see the harcapture package doc), so — exactly like in-process capture — the recorded
+// headers/cookies/query/URLs/bodies are not sanitized.
 func collectHAR(resp *backend.QueryDataResponse, harBuffer *harcapture.Buffer) ([]byte, error) {
 	var bufferDoc []byte
 	if harBuffer != nil && harBuffer.Len() > 0 {
