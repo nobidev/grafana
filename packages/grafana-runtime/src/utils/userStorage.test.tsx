@@ -233,6 +233,70 @@ describe('userStorage', () => {
     });
   });
 
+  describe('getAll', () => {
+    it('uses localStorage if the user is not logged in', async () => {
+      config.bootData.user.isSignedIn = false;
+      getStoreMocks().all = jest.fn().mockReturnValue({ key: 'value' });
+      const storage = usePluginUserStorage();
+      const result = await storage.getAll();
+      expect(getStoreMocks().all).toHaveBeenCalledWith('plugin-id:abc');
+      expect(result).toEqual({ key: 'value' });
+    });
+
+    it('returns all items from user storage', async () => {
+      request.mockReturnValue(
+        Promise.resolve({
+          status: 200,
+          data: { spec: { data: { key1: 'value1', key2: 'value2' } } },
+        } as FetchResponse)
+      );
+      const storage = usePluginUserStorage();
+      const result = await storage.getAll();
+      expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+    });
+
+    it('returns empty object when user storage is not found', async () => {
+      request.mockReturnValue(Promise.reject({ status: 404 } as FetchError));
+      getStoreMocks().all = jest.fn().mockReturnValue({});
+      const storage = usePluginUserStorage();
+      const result = await storage.getAll();
+      expect(result).toEqual({});
+    });
+
+    it('returns a copy of the cached data without additional network requests', async () => {
+      request.mockReturnValueOnce(
+        Promise.resolve({
+          status: 200,
+          data: { spec: { data: { key1: 'value1', key2: 'value2' } } },
+        } as FetchResponse)
+      );
+      const storage = usePluginUserStorage();
+      // Prime the cache
+      await storage.getItem('key1');
+      request.mockReset();
+      // getAll should use the cache
+      const result = await storage.getAll();
+      expect(request).not.toHaveBeenCalled();
+      expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+    });
+
+    it('returns data reflecting updates from setItem', async () => {
+      request.mockReturnValueOnce(
+        Promise.resolve({
+          status: 200,
+          data: { spec: { data: { key1: 'old' } } },
+        } as FetchResponse)
+      );
+      request.mockReturnValueOnce(Promise.resolve({ status: 200 } as FetchResponse));
+      const storage = usePluginUserStorage();
+      await storage.setItem('key1', 'new');
+      request.mockReset();
+      const result = await storage.getAll();
+      expect(request).not.toHaveBeenCalled();
+      expect(result).toEqual({ key1: 'new' });
+    });
+  });
+
   describe('Cache behavior', () => {
     it('multiple instances share the same network request', async () => {
       request.mockReturnValue(

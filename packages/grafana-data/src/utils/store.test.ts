@@ -14,6 +14,15 @@ describe('Store', () => {
               delete target[key];
             };
           }
+          if (prop === 'length') {
+            return Object.keys(target).length;
+          }
+          if (prop === 'key') {
+            return (index: number) => Object.keys(target)[index] ?? null;
+          }
+          if (prop === 'getItem') {
+            return (key: string) => target[key] ?? null;
+          }
           return target[prop as string];
         },
         set(target, prop, value) {
@@ -78,6 +87,36 @@ describe('Store', () => {
       expect(store.get(testKey)).toBe(undefined);
 
       expect(window.localStorage[testKey]).toBe(undefined);
+    });
+  });
+
+  describe('all', () => {
+    it('returns all keys matching the given prefix', () => {
+      store.set('service:user:key1', 'value1');
+      store.set('service:user:key2', 'value2');
+      store.set('other:user:key3', 'value3');
+
+      const result = store.all('service:user');
+
+      expect(result).toEqual({ key1: 'value1', key2: 'value2' });
+    });
+
+    it('returns empty object when no keys match the prefix', () => {
+      store.set('other:user:key1', 'value1');
+
+      const result = store.all('service:user');
+
+      expect(result).toEqual({});
+    });
+
+    it('does not include keys from other prefixes', () => {
+      store.set('service:user:key1', 'value1');
+      store.set('service:user2:key1', 'should-not-appear');
+      store.set('service:userextra:key1', 'should-not-appear');
+
+      const result = store.all('service:user');
+
+      expect(result).toEqual({ key1: 'value1' });
     });
   });
 });
