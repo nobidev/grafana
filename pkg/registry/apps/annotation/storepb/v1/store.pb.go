@@ -394,18 +394,20 @@ func (x *ListRequest) GetOptions() *ListOptions {
 }
 
 type ListOptions struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	DashboardUid   string                 `protobuf:"bytes,1,opt,name=dashboard_uid,json=dashboardUid,proto3" json:"dashboard_uid,omitempty"`
-	PanelId        int64                  `protobuf:"varint,2,opt,name=panel_id,json=panelId,proto3" json:"panel_id,omitempty"`
-	From           int64                  `protobuf:"varint,3,opt,name=from,proto3" json:"from,omitempty"`
-	To             int64                  `protobuf:"varint,4,opt,name=to,proto3" json:"to,omitempty"`
-	Limit          int64                  `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
-	Continue       string                 `protobuf:"bytes,6,opt,name=continue,proto3" json:"continue,omitempty"`
-	Tags           []string               `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
-	TagsMatchAny   bool                   `protobuf:"varint,8,opt,name=tags_match_any,json=tagsMatchAny,proto3" json:"tags_match_any,omitempty"`
-	Scopes         []string               `protobuf:"bytes,9,rep,name=scopes,proto3" json:"scopes,omitempty"`
-	ScopesMatchAny bool                   `protobuf:"varint,10,opt,name=scopes_match_any,json=scopesMatchAny,proto3" json:"scopes_match_any,omitempty"`
-	CreatedBy      string                 `protobuf:"bytes,11,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	DashboardUid string                 `protobuf:"bytes,1,opt,name=dashboard_uid,json=dashboardUid,proto3" json:"dashboard_uid,omitempty"`
+	PanelId      int64                  `protobuf:"varint,2,opt,name=panel_id,json=panelId,proto3" json:"panel_id,omitempty"`
+	From         int64                  `protobuf:"varint,3,opt,name=from,proto3" json:"from,omitempty"`
+	To           int64                  `protobuf:"varint,4,opt,name=to,proto3" json:"to,omitempty"`
+	Limit        int64                  `protobuf:"varint,5,opt,name=limit,proto3" json:"limit,omitempty"`
+	Continue     string                 `protobuf:"bytes,6,opt,name=continue,proto3" json:"continue,omitempty"`
+	Tags         []string               `protobuf:"bytes,7,rep,name=tags,proto3" json:"tags,omitempty"`
+	TagsMatchAny bool                   `protobuf:"varint,8,opt,name=tags_match_any,json=tagsMatchAny,proto3" json:"tags_match_any,omitempty"`
+	Scopes       []string               `protobuf:"bytes,9,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	// scopes_match_all requires an annotation to carry every requested scope.
+	// Unset matches any, so it is the inverse of tags_match_any.
+	ScopesMatchAll bool   `protobuf:"varint,10,opt,name=scopes_match_all,json=scopesMatchAll,proto3" json:"scopes_match_all,omitempty"`
+	CreatedBy      string `protobuf:"bytes,11,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
 	// deleted controls whether soft-deleted annotations are included.
 	Deleted       DeletedFilter `protobuf:"varint,12,opt,name=deleted,proto3,enum=annotation.store.v1.DeletedFilter" json:"deleted,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -505,9 +507,9 @@ func (x *ListOptions) GetScopes() []string {
 	return nil
 }
 
-func (x *ListOptions) GetScopesMatchAny() bool {
+func (x *ListOptions) GetScopesMatchAll() bool {
 	if x != nil {
-		return x.ScopesMatchAny
+		return x.ScopesMatchAll
 	}
 	return false
 }
@@ -1200,9 +1202,9 @@ var file_store_proto_rawDesc = string([]byte{
 	0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0c, 0x74, 0x61, 0x67, 0x73, 0x4d, 0x61, 0x74, 0x63,
 	0x68, 0x41, 0x6e, 0x79, 0x12, 0x16, 0x0a, 0x06, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x18, 0x09,
 	0x20, 0x03, 0x28, 0x09, 0x52, 0x06, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x12, 0x28, 0x0a, 0x10,
-	0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x5f, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x5f, 0x61, 0x6e, 0x79,
+	0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x5f, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x5f, 0x61, 0x6c, 0x6c,
 	0x18, 0x0a, 0x20, 0x01, 0x28, 0x08, 0x52, 0x0e, 0x73, 0x63, 0x6f, 0x70, 0x65, 0x73, 0x4d, 0x61,
-	0x74, 0x63, 0x68, 0x41, 0x6e, 0x79, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65,
+	0x74, 0x63, 0x68, 0x41, 0x6c, 0x6c, 0x12, 0x1d, 0x0a, 0x0a, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65,
 	0x64, 0x5f, 0x62, 0x79, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x63, 0x72, 0x65, 0x61,
 	0x74, 0x65, 0x64, 0x42, 0x79, 0x12, 0x3c, 0x0a, 0x07, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x64,
 	0x18, 0x0c, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x22, 0x2e, 0x61, 0x6e, 0x6e, 0x6f, 0x74, 0x61, 0x74,

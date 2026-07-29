@@ -166,7 +166,7 @@ func toProtoListOptions(opts ListOptions) *storev1.ListOptions {
 		Tags:           opts.Tags,
 		TagsMatchAny:   opts.TagsMatchAny,
 		Scopes:         opts.Scopes,
-		ScopesMatchAny: opts.ScopesMatchAny,
+		ScopesMatchAll: opts.ScopesMatchAll,
 		CreatedBy:      opts.CreatedBy,
 		Deleted:        storev1.DeletedFilter(opts.Deleted),
 	}
@@ -188,7 +188,7 @@ func fromProtoListOptions(opts *storev1.ListOptions) ListOptions {
 		Tags:           opts.Tags,
 		TagsMatchAny:   opts.TagsMatchAny,
 		Scopes:         opts.Scopes,
-		ScopesMatchAny: opts.ScopesMatchAny,
+		ScopesMatchAll: opts.ScopesMatchAll,
 		CreatedBy:      opts.CreatedBy,
 		Deleted:        DeletedFilter(opts.Deleted),
 	}

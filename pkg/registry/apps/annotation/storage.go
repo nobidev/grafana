@@ -34,11 +34,17 @@ type ListOptions struct {
 	Limit        int64
 	Continue     string
 	// CreatedBy filters by the uid of the user who created the annotation
-	CreatedBy      string
-	Tags           []string
-	TagsMatchAny   bool
+	CreatedBy    string
+	Tags         []string
+	TagsMatchAny bool
+	// ScopesMatchAll requires an annotation to carry every requested scope.
+	// The zero value matches any, which is the inverse of TagsMatchAny: tags
+	// are independent labels on a single annotation, so intersecting them
+	// refines a result set. Scopes come from the scope selector, which cannot
+	// mix categories, so a multi-scope request is always sibling values of one
+	// dimension and intersecting them yields an empty set.
 	Scopes         []string
-	ScopesMatchAny bool
+	ScopesMatchAll bool
 
 	// LegacyID filters by the legacy numeric ID
 	LegacyID int64

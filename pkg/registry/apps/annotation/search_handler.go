@@ -120,9 +120,12 @@ func listOptionsFromQueryParams(queryParams url.Values) ListOptions {
 		opts.Scopes = scopes
 	}
 
-	if v := queryParams.Get("scopesMatchAny"); v != "" {
-		if matchAny, err := strconv.ParseBool(v); err == nil {
-			opts.ScopesMatchAny = matchAny
+	// Scopes match any of the requested values unless the caller opts in to
+	// requiring all of them. This is the inverse of tagsMatchAny above; see
+	// ListOptions.ScopesMatchAll for why the defaults differ.
+	if v := queryParams.Get("scopesMatchAll"); v != "" {
+		if matchAll, err := strconv.ParseBool(v); err == nil {
+			opts.ScopesMatchAll = matchAll
 		}
 	}
 

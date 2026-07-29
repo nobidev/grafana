@@ -177,6 +177,36 @@ func TestIntegrationPostgresStore(t *testing.T) {
 			assert.NotContains(t, names, "tags-any-miss")
 		})
 
+		t.Run("Filters by scopes matching any by default", func(t *testing.T) {
+			scopes := func(vs ...string) func(*annotationV0.Annotation) {
+				return func(a *annotationV0.Annotation) { a.Spec.Scopes = vs }
+			}
+			create(t, "scopes-any-both", scopes("prod", "staging"))
+			create(t, "scopes-any-one", scopes("prod"))
+			create(t, "scopes-any-miss", scopes("dev"))
+
+			list, err := store.List(ctx, ns, ListOptions{Scopes: []string{"prod", "staging"}})
+			require.NoError(t, err)
+			names := annotationNames(list)
+			assert.Contains(t, names, "scopes-any-both")
+			assert.Contains(t, names, "scopes-any-one")
+			assert.NotContains(t, names, "scopes-any-miss")
+		})
+
+		t.Run("Filters by scopes requiring all to match", func(t *testing.T) {
+			scopes := func(vs ...string) func(*annotationV0.Annotation) {
+				return func(a *annotationV0.Annotation) { a.Spec.Scopes = vs }
+			}
+			create(t, "scopes-all-both", scopes("eu", "us"))
+			create(t, "scopes-all-one", scopes("eu"))
+
+			list, err := store.List(ctx, ns, ListOptions{Scopes: []string{"eu", "us"}, ScopesMatchAll: true})
+			require.NoError(t, err)
+			names := annotationNames(list)
+			assert.Contains(t, names, "scopes-all-both")
+			assert.NotContains(t, names, "scopes-all-one")
+		})
+
 		t.Run("Paginates with a continue token", func(t *testing.T) {
 			pageDash := "page-dash"
 			for _, name := range []string{"page-a", "page-b", "page-c"} {

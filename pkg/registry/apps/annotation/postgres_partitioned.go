@@ -428,10 +428,12 @@ func buildListQuery(namespace string, opts ListOptions, offset, limit int64) (st
 
 	// Scopes filter
 	if len(opts.Scopes) > 0 {
-		if opts.ScopesMatchAny {
-			conditions = append(conditions, fmt.Sprintf("scopes && $%d", argNum))
-		} else {
+		if opts.ScopesMatchAll {
+			// Contains operator: scopes @> $N
 			conditions = append(conditions, fmt.Sprintf("scopes @> $%d", argNum))
+		} else {
+			// Overlaps operator: scopes && $N
+			conditions = append(conditions, fmt.Sprintf("scopes && $%d", argNum))
 		}
 		args = append(args, pq.Array(opts.Scopes))
 		argNum++

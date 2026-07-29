@@ -93,7 +93,7 @@ func matchesList(anno *annotationV0.Annotation, namespace string, filter Deleted
 	if len(opts.Tags) > 0 && !matchTags(anno.Spec.Tags, opts.Tags, opts.TagsMatchAny) {
 		return false
 	}
-	if len(opts.Scopes) > 0 && !matchScopes(anno.Spec.Scopes, opts.Scopes, opts.ScopesMatchAny) {
+	if len(opts.Scopes) > 0 && !matchScopes(anno.Spec.Scopes, opts.Scopes, opts.ScopesMatchAll) {
 		return false
 	}
 	if opts.CreatedBy != "" && anno.GetCreatedBy() != opts.CreatedBy {
@@ -150,31 +150,10 @@ func matchTags(annoTags []string, filterTags []string, matchAny bool) bool {
 	return true
 }
 
-func matchScopes(annoScopes []string, filterScopes []string, matchAny bool) bool {
-	if matchAny {
-		for _, filterScope := range filterScopes {
-			for _, annoScope := range annoScopes {
-				if annoScope == filterScope {
-					return true
-				}
-			}
-		}
-		return false
-	}
-
-	for _, filterScope := range filterScopes {
-		found := false
-		for _, annoScope := range annoScopes {
-			if annoScope == filterScope {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
+// matchScopes mirrors matchTags but is driven by matchAll, since scopes default
+// to matching any of the requested values.
+func matchScopes(annoScopes []string, filterScopes []string, matchAll bool) bool {
+	return matchTags(annoScopes, filterScopes, !matchAll)
 }
 
 func (m *memoryStore) Create(ctx context.Context, anno *annotationV0.Annotation) (*annotationV0.Annotation, error) {

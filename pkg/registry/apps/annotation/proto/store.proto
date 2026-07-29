@@ -81,7 +81,9 @@ message ListOptions {
   repeated string tags = 7;
   bool tags_match_any = 8;
   repeated string scopes = 9;
-  bool scopes_match_any = 10;
+  // scopes_match_all requires an annotation to carry every requested scope.
+  // Unset matches any, so it is the inverse of tags_match_any.
+  bool scopes_match_all = 10;
   string created_by = 11;
   // deleted controls whether soft-deleted annotations are included.
   // A server that does not soft-delete ignores it.
