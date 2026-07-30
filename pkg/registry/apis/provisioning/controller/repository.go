@@ -1027,6 +1027,17 @@ func (rc *RepositoryController) shouldGenerateTokenFromConnection(
 		return true
 	}
 
+	// The token was stored without expiration tracking; regenerate to backfill it.
+	if obj.Status.Token.LastUpdated == 0 {
+		rc.tokenMetrics.recordRefreshReason(refreshReasonMissing)
+		return true
+	}
+
+	// A zero expiration means the token does not expire.
+	if obj.Status.Token.Expiration == 0 {
+		return false
+	}
+
 	expiration := time.UnixMilli(obj.Status.Token.Expiration)
 	rc.tokenMetrics.recordTimeToExpiry(time.Until(expiration).Seconds())
 
@@ -1064,14 +1075,16 @@ func (rc *RepositoryController) generateRepositoryToken(
 		return "", nil, fmt.Errorf("unable to create token for repository: %w", err)
 	}
 
+	tokenStatus := provisioning.TokenStatus{LastUpdated: time.Now().UnixMilli()}
+	if !token.ExpiresAt.IsZero() {
+		tokenStatus.Expiration = token.ExpiresAt.UnixMilli()
+	}
+
 	patchOperations := []map[string]any{
 		{
-			"op":   "replace",
-			"path": "/status/token",
-			"value": provisioning.TokenStatus{
-				LastUpdated: time.Now().UnixMilli(),
-				Expiration:  token.ExpiresAt.UnixMilli(),
-			},
+			"op":    "replace",
+			"path":  "/status/token",
+			"value": tokenStatus,
 		},
 	}
 
