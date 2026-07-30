@@ -1,14 +1,25 @@
 import { useMemo } from 'react';
+import { useAsync } from 'react-use';
 
 import { t } from '@grafana/i18n';
+import { isAppPluginInstalled } from '@grafana/runtime';
+import { getPluginSettings } from '@grafana/runtime/unstable';
 import { useTheme2 } from '@grafana/ui';
+import { SETUPGUIDE_PLUGIN_ID } from 'app/core/constants';
+import { contextSrv } from 'app/core/services/context_srv';
+import { canAccessPluginPage } from 'app/features/alerting/unified/hooks/usePluginBridge';
 
 import type { GuideProps } from './Guide';
+
+function getGuidePluginId(href: string): string | undefined {
+  const match = href.match(/^\/a\/([^/]+)/);
+  return match?.[1];
+}
 
 export function useGuides() {
   const theme = useTheme2();
 
-  return useMemo<GuideProps[]>(
+  const guides = useMemo<GuideProps[]>(
     () => [
       {
         title: t('home.overview.get-started.cards.app-monitoring.title', 'Set up app monitoring'),
@@ -145,4 +156,42 @@ export function useGuides() {
     ],
     [theme]
   );
+
+  const { value: plugins } = useAsync(async () => {
+    const ids = [...new Set(guides.map((guide) => getGuidePluginId(guide.href)).filter((id) => id !== undefined))];
+
+    const entries = await Promise.all(
+      ids.map(async (pluginId) => {
+        try {
+          const installed = await isAppPluginInstalled(pluginId);
+          return installed ? ([pluginId, await getPluginSettings(pluginId)] as const) : ([pluginId, null] as const);
+        } catch {
+          return [pluginId, null] as const;
+        }
+      })
+    );
+
+    return new Map(entries);
+  }, [guides]);
+
+  return useMemo(() => {
+    if (!plugins) {
+      return undefined;
+    }
+
+    return guides.filter((guide) => {
+      const pluginId = getGuidePluginId(guide.href);
+      if (!pluginId) {
+        return true;
+      }
+
+      // TODO: setupguide does not define includes in its plugin.json, so check for Admin role here
+      if (pluginId === SETUPGUIDE_PLUGIN_ID && !contextSrv.hasRole('Admin') && !contextSrv.isGrafanaAdmin) {
+        return false;
+      }
+
+      const plugin = plugins.get(pluginId);
+      return plugin?.enabled ? canAccessPluginPage(plugin, guide.href) : false;
+    });
+  }, [guides, plugins]);
 }
