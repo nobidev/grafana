@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 import { type GrafanaTheme2 } from '@grafana/data';
 import { t, Trans } from '@grafana/i18n';
 import { Badge, Button, Grid, Icon, Stack, Text, useStyles2 } from '@grafana/ui';
-import { useStoredBoolean } from 'app/core/hooks/useStoredBoolean';
+import { useStoredBoolean } from 'app/core/hooks/useStored';
 
 import { RecommendationCard } from './RecommendationCard';
 import { RecommendationExisting } from './RecommendationExisting';
