@@ -3041,6 +3041,19 @@
     },
     {
       "metadata": {
+        "name": "grafana.rspackBuild",
+        "resourceVersion": "1785421968683",
+        "creationTimestamp": "2026-07-30T14:32:48Z"
+      },
+      "spec": {
+        "description": "Switches the backend to load frontend assets built with rspack instead of webpack",
+        "stage": "experimental",
+        "codeowner": "@grafana/grafana-frontend-platform",
+        "expression": "false"
+      }
+    },
+    {
+      "metadata": {
         "name": "grafana.savedQueriesPage",
         "resourceVersion": "1784068714544",
         "creationTimestamp": "2026-07-14T22:38:34Z"
