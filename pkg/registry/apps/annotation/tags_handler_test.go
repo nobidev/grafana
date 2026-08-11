@@ -83,12 +83,13 @@ func TestIntegrationTagsHandler(t *testing.T) {
 	handler := newTagsHandler(store, allowAll, tracing.InitializeTracerForTest(), ProvideMetrics(nil), log.NewNopLogger())
 
 	tests := []struct {
-		name          string
-		namespace     string
-		queryParams   url.Values
-		expectedTags  map[string]int64
-		expectedOrder []string
-		maxResults    int
+		name             string
+		namespace        string
+		queryParams      url.Values
+		expectedTags     map[string]int64
+		expectedOrder    []string
+		maxResults       int
+		expectBadRequest bool
 	}{
 		{
 			name:        "No filters - returns all tags with default limit",
@@ -158,6 +159,33 @@ func TestIntegrationTagsHandler(t *testing.T) {
 				"incident":    1,
 				"release":     1,
 			},
+		},
+		{
+			name:      "Filter by contains matching a substring not at the start",
+			namespace: metav1.NamespaceDefault,
+			queryParams: url.Values{
+				"contains": []string{"ploy"},
+			},
+			expectedTags: map[string]int64{
+				"deployment": 3,
+			},
+		},
+		{
+			name:      "Contains with no matches",
+			namespace: metav1.NamespaceDefault,
+			queryParams: url.Values{
+				"contains": []string{"nonexistent"},
+			},
+			expectedTags: map[string]int64{},
+		},
+		{
+			name:      "Prefix and contains together is a bad request",
+			namespace: metav1.NamespaceDefault,
+			queryParams: url.Values{
+				"prefix":   []string{"env-"},
+				"contains": []string{"prod"},
+			},
+			expectBadRequest: true,
 		},
 		{
 			name:      "Prefix and limit combined",
@@ -232,6 +260,11 @@ func TestIntegrationTagsHandler(t *testing.T) {
 
 			ctx := k8srequest.WithNamespace(identity.WithServiceIdentityContext(t.Context(), 1), namespace)
 			err := handler(ctx, writer, mockRequest)
+			if tt.expectBadRequest {
+				require.Error(t, err)
+				assert.True(t, apierrors.IsBadRequest(err), "expected BadRequest, got %v", err)
+				return
+			}
 			require.NoError(t, err)
 
 			var result TagResponse
