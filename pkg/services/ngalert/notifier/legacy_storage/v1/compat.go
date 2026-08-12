@@ -103,7 +103,7 @@ func PostableGrafanaReceiversToModel(in []*definition.PostableGrafanaReceiver) [
 	return out
 }
 
-func ManagedRoutesToModel(in map[string]*definition.Route) ManagedRoutes {
+func ManagedRoutesToModel(in map[string]*definition.Route) map[string]*Route {
 	if in == nil {
 		return nil
 	}
