@@ -1945,6 +1945,7 @@ func createConvertPrometheusSrv(t *testing.T, opts ...convertPrometheusSrvOption
 		log.New("test"),
 		&provisioning.NotificationSettingsValidatorProviderFake{},
 		options.fakeAccessControlRuleService,
+		provisioning.NoopRuleMutationValidator{},
 	)
 
 	cfg := &setting.UnifiedAlertingSettings{

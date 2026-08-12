@@ -90,6 +90,10 @@ type IndexMeta struct {
 	// IndexFormat identifies the Bleve segment format that wrote this snapshot
 	// (for example, "zap/16"). Empty on legacy snapshots means "unknown, assume compatible".
 	IndexFormat string `json:"index_format,omitempty"`
+	// ReaderRequirements are the features an instance must understand before using
+	// this snapshot. Selection skips a snapshot declaring one it does not recognise.
+	// Empty on snapshots uploaded before this field existed.
+	ReaderRequirements []resource.IndexFeature `json:"reader_requirements,omitempty"`
 	// LatestResourceVersion is the latest resource version included in the index.
 	LatestResourceVersion int64 `json:"latest_resource_version"`
 	// DocCount is the number of documents in the index at upload time. Recorded
@@ -122,11 +126,14 @@ type IndexStoreLock interface {
 type RemoteIndexStore interface {
 	// LockBuildIndex acquires a distributed build/upload lock for namespace/group/resource.
 	// buildVersion scopes contention to replicas running the same exact Grafana version.
+	// When another replica holds the lock, the returned error must match errLockHeld:
+	// build coordination relies on that to keep waiting instead of building alone.
 	LockBuildIndex(ctx context.Context, nsResource resource.NamespacedResource, buildVersion string) (IndexStoreLock, error)
 
 	// LockNamespaceForCleanup acquires a distributed cleanup lock for a namespace.
 	// Uses a different lock key than LockBuildIndex so cleanup never blocks an
 	// in-flight upload for any resource in the namespace.
+	// When another replica holds the lock, the returned error must match errLockHeld.
 	LockNamespaceForCleanup(ctx context.Context, namespace string) (IndexStoreLock, error)
 
 	// WriteSnapshotFile writes one data file at relPath under the snapshot
