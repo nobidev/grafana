@@ -113,7 +113,7 @@ func (e ImportedConfigRevision) ReceiverUseByName() map[string]int {
 	return m
 }
 
-func (e ImportedConfigRevision) GetManagedRoute() (*ManagedRoute, error) {
+func (e ImportedConfigRevision) GetManagedRoute() (*v1.ManagedRoute, error) {
 	if e.importedConfig == nil {
 		return nil, nil
 	}
@@ -124,7 +124,7 @@ func (e ImportedConfigRevision) GetManagedRoute() (*ManagedRoute, error) {
 
 	merge.RenameResourceUsagesInRoutes([]*v1.Route{route}, renamed)
 
-	mr := NewManagedRoute(e.identifier, route)
+	mr := v1.NewManagedRoute(e.identifier, route)
 	mr.Provenance = models.ProvenanceConvertedPrometheus
 	mr.Origin = models.ResourceOriginImported
 	return mr, nil
