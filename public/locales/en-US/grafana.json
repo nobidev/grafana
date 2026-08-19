@@ -12859,6 +12859,13 @@
       },
       "unknown-author": "Anonymous"
     },
+    "save-status": {
+      "failed": "Save failed",
+      "pending": "Unsaved changes",
+      "retry": "Retry",
+      "saved": "Saved",
+      "saving": "Saving…"
+    },
     "view": {
       "copy-link": "Copy link",
       "mode-edit": "Edit",
