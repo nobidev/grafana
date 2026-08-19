@@ -73,6 +73,8 @@ beforeEach(() => {
   window.localStorage.removeItem(impressionKey);
   seedStars([]);
   config.licenseInfo.enabledFeatures = {};
+  // Recent dashboards are hidden from anonymous users
+  contextSrv.user.isSignedIn = true;
 });
 
 const createDashboardTabsExtensionComponent = (

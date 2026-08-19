@@ -23,10 +23,6 @@ const MAX_RECENT_DASHBOARDS = 5;
 const debouncedSearch = debounce(getSearchResultActions, 200);
 
 export async function getRecentDashboardActions(): Promise<CommandPaletteAction[]> {
-  if (!contextSrv.user.isSignedIn) {
-    return [];
-  }
-
   const recentResults = await getRecentlyViewedDashboards(MAX_RECENT_DASHBOARDS);
 
   const recentDashboardActions: CommandPaletteAction[] = recentResults.map((item) => {

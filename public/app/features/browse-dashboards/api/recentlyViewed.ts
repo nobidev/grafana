@@ -1,11 +1,19 @@
+import { contextSrv } from 'app/core/services/context_srv';
 import impressionSrv from 'app/core/services/impression_srv';
 import { getGrafanaSearcher } from 'app/features/search/service/searcher';
 import { type DashboardQueryResult } from 'app/features/search/service/types';
 
 /**
  * Returns dashboard search results ordered the same way the user opened them.
+ *
+ * Returns nothing for anonymous sessions: impressions are keyed by org rather than by
+ * user, so every anonymous visitor sharing a browser would see the same history.
  */
 export async function getRecentlyViewedDashboards(maxItems = 5): Promise<DashboardQueryResult[]> {
+  if (!contextSrv.user.isSignedIn) {
+    return [];
+  }
+
   try {
     const recentlyOpened = (await impressionSrv.getDashboardOpened()).slice(0, maxItems);
     if (!recentlyOpened.length) {

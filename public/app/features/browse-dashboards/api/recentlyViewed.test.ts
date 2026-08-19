@@ -1,3 +1,4 @@
+import { contextSrv } from 'app/core/services/context_srv';
 import impressionSrv from 'app/core/services/impression_srv';
 import { getGrafanaSearcher } from 'app/features/search/service/searcher';
 import { type DashboardQueryResult } from 'app/features/search/service/types';
@@ -32,6 +33,7 @@ function setupSearcher(hits: DashboardQueryResult[]) {
 describe('getRecentlyViewedDashboards', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    contextSrv.user.isSignedIn = true;
   });
 
   it('returns dashboards in the order they were opened', async () => {
@@ -69,6 +71,16 @@ describe('getRecentlyViewedDashboards', () => {
 
     // The two most recently opened dashboards survive; unrequested hits are dropped
     expect(result.map((d) => d.uid)).toEqual(['a', 'b']);
+  });
+
+  it('returns no dashboards for anonymous users, even with impressions stored', async () => {
+    contextSrv.user.isSignedIn = false;
+    getDashboardOpenedMock.mockResolvedValue(['a', 'b']);
+    const search = setupSearcher([hit('a'), hit('b')]);
+
+    expect(await getRecentlyViewedDashboards(5)).toEqual([]);
+    expect(getDashboardOpenedMock).not.toHaveBeenCalled();
+    expect(search).not.toHaveBeenCalled();
   });
 
   it('does not search when nothing has been opened', async () => {
