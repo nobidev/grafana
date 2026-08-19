@@ -14,6 +14,7 @@ func TestDefaultConnectionTypes(t *testing.T) {
 		apisprovisioning.GithubConnectionType,
 		apisprovisioning.GithubEnterpriseConnectionType,
 		apisprovisioning.GithubOAuthConnectionType,
+		apisprovisioning.GithubEnterpriseOAuthConnectionType,
 		apisprovisioning.BitbucketOAuthConnectionType,
 		apisprovisioning.GitlabOAuthConnectionType,
 	}
