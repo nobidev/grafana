@@ -425,6 +425,14 @@ func (s *service) start(ctx context.Context) error {
 		return err
 	}
 
+	// The v2 swagger is built eagerly for every installed group and kept for the
+	// process lifetime. Grafana's frontend only reads /openapi/v3, so deployments
+	// with no v2 consumer can drop it. kubectl explain and client-go's legacy
+	// discovery do use v2, hence opt-in.
+	if !apiserverSection.Key("openapi_v2_enabled").MustBool(true) {
+		serverConfig.OpenAPIConfig = nil
+	}
+
 	serverConfig.AdmissionControl, err = appinstaller.RegisterAdmission(
 		serverConfig.AdmissionControl,
 		s.appInstallers,
