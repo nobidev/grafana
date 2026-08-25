@@ -741,25 +741,23 @@ func (rc *RepositoryController) process(key string) (err error) {
 	// applyPatches flushes any patches not yet written
 	applyPatches := func() error {
 		if len(patchOperations) == 0 {
-			return err
+			return nil
 		}
 		ops := patchOperations
 		patchOperations = nil
 		if patchErr := rc.statusPatcher.Patch(ctx, obj, ops...); patchErr != nil {
-			patchErr = fmt.Errorf("status patch operations failed: %w", patchErr)
+			return fmt.Errorf("status patch operations failed: %w", patchErr)
+		}
+		return nil
+	}
+	defer func() {
+		if patchErr := applyPatches(); patchErr != nil {
+			logger.Error("failed to apply patches", "error", patchErr)
 			if err == nil {
 				err = patchErr
 			} else {
-				err = errors.Join(patchErr, err)
+				err = errors.Join(err, patchErr)
 			}
-			return err
-		}
-		return err
-	}
-	defer func() {
-		err = applyPatches()
-		if err != nil {
-			logger.Error("failed to apply patches", "error", err)
 		}
 	}()
 
@@ -998,10 +996,10 @@ func (rc *RepositoryController) process(key string) (err error) {
 	// immediately check for repoHealth
 	if testResults != nil {
 		fieldErrors := testResults.Errors
-		if fieldErrors == nil {
-			fieldErrors = []provisioning.ErrorDetails{}
-		}
-		if !reflect.DeepEqual(obj.Status.FieldErrors, fieldErrors) {
+		if (len(fieldErrors) != 0 || len(obj.Status.FieldErrors) != 0) && !reflect.DeepEqual(obj.Status.FieldErrors, fieldErrors) {
+			if fieldErrors == nil {
+				fieldErrors = []provisioning.ErrorDetails{}
+			}
 			patchOperations = append(patchOperations, map[string]interface{}{
 				"op":    "replace",
 				"path":  "/status/fieldErrors",
@@ -1015,7 +1013,14 @@ func (rc *RepositoryController) process(key string) (err error) {
 	patchOperations = append(patchOperations, rc.determineSyncStatusOps(obj, syncOptions, healthStatus)...)
 
 	// Apply all patch operations
-	err = applyPatches()
+	if patchErr := applyPatches(); patchErr != nil {
+		if err == nil {
+			err = patchErr
+		} else {
+			err = errors.Join(err, patchErr)
+		}
+		return err
+	}
 	if err != nil {
 		return err
 	}
@@ -1099,10 +1104,16 @@ func (rc *RepositoryController) isUserCaused(err error) bool {
 // an auth/permission problem is distinguishable from a generic failure
 // instead of always reporting the same reason.
 func classifyHookFailureReason(err error) string {
-	if errors.Is(err, repository.ErrUnauthorized) || errors.Is(err, repository.ErrPermissionDenied) {
+	switch {
+	case errors.Is(err, repository.ErrUnauthorized), errors.Is(err, repository.ErrPermissionDenied):
 		return provisioning.ReasonAuthenticationFailed
+	case errors.Is(err, repository.ErrServerUnavailable):
+		return provisioning.ReasonServiceUnavailable
+	case errors.Is(err, repository.ErrTooManyRequests):
+		return provisioning.ReasonRateLimited
+	default:
+		return provisioning.ReasonInvalidSpec
 	}
-	return provisioning.ReasonInvalidSpec
 }
 
 func isReachableTestResult(testResults *provisioning.TestResults) bool {
