@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
+	"reflect"
 	"sync"
 	"time"
 
@@ -1001,7 +1001,7 @@ func (rc *RepositoryController) process(key string) (err error) {
 		if fieldErrors == nil {
 			fieldErrors = []provisioning.ErrorDetails{}
 		}
-		if !slices.Equal(obj.Status.FieldErrors, fieldErrors) {
+		if !reflect.DeepEqual(obj.Status.FieldErrors, fieldErrors) {
 			patchOperations = append(patchOperations, map[string]interface{}{
 				"op":    "replace",
 				"path":  "/status/fieldErrors",
@@ -1042,7 +1042,8 @@ func (rc *RepositoryController) processHooks(ctx context.Context, repo repositor
 		repository.GetID(obj.Status.Webhook).IsEmpty()
 
 	shouldRunHooks := (obj.Generation != obj.Status.ObservedGeneration) || webhookMissing
-	hasWebhookToManage := len(obj.Spec.Workflows) > 0 || !repository.GetID(obj.Status.Webhook).IsEmpty()
+	_, webhookCapable := repo.(repository.WebhookRepository)
+	hasWebhookToManage := webhookCapable && len(obj.Spec.Workflows) > 0 || !repository.GetID(obj.Status.Webhook).IsEmpty()
 
 	// Suppress the hook retry while the hook-failure cooldown is active, or while
 	// the repository just failed its health check (it's known unreachable, so any
