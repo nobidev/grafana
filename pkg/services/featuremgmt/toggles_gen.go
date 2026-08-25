@@ -375,6 +375,10 @@ const (
 	// Enables the gRPC server for authorization
 	FlagAuthZGRPCServer = "authZGRPCServer"
 
+	// FlagAuthzUserPermissions
+	// Route user permission snapshots through the AuthZ service.
+	FlagAuthzUserPermissions = "authz.userPermissions"
+
 	// FlagZanzana
 	// Use openFGA as authorization engine.
 	FlagZanzana = "zanzana"
@@ -494,6 +498,14 @@ const (
 	// FlagTeamHttpHeadersFromAppPlatform
 	// Use the Kubernetes TeamLBACRule API for team HTTP headers on datasource query requests
 	FlagTeamHttpHeadersFromAppPlatform = "teamHttpHeadersFromAppPlatform"
+
+	// FlagTeamHttpHeadersFromAppPlatformST
+	// Use the IAM TeamLBACRule rules-for-subject API for team HTTP headers in single-tenant Grafana
+	FlagTeamHttpHeadersFromAppPlatformST = "teamHttpHeadersFromAppPlatformST"
+
+	// FlagTeamHttpHeadersFromAppPlatformMT
+	// Use the IAM TeamLBACRule rules-for-subject API for team HTTP headers in multi-tenant datasource services
+	FlagTeamHttpHeadersFromAppPlatformMT = "teamHttpHeadersFromAppPlatformMT"
 
 	// FlagTeamLBACApiReadFromAppPlatform
 	// Use the Kubernetes TeamLBACRule API for reading team LBAC rules in the legacy API server
