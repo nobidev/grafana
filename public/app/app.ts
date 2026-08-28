@@ -39,6 +39,7 @@ import {
   setPanelScreenshotService,
   setPluginFunctionsHook,
   setMegaMenuOpenHook,
+  logError,
 } from '@grafana/runtime';
 import {
   getPanelPluginMetas,
@@ -160,6 +161,19 @@ export class GrafanaApp {
       initSystemJSHooks();
       initializeLoggersRegistry();
 
+      // Currently the OpenFeature API requires a signed in user.
+      // This means feature flags cannot be used on the login page.
+      // Capture any error generated to pass to Faro once available.
+      let openFeatureError: unknown;
+      if (contextSrv.user.isSignedIn) {
+        try {
+          await initOpenFeature();
+        } catch (err) {
+          openFeatureError = err;
+          console.error('Failed to initialize OpenFeature provider', err);
+        }
+      }
+
       const initI18nPromise = initializeI18n({
         language: contextSrv.user.language,
         ns: NAMESPACES,
@@ -179,15 +193,13 @@ export class GrafanaApp {
       setBackendSrv(backendSrv);
       await initEchoSrv();
 
+      // This needs to be done after the `initEchoSrv` since that initializes Faro.
+      if (openFeatureError) {
+        logError(new Error('Failed to initialize OpenFeature provider', { cause: openFeatureError }));
+      }
+
       // This needs to be done after the `initEchoSrv` since it is being used under the hood.
       startMeasure('frontend_app_init');
-
-      // Currently the OpenFeature API requires a signed in user.
-      // This means feature flags cannot be used on the login page.
-      // This needs to be done after the `initEchoSrv` so that Faro is available.
-      if (contextSrv.user.isSignedIn) {
-        await initOpenFeature();
-      }
 
       if (config.featureToggles.cujTracking) {
         setJourneyTracker(new JourneyTrackerImpl());
