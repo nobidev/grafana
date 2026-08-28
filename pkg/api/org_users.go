@@ -384,11 +384,12 @@ func (hs *HTTPServer) searchOrgUsersHelper(c *contextmodel.ReqContext, query *or
 		accessControlMetadata = accesscontrol.GetResourcesMetadata(c.Req.Context(), permissions, "users:id:", userIDs)
 	}
 
+	externallySynced := hs.newExternallySyncedResolver(c.Req.Context(), hs.Cfg)
 	for i := range filteredUsers {
 		filteredUsers[i].AccessControl = accessControlMetadata[fmt.Sprint(filteredUsers[i].UserID)]
 		if module, ok := modules[filteredUsers[i].UserID]; ok {
 			filteredUsers[i].AuthLabels = []string{login.GetAuthProviderLabel(module)}
-			filteredUsers[i].IsExternallySynced = hs.isExternallySynced(c.Req.Context(), hs.Cfg, module)
+			filteredUsers[i].IsExternallySynced = externallySynced(module)
 		}
 	}
 
@@ -439,6 +440,7 @@ func (hs *HTTPServer) searchOrgUsersPageUsingK8s(c *contextmodel.ReqContext, que
 		return nil, err
 	}
 
+	externallySynced := hs.newExternallySyncedResolver(c.Req.Context(), hs.Cfg)
 	orgUsers := make([]*org.OrgUserDTO, 0, len(searchResult.Users))
 	for _, u := range searchResult.Users {
 		if query.UserID != 0 && u.ID != query.UserID {
@@ -449,7 +451,7 @@ func (hs *HTTPServer) searchOrgUsersPageUsingK8s(c *contextmodel.ReqContext, que
 		isExternallySynced := false
 		for _, module := range u.AuthModule {
 			authLabels = append(authLabels, login.GetAuthProviderLabel(module))
-			if hs.isExternallySynced(c.Req.Context(), hs.Cfg, module) {
+			if externallySynced(module) {
 				isExternallySynced = true
 			}
 		}

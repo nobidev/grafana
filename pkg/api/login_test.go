@@ -887,6 +887,24 @@ func TestIsProviderEnabled(t *testing.T) {
 	}
 }
 
+// countingAuthnService counts calls to the two methods that trigger an SSO
+// settings read, so tests can assert the resolver caches per module.
+type countingAuthnService struct {
+	*authntest.FakeService
+	isClientEnabledCalls int
+	getClientConfigCalls int
+}
+
+func (s *countingAuthnService) IsClientEnabled(ctx context.Context, name string) bool {
+	s.isClientEnabledCalls++
+	return s.FakeService.IsClientEnabled(ctx, name)
+}
+
+func (s *countingAuthnService) GetClientConfig(ctx context.Context, name string) (authn.SSOClientConfig, bool) {
+	s.getClientConfigCalls++
+	return s.FakeService.GetClientConfig(ctx, name)
+}
+
 type mockSocialService struct {
 	oAuthInfo       *social.OAuthInfo
 	oAuthInfos      map[string]*social.OAuthInfo

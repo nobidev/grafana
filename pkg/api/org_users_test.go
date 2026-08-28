@@ -919,6 +919,89 @@ func TestSearchOrgUsersUsingK8s(t *testing.T) {
 	})
 }
 
+// The externally-synced check depends only on the auth module, so a page of
+// users that share a module must resolve it once, not once per user.
+func TestSearchOrgUsersUsingK8s_ResolvesExternallySyncedPerModule(t *testing.T) {
+	const userCount = 50
+	module := login.GithubAuthModule
+	client := authn.ClientWithPrefix(strings.TrimPrefix(module, "oauth_"))
+
+	hits := make([]*user.UserSearchHitDTO, userCount)
+	for i := range hits {
+		hits[i] = &user.UserSearchHitDTO{
+			ID:         int64(i + 1),
+			Login:      fmt.Sprintf("user-%d", i+1),
+			AuthModule: user.AuthModuleConversion{module},
+		}
+	}
+
+	svc := &countingAuthnService{
+		FakeService: &authntest.FakeService{
+			EnabledClients:       []string{client},
+			ExpectedClientConfig: &authntest.FakeSSOClientConfig{},
+		},
+	}
+	hs := &HTTPServer{
+		Cfg:          setting.NewCfg(),
+		authnService: svc,
+		userService: &usertest.FakeUserService{
+			ExpectedSearchUsers: user.SearchUserQueryResult{TotalCount: userCount, Users: hits, Page: 1, PerPage: userCount},
+		},
+	}
+	reqCtx := &contextmodel.ReqContext{Context: &web.Context{Req: httptest.NewRequest(http.MethodGet, "/", nil)}}
+
+	res, err := hs.searchOrgUsersUsingK8s(reqCtx, &org.SearchOrgUsersQuery{OrgID: 1, Limit: userCount, Page: 1})
+	require.NoError(t, err)
+	require.Len(t, res.OrgUsers, userCount)
+	for _, u := range res.OrgUsers {
+		assert.True(t, u.IsExternallySynced)
+	}
+
+	assert.Equal(t, 1, svc.isClientEnabledCalls, "provider enablement must be resolved once per module, not per user")
+	assert.Equal(t, 1, svc.getClientConfigCalls, "provider config must be resolved once per module, not per user")
+}
+
+// Same invariant as the K8s path, for the legacy searchOrgUsersHelper loop.
+func TestSearchOrgUsersHelper_ResolvesExternallySyncedPerModule(t *testing.T) {
+	const userCount = 50
+	module := login.GithubAuthModule
+	client := authn.ClientWithPrefix(strings.TrimPrefix(module, "oauth_"))
+
+	users := make([]*org.OrgUserDTO, userCount)
+	labels := make(map[int64]string, userCount)
+	for i := range users {
+		id := int64(i + 1)
+		users[i] = &org.OrgUserDTO{UserID: id, Login: fmt.Sprintf("user-%d", id)}
+		labels[id] = module
+	}
+
+	svc := &countingAuthnService{
+		FakeService: &authntest.FakeService{
+			EnabledClients:       []string{client},
+			ExpectedClientConfig: &authntest.FakeSSOClientConfig{},
+		},
+	}
+	hs := &HTTPServer{
+		Cfg:          setting.NewCfg(),
+		authnService: svc,
+		orgService: &orgtest.FakeOrgService{
+			ExpectedSearchOrgUsersResult: &org.SearchOrgUsersQueryResult{OrgUsers: users, TotalCount: userCount},
+		},
+		authInfoService: &authinfotest.FakeService{ExpectedRecentlyUsedLabel: labels},
+	}
+	reqCtx := &contextmodel.ReqContext{Context: &web.Context{Req: httptest.NewRequest(http.MethodGet, "/", nil)}}
+
+	res, err := hs.searchOrgUsersHelper(reqCtx, &org.SearchOrgUsersQuery{OrgID: 1})
+	require.NoError(t, err)
+	require.Len(t, res.OrgUsers, userCount)
+	for _, u := range res.OrgUsers {
+		assert.True(t, u.IsExternallySynced)
+	}
+
+	assert.Equal(t, 1, svc.isClientEnabledCalls, "provider enablement must be resolved once per module, not per user")
+	assert.Equal(t, 1, svc.getClientConfigCalls, "provider config must be resolved once per module, not per user")
+}
+
 func TestGetOrgUsersForCurrentOrg_KubernetesUsersRedirect(t *testing.T) {
 	hits := []*user.UserSearchHitDTO{
 		{ID: 42, UID: "uid-one", Login: "jdoe", Email: "jdoe@example.com", Role: "Admin"},
