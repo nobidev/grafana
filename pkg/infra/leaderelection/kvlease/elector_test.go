@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/grafana/pkg/infra/leaderelection"
@@ -39,6 +40,28 @@ func testElectorOpts() []Option {
 	return []Option{
 		WithManagerOptions(lease.WithInternalMinTTL(50 * time.Millisecond)),
 	}
+}
+
+// TestKVLeaseElector_ScopesLeaseMetrics ensures the elector's lease.Manager metrics
+// are scoped so they don't collide with another lease.Manager (e.g. the storage
+// backend's) already registered on the same process registry.
+func TestKVLeaseElector_ScopesLeaseMetrics(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	store := newTestKV(t)
+
+	// A lease.Manager already on this registry, registering lease_manager_* first.
+	_ = lease.NewManager(store, "other-holder", reg, lease.WithGarbageCollectionDisabled)
+
+	elector, err := New(store, testElectionConfig(), log.NewNopLogger(), reg, testElectorOpts()...)
+	require.NoError(t, err)
+
+	// Run builds the lease.Manager (registering its metrics) before checking the
+	// context, so a cancelled context still exercises the registration path.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	require.NotPanics(t, func() {
+		_ = elector.Run(ctx, func(context.Context) {})
+	})
 }
 
 func TestKVLeaseElector_AcquireLeadership(t *testing.T) {

@@ -74,6 +74,12 @@ func New(
 		identity = fmt.Sprintf("%s:%d", hostname, os.Getpid())
 	}
 
+	// Scope this elector's lease.Manager metrics so they don't collide with another
+	// lease.Manager (e.g. the storage backend's) on a shared process registry.
+	if reg != nil {
+		reg = prometheus.WrapRegistererWithPrefix("leader_election_", reg)
+	}
+
 	e := &Elector{
 		kvStore:       kvStore,
 		leaseName:     cfg.LeaseName,
