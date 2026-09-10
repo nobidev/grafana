@@ -1,7 +1,12 @@
-import tsParser from '@typescript-eslint/parser';
+import * as tsParserModule from '@typescript-eslint/parser';
 import { RuleTester } from 'eslint';
 
 import noRestrictedSyntax from '../rules/no-restricted-syntax.cjs';
+
+// This suite runs under two jest configs: the package's own ESM config and the root config, which
+// transforms to CommonJS. Interop differs between them, so resolve the parser defensively - without
+// this, one of the two silently falls back to espree and every TypeScript fixture fails to parse.
+const tsParser = tsParserModule.default ?? tsParserModule;
 
 RuleTester.setDefaultConfig({
   languageOptions: {
