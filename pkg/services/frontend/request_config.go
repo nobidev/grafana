@@ -35,9 +35,7 @@ type FSRequestConfig struct {
 	// FormActionAdditionalHosts is the list of additional hostnames for the CSP form-action directive.
 	// These are appended to the template; 'self' should be in the template itself.
 	FormActionAdditionalHosts []string
-	// CDNRootURL is the origin assets are served from, substituted for $CDN_ROOT_URL.
-	// Empty when no CDN is configured.
-	CDNRootURL string
+	CDNRootURL                string
 }
 
 // NewFSRequestConfig creates a new FSRequestConfig from the global configuration.

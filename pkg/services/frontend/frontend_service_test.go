@@ -444,7 +444,6 @@ func TestFrontendService_CSP(t *testing.T) {
 		mux.ServeHTTP(recorder, req)
 
 		assert.Equal(t, 200, recorder.Code)
-		// The versioned path is dropped: a CSP source expression takes an origin.
 		assert.Equal(t, "worker-src 'self' blob: https://assets.example.com", recorder.Header().Get("Content-Security-Policy"))
 	})
 

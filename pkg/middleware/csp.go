@@ -63,20 +63,13 @@ func cspReportOnlyMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Log
 	})
 }
 
-// CSPHostLists contains the per-directive sources used for CSP template variable replacement.
+// CSPHostLists contains per-directive host lists for CSP template variable replacement.
 type CSPHostLists struct {
 	FrameAncestorHosts        []string
 	FormActionAdditionalHosts []string
-	// CDNRootURL is the origin assets are served from, as returned by CDNOrigin.
-	// Empty when no CDN is configured.
-	CDNRootURL string
+	CDNRootURL                string
 }
 
-// NewCSPHostLists builds the template variable sources that come from global config. Use it
-// rather than a struct literal: the policy is rendered in four places (both middlewares, the
-// index page meta tag and the Swagger page), and a literal that misses a field silently
-// renders a policy that is stricter than the header.
-// Callers with per-tenant overrides set the affected fields themselves.
 func NewCSPHostLists(cfg *setting.Cfg) CSPHostLists {
 	return CSPHostLists{
 		FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
@@ -84,9 +77,8 @@ func NewCSPHostLists(cfg *setting.Cfg) CSPHostLists {
 	}
 }
 
-// CDNOrigin returns the scheme and host of the configured CDN root, which is the form a CSP
-// source expression takes. Cfg.GetContentDeliveryURL appends a versioned path, so it cannot
-// be used here.
+// Not Cfg.GetContentDeliveryURL: that appends a versioned path, and a CSP source expression
+// takes an origin.
 func CDNOrigin(cdnRootURL *url.URL) string {
 	if cdnRootURL == nil || cdnRootURL.Host == "" {
 		return ""
@@ -115,10 +107,6 @@ func ReplacePolicyVariables(policyTemplate, appURL string, hosts CSPHostLists, n
 	// When empty, it resolves to an empty string — 'self' should be included directly in the template.
 	policy = strings.ReplaceAll(policy, "$FORM_ACTION_ADDITIONAL_HOSTS", strings.Join(hosts.FormActionAdditionalHosts, " "))
 
-	// $CDN_ROOT_URL is replaced with the CDN origin. Worker scripts are fetched from the CDN
-	// when one is configured, and a worker's script and its static imports are measured against
-	// worker-src, which 'self' does not cover for a cross-origin CDN.
-	// When no CDN is configured it resolves to an empty string.
 	policy = strings.ReplaceAll(policy, "$CDN_ROOT_URL", hosts.CDNRootURL)
 
 	return policy
