@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -45,7 +46,10 @@ func nonceMiddleware(next http.Handler, logger log.Logger) http.Handler {
 func cspMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := contexthandler.FromContext(req.Context())
-		hosts := CSPHostLists{FormActionAdditionalHosts: cfg.FormActionAdditionalHosts}
+		hosts := CSPHostLists{
+			FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
+			CDNRootURL:                CDNOrigin(cfg.CDNRootURL),
+		}
 		policy := ReplacePolicyVariables(cfg.CSPTemplate, cfg.AppURL, hosts, ctx.RequestNonce)
 		rw.Header().Set("Content-Security-Policy", policy)
 		next.ServeHTTP(rw, req)
@@ -55,17 +59,34 @@ func cspMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.
 func cspReportOnlyMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := contexthandler.FromContext(req.Context())
-		hosts := CSPHostLists{FormActionAdditionalHosts: cfg.FormActionAdditionalHosts}
+		hosts := CSPHostLists{
+			FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
+			CDNRootURL:                CDNOrigin(cfg.CDNRootURL),
+		}
 		policy := ReplacePolicyVariables(cfg.CSPReportOnlyTemplate, cfg.AppURL, hosts, ctx.RequestNonce)
 		rw.Header().Set("Content-Security-Policy-Report-Only", policy)
 		next.ServeHTTP(rw, req)
 	})
 }
 
-// CSPHostLists contains per-directive host lists for CSP template variable replacement.
+// CSPHostLists contains the per-directive sources used for CSP template variable replacement.
 type CSPHostLists struct {
 	FrameAncestorHosts        []string
 	FormActionAdditionalHosts []string
+	// CDNRootURL is the origin assets are served from, as returned by CDNOrigin.
+	// Empty when no CDN is configured.
+	CDNRootURL string
+}
+
+// CDNOrigin returns the scheme and host of the configured CDN root, which is the form a CSP
+// source expression takes. Cfg.GetContentDeliveryURL appends a versioned path, so it cannot
+// be used here.
+func CDNOrigin(cdnRootURL *url.URL) string {
+	if cdnRootURL == nil || cdnRootURL.Host == "" {
+		return ""
+	}
+
+	return cdnRootURL.Scheme + "://" + cdnRootURL.Host
 }
 
 func ReplacePolicyVariables(policyTemplate, appURL string, hosts CSPHostLists, nonce string) string {
@@ -87,6 +108,12 @@ func ReplacePolicyVariables(policyTemplate, appURL string, hosts CSPHostLists, n
 	// $FORM_ACTION_ADDITIONAL_HOSTS is replaced with the configured additional form-action hosts.
 	// When empty, it resolves to an empty string — 'self' should be included directly in the template.
 	policy = strings.ReplaceAll(policy, "$FORM_ACTION_ADDITIONAL_HOSTS", strings.Join(hosts.FormActionAdditionalHosts, " "))
+
+	// $CDN_ROOT_URL is replaced with the CDN origin. Worker scripts are fetched from the CDN
+	// when one is configured, and a worker's script and its static imports are measured against
+	// worker-src, which 'self' does not cover for a cross-origin CDN.
+	// When no CDN is configured it resolves to an empty string.
+	policy = strings.ReplaceAll(policy, "$CDN_ROOT_URL", hosts.CDNRootURL)
 
 	return policy
 }
