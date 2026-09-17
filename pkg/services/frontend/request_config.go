@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/grafana/pkg/api/dtos"
 	"github.com/grafana/grafana/pkg/api/frontendsettings"
 	"github.com/grafana/grafana/pkg/infra/log"
+	"github.com/grafana/grafana/pkg/middleware"
 	"github.com/grafana/grafana/pkg/plugins/pluginscdn"
 	"github.com/grafana/grafana/pkg/services/contexthandler"
 	"github.com/grafana/grafana/pkg/services/licensing"
@@ -34,6 +35,9 @@ type FSRequestConfig struct {
 	// FormActionAdditionalHosts is the list of additional hostnames for the CSP form-action directive.
 	// These are appended to the template; 'self' should be in the template itself.
 	FormActionAdditionalHosts []string
+	// CDNRootURL is the origin assets are served from, substituted for $CDN_ROOT_URL.
+	// Empty when no CDN is configured.
+	CDNRootURL string
 }
 
 // NewFSRequestConfig creates a new FSRequestConfig from the global configuration.
@@ -86,6 +90,7 @@ func NewFSRequestConfig(ctx context.Context, cfg *setting.Cfg, license licensing
 		AppURL:                    cfg.AppURL,
 		AllowEmbeddingHosts:       allowEmbeddingHosts,
 		FormActionAdditionalHosts: formActionHosts,
+		CDNRootURL:                middleware.CDNOrigin(cfg.CDNRootURL),
 	}
 
 	if fullFrontendSettingsEnabled {

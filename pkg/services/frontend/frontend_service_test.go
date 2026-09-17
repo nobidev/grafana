@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -416,6 +417,59 @@ func TestFrontendService_CSP(t *testing.T) {
 		assert.NotEmpty(t, cspHeader, "CSP header should be set")
 		assert.Contains(t, cspHeader, "script-src 'self' 'nonce-", "CSP should contain nonce")
 		assert.Contains(t, cspHeader, "style-src 'self' grafana.example.com/grafana", "CSP should contain root path")
+	})
+
+	t.Run("should substitute $CDN_ROOT_URL with the CDN origin", func(t *testing.T) {
+		cdnURL, err := url.Parse("https://assets.example.com/grafana-oss/")
+		require.NoError(t, err)
+
+		cfg := &setting.Cfg{
+			Raw:            ini.Empty(),
+			HTTPPort:       "3000",
+			StaticRootPath: publicDir,
+			BuildVersion:   "10.3.0",
+			AppURL:         "https://grafana.example.com",
+			CDNRootURL:     cdnURL,
+			CSPEnabled:     true,
+			CSPTemplate:    "worker-src 'self' blob: $CDN_ROOT_URL",
+		}
+		service := createTestService(t, cfg)
+
+		mux := web.New()
+		service.addMiddlewares(mux)
+		service.registerRoutes(mux)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, req)
+
+		assert.Equal(t, 200, recorder.Code)
+		// The versioned path is dropped: a CSP source expression takes an origin.
+		assert.Equal(t, "worker-src 'self' blob: https://assets.example.com", recorder.Header().Get("Content-Security-Policy"))
+	})
+
+	t.Run("should substitute $CDN_ROOT_URL with an empty string when no CDN is configured", func(t *testing.T) {
+		cfg := &setting.Cfg{
+			Raw:            ini.Empty(),
+			HTTPPort:       "3000",
+			StaticRootPath: publicDir,
+			BuildVersion:   "10.3.0",
+			AppURL:         "https://grafana.example.com",
+			CSPEnabled:     true,
+			CSPTemplate:    "worker-src 'self' blob: $CDN_ROOT_URL",
+		}
+		service := createTestService(t, cfg)
+
+		mux := web.New()
+		service.addMiddlewares(mux)
+		service.registerRoutes(mux)
+
+		req := httptest.NewRequest("GET", "/", nil)
+		recorder := httptest.NewRecorder()
+		mux.ServeHTTP(recorder, req)
+
+		assert.Equal(t, 200, recorder.Code)
+		assert.Equal(t, "worker-src 'self' blob: ", recorder.Header().Get("Content-Security-Policy"))
 	})
 
 	t.Run("should set CSP-Report-Only header when enabled", func(t *testing.T) {

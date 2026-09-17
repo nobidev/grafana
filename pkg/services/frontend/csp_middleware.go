@@ -49,6 +49,7 @@ func CSPMiddleware() web.Middleware {
 			hosts := middleware.CSPHostLists{
 				FrameAncestorHosts:        requestConfig.AllowEmbeddingHosts,
 				FormActionAdditionalHosts: requestConfig.FormActionAdditionalHosts,
+				CDNRootURL:                requestConfig.CDNRootURL,
 			}
 
 			if requestConfig.CSPEnabled && requestConfig.CSPTemplate != "" {
