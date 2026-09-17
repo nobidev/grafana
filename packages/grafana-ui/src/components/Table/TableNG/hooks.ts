@@ -33,6 +33,7 @@ import { type MatcherScope } from '@grafana/schema';
 import { useStyles2, useTheme2 } from '../../../themes/ThemeContext';
 import { type TableColumnResizeActionCallback } from '../types';
 
+import { useTableView, transformTableFilters } from './TableViewContext';
 import {
   CELL_HORIZONTAL_CHROME,
   FIRST_COLUMN_EXTRA_PADDING,
@@ -72,10 +73,14 @@ import {
 } from './utils';
 
 export function useFilteredRows(rows: TableRow[], fields: Field[], hasNestedFrames?: boolean) {
-  const [filter, setFilter] = useState<FilterType>({});
+  const view = useTableView();
+  const [localFilter, setLocalFilter] = useState<FilterType>({});
+  const filter = view?.filter ?? localFilter;
+  const setFilter = view?.setFilter ?? setLocalFilter;
   const filterResult = useMemo(
-    () => applyFilter(rows, filter, fields, hasNestedFrames),
-    [rows, filter, fields, hasNestedFrames]
+    () =>
+      view ? transformTableFilters(rows, fields, view.filters) : applyFilter(rows, filter, fields, hasNestedFrames),
+    [rows, filter, fields, hasNestedFrames, view]
   );
   return { rows: filterResult.filteredRows, filter, setFilter, filterResult };
 }
@@ -388,6 +393,7 @@ export const useNestedRows = (
   filter: FilterType,
   sortColumns: SortColumn[]
 ): NestedRowEntry[] => {
+  const view = useTableView();
   const frameToRecords = useRowCompiler(nestedData?.[0] ?? createDataFrame({ fields: [] }));
 
   return useMemo(() => {
@@ -404,7 +410,9 @@ export const useNestedRows = (
       }
 
       const rawRows = frameToRecords(nestedFrame, parentRow.__index);
-      const filterResult = applyFilter(rawRows, filter, nestedFrame.fields, false, parentRow.__index);
+      const filterResult = view
+        ? transformTableFilters(rawRows, nestedFrame.fields, view.filters, parentRow.__index)
+        : applyFilter(rawRows, filter, nestedFrame.fields, false, parentRow.__index);
       const sortedRows = applySort(
         filterResult.filteredRows,
         nestedFrame.fields,
@@ -415,7 +423,7 @@ export const useNestedRows = (
     }
 
     return result;
-  }, [hasNestedFrames, nestedFramesFieldName, rows, sortColumns, filter, frameToRecords, nestedData]);
+  }, [hasNestedFrames, nestedFramesFieldName, rows, sortColumns, filter, frameToRecords, nestedData, view]);
 };
 
 interface UseHeaderHeightOptions {
