@@ -8,6 +8,7 @@ import {
   type DataTransformerInfo,
   type TransformerRegistryItem,
 } from '@grafana/data';
+import { tableViewTransformer } from '@grafana/data/internal';
 import { t } from '@grafana/i18n';
 import { config } from '@grafana/runtime';
 
@@ -124,7 +125,7 @@ function makeLazyRegistryItem<TOptions>(item: LazyRegistryItem<TOptions>): Trans
   return item;
 }
 
-function hiddenTransformer(id: DataTransformerID, transformer: DataTransformerInfo): TransformerRegistryItem {
+function hiddenTransformer(id: string, transformer: DataTransformerInfo): TransformerRegistryItem {
   return {
     id,
     transformation: () => Promise.resolve(transformer),
@@ -139,6 +140,7 @@ function hiddenTransformer(id: DataTransformerID, transformer: DataTransformerIn
 
 export const getStandardTransformers = (): TransformerRegistryItem[] => {
   return [
+    hiddenTransformer(tableViewTransformer.id, tableViewTransformer),
     makeRegistryItemFromTransformer(standardTransformers.reduceTransformer, {
       id: DataTransformerID.reduce,
       editor: lazy(() =>

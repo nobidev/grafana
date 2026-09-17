@@ -1,12 +1,20 @@
 import { useMemo } from 'react';
 
-import { type DataFrame, getFrameDisplayName, type PanelProps, type SelectableValue } from '@grafana/data';
+import {
+  applyFieldOverrides,
+  type DataFrame,
+  getFrameDisplayName,
+  type PanelProps,
+  type SelectableValue,
+} from '@grafana/data';
+import { tableFrameKey } from '@grafana/data/internal';
 import { t } from '@grafana/i18n';
 import { PanelDataErrorView } from '@grafana/runtime';
 import { TableCellHeight, type TableOptions } from '@grafana/schema';
 import { Box, Combobox, Field, Stack, usePanelContext, useTheme2 } from '@grafana/ui';
 import { TableNG } from '@grafana/ui/unstable';
 import {
+  TABLE_TRANSFORMATIONS_TAG,
   useAdHocColumnState,
   useCacheFieldDisplayNames,
   useCellActions,
@@ -54,10 +62,27 @@ export function TablePanel(props: Props) {
   const count = frames?.length;
   const hasFields = frames.some((frame) => frame.fields.length > 0);
   const currentIndex = getCurrentFrameIndex(frames, options);
-  const rawMain = frames[currentIndex];
+  const outputMain = frames[currentIndex];
+  const sourceMain = tableRefreshNewFeaturesEnabled
+    ? panelContext.adHocTransformations?.getSourceSeries(TABLE_TRANSFORMATIONS_TAG)[currentIndex]
+    : undefined;
+  // Rebuild display processors and link closures against original rows, before ad-hoc selection.
+  const rawMain = useMemo(
+    () =>
+      sourceMain
+        ? applyFieldOverrides({
+            data: [sourceMain],
+            fieldConfig,
+            theme,
+            timeZone: props.timeZone,
+            replaceVariables,
+          })[0]
+        : outputMain,
+    [sourceMain, outputMain, fieldConfig, theme, props.timeZone, replaceVariables]
+  );
   const columnManagementEnabled = tableRefreshNewFeaturesEnabled && supportsColumnManagement(rawMain);
   const main = useMemo(
-    () => (tableRefreshNewFeaturesEnabled ? withRefreshedTableCapabilities(rawMain) : rawMain),
+    () => (tableRefreshNewFeaturesEnabled && rawMain ? withRefreshedTableCapabilities(rawMain) : rawMain),
     [rawMain, tableRefreshNewFeaturesEnabled]
   );
 
@@ -86,13 +111,27 @@ export function TablePanel(props: Props) {
     <TableNG
       {...commonTableProps}
       {...adHocColumns}
+      rowTransformationsEnabled={tableRefreshNewFeaturesEnabled}
+      rowTransformations={
+        tableRefreshNewFeaturesEnabled && panelContext.adHocTransformations
+          ? {
+              api: panelContext.adHocTransformations,
+              tag: TABLE_TRANSFORMATIONS_TAG,
+              frameKey: tableFrameKey(
+                panelContext.adHocTransformations.getSourceSeries(TABLE_TRANSFORMATIONS_TAG),
+                currentIndex
+              ),
+            }
+          : undefined
+      }
+      timeZone={props.timeZone}
       showColumnsSidebar={columnManagementEnabled && options.showColumnsSidebar}
       initialRowIndex={initialRowIndex}
       height={tableHeight}
       width={width}
       data={main}
       sortByBehavior={sortByBehavior}
-      onSortByChange={(sortBy) => onSortByChange(sortBy, props)}
+      onSortByChange={tableRefreshNewFeaturesEnabled ? undefined : (sortBy) => onSortByChange(sortBy, props)}
       onColumnResize={(displayName, resizedWidth, fieldScope) =>
         onColumnResize(displayName, resizedWidth, fieldScope, props)
       }
