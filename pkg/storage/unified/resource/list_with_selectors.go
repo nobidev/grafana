@@ -153,8 +153,10 @@ func (s *server) listWithSelectors(ctx context.Context, req *resourcepb.ListRequ
 	return rsp, nil
 }
 
-// searchReadChunkSize caps the over-read to one chunk while keeping reads batched.
-const searchReadChunkSize = 50
+// searchReadChunkSize caps the over-read to one chunk while keeping reads
+// batched. Kept small because BatchReadResource has no byte budget: a page that
+// fills after one body still materializes the whole chunk first (see #985).
+const searchReadChunkSize = 10
 
 func (s *server) readSearchRows(ctx context.Context, rows []*resourcepb.ResourceTableRow) ([]*BackendReadResponse, bool, error) {
 	requests := make([]*resourcepb.ReadRequest, len(rows))
