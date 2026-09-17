@@ -46,10 +46,7 @@ func nonceMiddleware(next http.Handler, logger log.Logger) http.Handler {
 func cspMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := contexthandler.FromContext(req.Context())
-		hosts := CSPHostLists{
-			FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
-			CDNRootURL:                CDNOrigin(cfg.CDNRootURL),
-		}
+		hosts := NewCSPHostLists(cfg)
 		policy := ReplacePolicyVariables(cfg.CSPTemplate, cfg.AppURL, hosts, ctx.RequestNonce)
 		rw.Header().Set("Content-Security-Policy", policy)
 		next.ServeHTTP(rw, req)
@@ -59,10 +56,7 @@ func cspMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.
 func cspReportOnlyMiddleware(cfg *setting.Cfg, next http.Handler, logger log.Logger) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		ctx := contexthandler.FromContext(req.Context())
-		hosts := CSPHostLists{
-			FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
-			CDNRootURL:                CDNOrigin(cfg.CDNRootURL),
-		}
+		hosts := NewCSPHostLists(cfg)
 		policy := ReplacePolicyVariables(cfg.CSPReportOnlyTemplate, cfg.AppURL, hosts, ctx.RequestNonce)
 		rw.Header().Set("Content-Security-Policy-Report-Only", policy)
 		next.ServeHTTP(rw, req)
@@ -76,6 +70,18 @@ type CSPHostLists struct {
 	// CDNRootURL is the origin assets are served from, as returned by CDNOrigin.
 	// Empty when no CDN is configured.
 	CDNRootURL string
+}
+
+// NewCSPHostLists builds the template variable sources that come from global config. Use it
+// rather than a struct literal: the policy is rendered in four places (both middlewares, the
+// index page meta tag and the Swagger page), and a literal that misses a field silently
+// renders a policy that is stricter than the header.
+// Callers with per-tenant overrides set the affected fields themselves.
+func NewCSPHostLists(cfg *setting.Cfg) CSPHostLists {
+	return CSPHostLists{
+		FormActionAdditionalHosts: cfg.FormActionAdditionalHosts,
+		CDNRootURL:                CDNOrigin(cfg.CDNRootURL),
+	}
 }
 
 // CDNOrigin returns the scheme and host of the configured CDN root, which is the form a CSP

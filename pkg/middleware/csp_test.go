@@ -6,6 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/grafana/pkg/setting"
 )
 
 func TestReplacePolicyVariables(t *testing.T) {
@@ -101,5 +103,26 @@ func TestCDNOrigin(t *testing.T) {
 		parsed, err := url.Parse("http://localhost:8080")
 		require.NoError(t, err)
 		assert.Equal(t, "http://localhost:8080", CDNOrigin(parsed))
+	})
+}
+
+func TestNewCSPHostLists(t *testing.T) {
+	t.Run("carries every config-derived source", func(t *testing.T) {
+		cdnURL, err := url.Parse("https://assets.example.com/grafana-oss/")
+		require.NoError(t, err)
+
+		hosts := NewCSPHostLists(&setting.Cfg{
+			FormActionAdditionalHosts: []string{"login.example.com"},
+			CDNRootURL:                cdnURL,
+		})
+
+		assert.Equal(t, []string{"login.example.com"}, hosts.FormActionAdditionalHosts)
+		assert.Equal(t, "https://assets.example.com", hosts.CDNRootURL)
+	})
+
+	t.Run("leaves CDNRootURL empty when no CDN is configured", func(t *testing.T) {
+		hosts := NewCSPHostLists(&setting.Cfg{})
+
+		assert.Equal(t, "", hosts.CDNRootURL)
 	})
 }
