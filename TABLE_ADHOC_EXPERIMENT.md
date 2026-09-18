@@ -1,4 +1,4 @@
-# TableNG ad-hoc filtering experiment
+# TableNG ad-hoc filtering and sorting experiment
 
 Based on PR #132542 at `c07b4768ec836bca7f1c1afd418ef42dfc11b7bc`.
 Branch: `codex/table-adhoc-filter-sort`.
@@ -16,7 +16,8 @@ http://localhost:3017/d/table-adhoc-filter-sort/panel-tests-table-ad-hoc-filters
   bounds of 50 and 200. The preview shows 60 of 126 rows; Apply commits the view.
 - Add a region filter. Reopen duration: its distribution includes every other
   active filter but excludes its own predicate, allowing the range to widen again.
-- Refresh data or hide a filtered column: the view remains active. Clear filters restores the rows.
+- Sort from a header, including multi-column sorting. Refresh data or hide a
+  filtered column: the view remains active. Clear filters restores the rows.
 - Open **observed_at → Filter values**. Start `2026-09-17 12:00` and end
   `2026-09-17 12:30`, in the displayed America/New_York timezone, match 31 rows.
 - The remaining panels exercise multiple frames, saved transformations, the column
@@ -24,7 +25,8 @@ http://localhost:3017/d/table-adhoc-filter-sort/panel-tests-table-ad-hoc-filters
 - Inspect uses the same controls with `table.inspectDataTableNG`. Flamegraph's top
   table requires `flameGraph.tableNg` as well. Their view state is local.
 
-Filters are viewer-only and are not saved to panel options or the URL. Sorting still uses the existing TableNG implementation and panel-option callbacks. A page reload starts a fresh filter view.
+Sorting is viewer-only, seeded from the saved panel sort. Filters and sort changes
+are not saved to panel options or the URL. A page reload starts a fresh view.
 
 ## Execution and ownership
 
@@ -38,7 +40,8 @@ and the flag-off TableNG path retain their behavior.
 Popup search/operator choices and unsubmitted inputs remain local drafts. Dashboard hosts
 store configs through the ad-hoc API; standalone tables store the same configs locally.
 JSON round-tripping the configs restores applied filters without supplemental table state.
-Nested predicates run before parent predicates, and all filters run before column organization.
+Nested predicates run before parent predicates. Sorting uses a separate scoped `sortBy`
+configuration; all filters run before sorting, and both run before column organization.
 
 | Host                  | State owner                        | Input and row identity                                                                                                                                                                             |
 | --------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -78,6 +81,22 @@ The empty-result crash, unequal-frame exclusion length, and nanosecond alignment
 regressions were each checked by removing the fix, observing a failing test, then
 restoring the fix and verifying green.
 
+Run the optional benchmark with:
+
+```sh
+TABLE_VIEW_BENCH=1 yarn jest packages/grafana-ui/src/components/Table/TableNG/tableView.bench.test.ts --runInBand --watch=false
+```
+
+Local sample, six fields, one categorical filter, two sort keys, median of seven
+runs after warm-up; output indices also checked against the existing implementation:
+
+| Rows    | Existing path | Transformation path |
+| ------- | ------------: | ------------------: |
+| 10,000  |        9.4 ms |             11.9 ms |
+| 100,000 |      111.0 ms |            129.7 ms |
+
+These are operator-level measurements, not end-to-end browser timings.
+
 ## Follow-up decisions
 
 - The dashboard prototype executes row transforms in the ad-hoc stage and again
@@ -103,7 +122,7 @@ The branch now layers the changes in dependency order:
 1. Original ad-hoc column-management API and table controls from PR #132542.
 2. Galen's panel-owned runtime controller integration from Grafana PR #132963,
    through `bae985e7dd28fa2f10c03bec69690c328a2b9b21`.
-3. This filtering experiment, adapted to the keyed runtime API.
+3. This filtering/sorting experiment, adapted to the keyed runtime API.
 
 Both `@grafana/scenes` and `@grafana/scenes-react` use
 `8.19.0--canary.1651.35354177939.0` from Scenes PR #1651. The older
@@ -118,17 +137,17 @@ retention, and reprocessing without a query. Runtime state survives replacement 
 
 Table row and column controls share the `table:view` owner. Row transformations
 always precede column organization within that owner's list, including when the
-user hides a column before filtering. Other consumers can use separate
+user hides a column before filtering or sorting. Other consumers can use separate
 owner keys. TableNG receives the owner's key explicitly from its host; standalone
 Explore, Inspect, and Flamegraph tables continue using local controllers.
 
-The registered `filterByValue` transformation runs directly in the real Scenes pipeline.
+The registered `filterByValue` and `sortBy` transformations run directly in the real Scenes pipeline.
 Inspect/export therefore receive transformed dashboard data; additional controls in
 Inspect remain local to its supplied preview data.
 
 Integration validation: 1,179 Jest tests and 24 snapshots passed across 40 suites,
 including the real canary pipeline with both hide-first and filter-first interactions,
-hidden filter keys, clearing filters, independent runtime owners, and dashboard
+hidden sort/filter keys, clearing filters, independent runtime owners, and dashboard
 change tracking. Reversing row/column execution order makes the new integration test
 fail. App and grafana-ui typechecks passed. Browser scenarios were retained but not
 rerun for this integration.
