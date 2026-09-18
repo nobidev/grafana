@@ -12,6 +12,7 @@ import {
   AdHocFiltersVariable,
   GroupByVariable,
   sceneGraph,
+  SceneDataTransformer,
   SceneQueryRunner,
   SceneVariableSet,
   VizPanel,
@@ -84,6 +85,22 @@ beforeEach(() => {
 });
 
 describe('setDashboardPanelContext', () => {
+  describe('adHocTransformations', () => {
+    it('uses the panel runtime transformation controller across data replacements', () => {
+      const { context, vizPanel } = buildTestScene({ dashboardCanEdit: false });
+      const controller = vizPanel.getRuntimeTransformations();
+
+      expect(context.adHocTransformations).toBe(controller);
+      expect(context.adHocTransformations?.get('test:viewer')).toEqual([]);
+
+      controller.set('test:viewer', [{ id: 'organize', options: {} }]);
+      vizPanel.setState({ $data: new SceneDataTransformer({ transformations: [] }) });
+
+      expect(context.adHocTransformations).toBe(controller);
+      expect(context.adHocTransformations?.get('test:viewer')).toEqual([{ id: 'organize', options: {} }]);
+    });
+  });
+
   describe('app', () => {
     it('Is PanelEditor while the panel edit pane is open', () => {
       const { scene, vizPanel, context } = buildTestScene({});
