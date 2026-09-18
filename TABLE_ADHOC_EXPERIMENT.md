@@ -131,7 +131,42 @@ including the real canary pipeline with both hide-first and filter-first interac
 hidden filter keys, clearing filters, independent runtime owners, and dashboard
 change tracking. Reversing row/column execution order makes the new integration test
 fail. App and grafana-ui typechecks passed. Browser scenarios were retained but not
-rerun for this integration; development servers remain stopped.
+rerun for this integration.
 
-The active checkout is `/Users/paulmarbach/Workspace/grafana`. The original experiment
-history remains at `backup/table-adhoc-before-vizpanel-20260918`.
+The original experiment history remains at
+`backup/table-adhoc-before-vizpanel-20260918`.
+
+## Column pinning follow-up
+
+The pinning experiment is on `codex/table-adhoc-pinning` in
+`/private/tmp/grafana-table-adhoc-pinning`, based on the integrated branch above.
+
+TableNG owns pinned column identities per frame, seeded from the configured frozen
+column count. It derives the visible frozen count from those identities, so hiding
+a pinned column does not freeze an unrelated replacement. Pinning puts pinned
+fields first through the existing column-order callback; dashboard panels therefore
+use their ad-hoc organize transformation. No transformation changes panel options.
+Unpinning preserves the current organized order (moving behind any remaining pinned
+columns), and dragging preserves a pinned prefix. There is no private pre-pin order
+history: `organize.options.indexByName` is the authority for dashboard column order. Query refreshes and frame switching retain the local pin state; page reloads
+reset it. Changing the configured frozen count reseeds the frame's pin state.
+
+Standalone Inspect, Explore, and Flamegraph tables use their existing local column
+state. Nested and ambiguously named columns retain their existing restrictions.
+
+The local demo runs at `http://localhost:3017` with frontend assets on port 3337.
+Its isolated SQLite database and provisioning live under `data/pinning`; all 154
+gdev dashboards are provisioned into the `gdev dashboards` folder. Start with
+`/d/table-adhoc-filter-sort/panel-tests-table-ad-hoc-filters-and-sorting` and use the
+column menu or sidebar pin button. Login is `admin` / `admin`. The testdata examples
+work without external services; dashboards for other data sources still need those
+services. Local server configuration and generated data are ignored by Git.
+
+Pinning validation: 129 focused Jest tests passed, along with app and grafana-ui
+typechecks and changed-file lint. Removing pin-driven reordering makes the new
+regression test fail. A live browser check confirmed pinning CPU freezes it first,
+dashboard refresh retains the pin. A serialization round-trip test restores the
+pin-driven organize configuration into fresh Scenes and TableNG instances: order
+survives without pin state. Restoring a frozen-column option separately freezes the
+organized prefix; unpinning retains that organized order. URL encoding and ephemeral
+option/override persistence remain separate future work.
