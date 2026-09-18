@@ -280,7 +280,7 @@ abstract class DashboardScenePageStateManagerBase<T>
 
   public async loadSnapshot(slug: string) {
     try {
-      // Snapshots build their panels synchronously, so the metas map has to be in place first.
+      // Snapshot panels are built synchronously below.
       await getPanelPluginMetasMap();
       const dashboard = await this.loadSnapshotScene(slug);
 
@@ -531,9 +531,7 @@ abstract class DashboardScenePageStateManagerBase<T>
   private async loadScene(options: LoadDashboardOptions): Promise<DashboardScene | null> {
     this.setState({ dashboard: undefined, isLoading: true });
 
-    // Both have to settle before the synchronous work downstream: getV1()/getV2() need the resolved
-    // API versions, and createPanelDataProvider reads the panel metas map to decide whether a panel
-    // takes queries at all. In parallel so the metas request does not delay the dashboard fetch.
+    // Scene building downstream is synchronous: it needs the resolved API version and the panel metas map.
     await Promise.all([dashboardAPIVersionResolver.resolve(), getPanelPluginMetasMap()]);
 
     // Home dashboard is not handled through legacy API and is not versioned.
@@ -957,8 +955,7 @@ export class DashboardScenePageStateManager extends DashboardScenePageStateManag
     try {
       this.setState({ isLoading: true });
 
-      // A reload rebuilds the scene outside loadScene, so it needs the metas map in place too. Warm
-      // after the first load, so this resolves without a request.
+      // A reload rebuilds the scene outside loadScene, so the metas map has to be in place here too.
       await getPanelPluginMetasMap();
 
       const fetchStart = performance.now();
@@ -1333,8 +1330,7 @@ export class DashboardScenePageStateManagerV2 extends DashboardScenePageStateMan
     try {
       this.setState({ isLoading: true });
 
-      // A reload rebuilds the scene outside loadScene, so it needs the metas map in place too. Warm
-      // after the first load, so this resolves without a request.
+      // A reload rebuilds the scene outside loadScene, so the metas map has to be in place here too.
       await getPanelPluginMetasMap();
 
       const fetchStart = performance.now();
