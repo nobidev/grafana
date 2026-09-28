@@ -526,10 +526,9 @@ function tableToSearchResult(table: TableResponse, deletedByDisplayMap?: Map<str
 
   return table.rows.map((row) => {
     const meta = row.object.metadata;
-    const field: Record<string, string | number> = {};
-    if (meta.deletionTimestamp) {
-      field.deletionTimestamp = meta.deletionTimestamp;
-    }
+    // Always set, even when empty: the results table builds its columns from the first
+    // row's keys, so a first item without a deletion time would hide the column for all.
+    const field: Record<string, string | number> = { deletionTimestamp: meta.deletionTimestamp ?? '' };
     const deletedByUid = meta.annotations?.[AnnoKeyUpdatedBy];
     if (deletedByUid) {
       field.deletedBy = deletedByDisplayMap?.get(deletedByUid) ?? DELETED_BY_UNKNOWN;
@@ -558,14 +557,14 @@ function readString(item: TrashItem, name: string): string | undefined {
 
 /** Converts a trash result item to the SearchHit shape the deleted dashboards view renders. */
 function trashItemToSearchResult(item: TrashItem, deletedByDisplayMap: Map<string, string>): SearchHit {
-  const field: Record<string, string | number> = {};
-
   // The endpoint reports the deletion time as unix millis; the rest of the UI expects the
-  // same ISO string the object metadata carries.
+  // same ISO string the object metadata carries. Always set, even when empty: the results
+  // table builds its columns from the first row's keys, so a first item without a deletion
+  // time would hide the column for all.
   const deletionTime = item.fields?.[TRASH_FIELD_DELETION_TIME];
-  if (typeof deletionTime === 'number') {
-    field.deletionTimestamp = new Date(deletionTime).toISOString();
-  }
+  const field: Record<string, string | number> = {
+    deletionTimestamp: typeof deletionTime === 'number' ? new Date(deletionTime).toISOString() : '',
+  };
 
   const deletedByUid = readString(item, TRASH_FIELD_DELETED_BY);
   if (deletedByUid) {

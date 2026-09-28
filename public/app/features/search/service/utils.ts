@@ -179,10 +179,11 @@ export function resourceToSearchResult(
   deletedByDisplayMap?: Map<string, string>
 ): SearchHit[] {
   return resource.items.map((item) => {
-    const field: Record<string, string | number> = {};
-    if (item.metadata.deletionTimestamp) {
-      field.deletionTimestamp = item.metadata.deletionTimestamp;
-    }
+    // Always set, even when empty: the results table builds its columns from the first
+    // row's keys, so a first item without a deletion time would hide the column for all.
+    const field: Record<string, string | number> = {
+      deletionTimestamp: item.metadata.deletionTimestamp ?? '',
+    };
 
     const deletedByUid = item.metadata.annotations?.[AnnoKeyUpdatedBy];
     if (deletedByUid) {
@@ -232,23 +233,29 @@ export function filterSearchResults(
   if (query.sort) {
     if (query.sort === 'deleted-asc' || query.sort === 'deleted-desc') {
       const mult = query.sort === 'deleted-desc' ? -1 : 1;
+      // An empty or unparseable value means the item carries no deletion time, which is
+      // not something to order by, so those items go last whichever way the sort runs.
+      const parseDeletionTime = (v: string | number | undefined): number | undefined => {
+        if (typeof v !== 'string' || v === '') {
+          return undefined;
+        }
+        const parsed = Date.parse(v);
+        return isNaN(parsed) ? undefined : parsed;
+      };
       filtered.sort((a, b) => {
-        const timestampA = a.field.deletionTimestamp;
-        const timestampB = b.field.deletionTimestamp;
+        const timeA = parseDeletionTime(a.field.deletionTimestamp);
+        const timeB = parseDeletionTime(b.field.deletionTimestamp);
 
-        // Handle missing or invalid timestamps - items without timestamps go to the end
-        if (typeof timestampA !== 'string' && typeof timestampB !== 'string') {
+        if (timeA === undefined && timeB === undefined) {
           return 0;
         }
-        if (typeof timestampA !== 'string') {
+        if (timeA === undefined) {
           return 1;
         }
-        if (typeof timestampB !== 'string') {
+        if (timeB === undefined) {
           return -1;
         }
 
-        const timeA = Date.parse(timestampA);
-        const timeB = Date.parse(timestampB);
         return mult * (timeA - timeB);
       });
     } else if (query.sort === 'deletedby-asc' || query.sort === 'deletedby-desc') {

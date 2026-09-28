@@ -244,6 +244,60 @@ describe('formatDeletedByDisplayValue', () => {
   });
 });
 
+describe('filterSearchResults deleted sort', () => {
+  function makeHit(title: string, deletionTimestamp: string): SearchHit {
+    return {
+      resource: 'dashboards',
+      name: title.toLowerCase(),
+      title,
+      folder: 'general',
+      tags: [],
+      field: { deletionTimestamp },
+      url: '',
+    };
+  }
+
+  it('sorts by deletion time in both directions', () => {
+    const hits = [
+      makeHit('A', '2026-09-25T20:43:31Z'),
+      makeHit('B', '2026-09-20T10:00:00Z'),
+      makeHit('C', '2026-09-28T08:55:21Z'),
+    ];
+
+    expect(filterSearchResults([...hits], { sort: 'deleted-asc' }).map((h) => h.title)).toEqual(['B', 'A', 'C']);
+    expect(filterSearchResults([...hits], { sort: 'deleted-desc' }).map((h) => h.title)).toEqual(['C', 'A', 'B']);
+  });
+
+  // An empty value is what an object deleted before deletion times were recorded carries,
+  // and it must not be read as a date.
+  it('sends hits without a usable deletion time to the end in both directions', () => {
+    const hits = [
+      makeHit('undated', ''),
+      makeHit('unparseable', 'not a date'),
+      makeHit('A', '2026-09-25T20:43:31Z'),
+      makeHit('B', '2026-09-20T10:00:00Z'),
+    ];
+
+    const asc = filterSearchResults([...hits], { sort: 'deleted-asc' });
+    expect(asc.map((h) => h.title).slice(0, 2)).toEqual(['B', 'A']);
+    expect(
+      asc
+        .map((h) => h.title)
+        .slice(2)
+        .sort()
+    ).toEqual(['undated', 'unparseable']);
+
+    const desc = filterSearchResults([...hits], { sort: 'deleted-desc' });
+    expect(desc.map((h) => h.title).slice(0, 2)).toEqual(['A', 'B']);
+    expect(
+      desc
+        .map((h) => h.title)
+        .slice(2)
+        .sort()
+    ).toEqual(['undated', 'unparseable']);
+  });
+});
+
 describe('filterSearchResults deletedby sort', () => {
   function makeHit(title: string, deletedBy?: string): SearchHit {
     const field: Record<string, string | number> = {};

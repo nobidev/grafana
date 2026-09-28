@@ -1,5 +1,4 @@
 import { cx } from '@emotion/css';
-import { intervalToDuration } from 'date-fns/intervalToDuration';
 import Skeleton from 'react-loading-skeleton';
 
 import {
@@ -16,7 +15,7 @@ import { type PanelPluginMetas } from '@grafana/runtime/internal';
 import { useDataSourceInstanceSettings } from '@grafana/runtime/unstable';
 import { Checkbox, Icon, type IconName, TagList, Text, Tooltip } from '@grafana/ui';
 import { appEvents } from 'app/core/app_events';
-import { formatDate, formatDuration } from 'app/core/internationalization/dates';
+import { formatDate } from 'app/core/internationalization/dates';
 import { PluginIconName } from 'app/features/plugins/admin/types';
 import { ShowModalReactEvent } from 'app/types/events';
 
@@ -153,12 +152,10 @@ export const generateColumns = (
   });
   availableWidth -= width;
 
-  const showDeletedRemaining =
-    response.view.fields.permanentlyDeleteDate && hasValue(response.view.fields.permanentlyDeleteDate);
-
-  if (showDeletedRemaining && access.permanentlyDeleteDate) {
+  const deletionTimestampField = access.deletionTimestamp;
+  if (deletionTimestampField && hasValue(deletionTimestampField)) {
     width = DURATION_COLUMN_WIDTH;
-    columns.push(makeDeletedRemainingColumn(response, access.permanentlyDeleteDate, width, styles));
+    columns.push(makeDeletedColumn(response, deletionTimestampField, width, styles));
     availableWidth -= width;
   } else {
     width = TYPE_COLUMN_WIDTH;
@@ -439,23 +436,24 @@ function makeDataSourceColumn(
   };
 }
 
-function makeDeletedRemainingColumn(
+// The retention window lives in server config, so the page can only say when an
+// object was deleted, not how long is left before it is removed for good.
+function makeDeletedColumn(
   response: QueryResponse,
-  deletedField: Field<Date | undefined>,
+  deletedField: Field<string | undefined>,
   width: number,
   styles: Record<string, string>
 ): TableColumn {
   return {
-    id: 'column-delete-age',
+    id: 'column-deleted',
     field: deletedField,
     width,
-    Header: t('search.results-table.deleted-remaining-header', 'Time remaining'),
+    Header: t('search.results-table.deleted-header', 'Deleted'),
     Cell: (p) => {
-      const i = p.row.index;
-      const deletedDate = deletedField.values[i];
+      const deletedAt = deletedField.values[p.row.index];
       const { key, ...cellProps } = p.cellProps;
 
-      if (!deletedDate || !response.isItemLoaded(p.row.index)) {
+      if (!response.isItemLoaded(p.row.index)) {
         return (
           <div key={key} {...cellProps} className={cx(styles.cell, styles.typeCell)}>
             <Skeleton width={100} />
@@ -463,16 +461,21 @@ function makeDeletedRemainingColumn(
         );
       }
 
-      const duration = calcCoarseDuration(new Date(), deletedDate);
-      const isDeletingSoon = !Object.values(duration).some((v) => v > 0);
-      const formatted = isDeletingSoon
-        ? t('search.results-table.deleted-less-than-1-min', '< 1 min')
-        : formatDuration(duration, { style: 'long' });
+      const deletedDate = deletedAt ? new Date(deletedAt) : undefined;
+      // An object deleted before deletion times were recorded has none, so say so rather
+      // than leaving the cell looking like it is still loading.
+      if (!deletedDate || isNaN(deletedDate.getTime())) {
+        return (
+          <div key={key} {...cellProps} className={cx(styles.cell, styles.typeCell)}>
+            <span>-</span>
+          </div>
+        );
+      }
 
       return (
         <div key={key} {...cellProps} className={cx(styles.cell, styles.typeCell)}>
-          <Tooltip content={formatDate(deletedDate, { dateStyle: 'medium', timeStyle: 'short' })}>
-            <span>{formatted}</span>
+          <Tooltip content={formatDate(deletedDate, { dateStyle: 'full', timeStyle: 'medium' })}>
+            <span>{formatDate(deletedDate, { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </Tooltip>
         </div>
       );
@@ -596,23 +599,4 @@ function getDisplayValue({
     return '-';
   }
   return formattedValueToString(getDisplay(value));
-}
-
-/**
- * Calculates the rough duration between two dates, keeping only the most significant unit
- */
-function calcCoarseDuration(start: Date, end: Date) {
-  let { years = 0, months = 0, days = 0, hours = 0, minutes = 0 } = intervalToDuration({ start, end });
-
-  if (years > 0) {
-    return { years };
-  } else if (months > 0) {
-    return { months };
-  } else if (days > 0) {
-    return { days };
-  } else if (hours > 0) {
-    return { hours };
-  }
-
-  return { minutes };
 }
