@@ -263,6 +263,24 @@ func TestCanAccessAnnotations(t *testing.T) {
 		assert.Equal(t, 1, dashClient.calls[otherDashUID])
 	})
 
+	t.Run("checks deduped by scope and results mapped back to items", func(t *testing.T) {
+		orgAnno2 := annotationV0.Annotation{
+			ObjectMeta: metav1.ObjectMeta{Name: "org-anno-2", Namespace: ns},
+			Spec:       annotationV0.AnnotationSpec{DashboardUID: new(string)},
+		}
+		var captured []authtypes.BatchCheckItem
+		client := &fakeAccessClient{fn: func(req authtypes.BatchCheckItem) bool {
+			captured = append(captured, req)
+			return req.Name == dashUID
+		}}
+		dashClient := newFakeFolderResolver(map[string]string{dashUID: folderUID, otherDashUID: ""})
+		items := []annotationV0.Annotation{dashAnno, orgAnno, otherDashAnno, dashAnno2, orgAnno2}
+		allowed, err := canAccessAnnotations(ctx, testTracer, client, dashClient, ns, items, utils.VerbList)
+		require.NoError(t, err)
+		assert.Len(t, captured, 3, "one check per unique scope")
+		assert.Equal(t, []bool{true, false, false, true, false}, allowed)
+	})
+
 	t.Run("no auth info returns error", func(t *testing.T) {
 		ctxNoAuth := k8srequest.WithNamespace(context.Background(), ns)
 		client := &fakeAccessClient{fn: func(_ authtypes.BatchCheckItem) bool { return true }}

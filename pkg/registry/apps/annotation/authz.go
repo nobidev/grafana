@@ -3,7 +3,7 @@ package annotation
 import (
 	"context"
 	"fmt"
-	"strconv"
+	"strings"
 
 	authtypes "github.com/grafana/authlib/types"
 	"go.opentelemetry.io/otel/attribute"
@@ -71,9 +71,10 @@ func canAccessAnnotations(ctx context.Context, tracer trace.Tracer, accessClient
 	}
 
 	checks := make([]authtypes.BatchCheckItem, 0, len(items))
+	correlationIDs := make([]string, len(items))
+	seen := make(map[string]bool)
 	for i, anno := range items {
 		var item authtypes.BatchCheckItem
-		item.CorrelationID = strconv.Itoa(i)
 		item.Verb = verb
 
 		if anno.Spec.DashboardUID == nil || *anno.Spec.DashboardUID == "" {
@@ -88,10 +89,19 @@ func canAccessAnnotations(ctx context.Context, tracer trace.Tracer, accessClient
 			item.Folder = folderByDash[*anno.Spec.DashboardUID]
 		}
 
+		// Correlate checks by a unique identifier composed of the check's scope to deduplicate them within the batch.
+		item.CorrelationID = strings.Join([]string{item.Group, item.Resource, item.Subresource, item.Name, item.Folder}, "/")
+		correlationIDs[i] = item.CorrelationID
+		if seen[item.CorrelationID] {
+			continue
+		}
+		seen[item.CorrelationID] = true
+
 		checks = append(checks, item)
 	}
+	span.SetAttributes(attribute.Int("unique_check_count", len(checks)))
 
-	allowed := make([]bool, len(items))
+	allowedByID := make(map[string]bool, len(checks))
 	for start := 0; start < len(checks); start += authtypes.MaxBatchCheckItems {
 		end := min(start+authtypes.MaxBatchCheckItems, len(checks))
 		res, err := accessClient.BatchCheck(ctx, authInfo, authtypes.BatchCheckRequest{
@@ -102,12 +112,14 @@ func canAccessAnnotations(ctx context.Context, tracer trace.Tracer, accessClient
 			return nil, apierrors.NewInternalError(fmt.Errorf("batch authz check failed: %w", err))
 		}
 		for id, result := range res.Results {
-			if idx, err := strconv.Atoi(id); err == nil {
-				allowed[idx] = result.Allowed
-			}
+			allowedByID[id] = result.Allowed
 		}
 	}
 
+	allowed := make([]bool, len(items))
+	for i, id := range correlationIDs {
+		allowed[i] = allowedByID[id]
+	}
 	return allowed, nil
 }
 
