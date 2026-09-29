@@ -52,7 +52,7 @@ metadata:
 	require.NoError(t, err)
 	require.Len(t, manifests, 1)
 
-	registry := resource.NewSearchFieldsRegistry(nil, nil, nil)
+	registry := resource.NewSearchFieldsRegistry(nil, nil, nil, nil)
 	require.NoError(t, (resource.SearchOptions{SearchFields: registry}).ReloadManifests(nil, manifests))
 	_, hash, provider := registry.For(resource.NewLowerGroupResource("customcrdtest.ext.grafana.app", "rootwidgets"))
 	require.NotEmpty(t, hash)

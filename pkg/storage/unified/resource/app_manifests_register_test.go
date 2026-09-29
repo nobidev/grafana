@@ -65,8 +65,8 @@ func TestSearchFieldsRegistryReplaceWarnsOnRemovedKinds(t *testing.T) {
 		}},
 	})
 
-	registry := NewSearchFieldsRegistry(nil, nil, map[LowerGroupResource]SearchFieldsProvider{key: provider})
-	registry.Replace(nil, nil, nil)
+	registry := NewSearchFieldsRegistry(nil, nil, map[LowerGroupResource]SearchFieldsProvider{key: provider}, map[LowerGroupResource]bool{key: true})
+	registry.Replace(nil, nil, nil, nil)
 
 	_, _, got := registry.For(key)
 	require.Nil(t, got, "the kind is gone after the swap; the warning only reports it")

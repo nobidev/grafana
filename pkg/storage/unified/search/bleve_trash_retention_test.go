@@ -122,7 +122,7 @@ func newTrashRetentionIndex(t testing.TB, group, res string, retention search.Tr
 		FileThreshold: 5,
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource(group, res): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 		TrashRetention: retention,
 	}, nil)
 	require.NoError(t, err)

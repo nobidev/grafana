@@ -174,8 +174,25 @@ func ApplyManifests(registry *SearchFieldsRegistry, builtin, live []*app.Manifes
 	if err != nil {
 		return err
 	}
-	registry.Replace(selectable, hashes, providers)
+	registry.replace(selectable, hashes, providers, ManifestKindKeys(merged))
 	return nil
+}
+
+// ManifestKindKeys returns every (group, resource) declared by manifests,
+// including kinds without selectable or custom search fields.
+func ManifestKindKeys(manifests []*app.ManifestData) map[LowerGroupResource]bool {
+	keys := map[LowerGroupResource]bool{}
+	for _, manifest := range manifests {
+		if manifest == nil {
+			continue
+		}
+		for _, version := range manifest.Versions {
+			for _, kind := range version.Kinds {
+				keys[NewLowerGroupResource(manifest.Group, ManifestResourceName(kind))] = true
+			}
+		}
+	}
+	return keys
 }
 
 // SearchFieldsForManifests builds a SearchFieldsRegistry's three inputs from the

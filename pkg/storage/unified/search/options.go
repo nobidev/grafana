@@ -69,7 +69,7 @@ func NewSearchOptions(
 	// One registry holds selectable fields, hashes, and providers, shared by the
 	// index backend and the search server so a future live-manifest source can
 	// swap them consistently.
-	searchFields := resource.NewSearchFieldsRegistry(selectableFields, searchFieldsHashes, searchFieldsProviders)
+	searchFields := resource.NewSearchFieldsRegistry(selectableFields, searchFieldsHashes, searchFieldsProviders, resource.ManifestKindKeys(manifests))
 
 	if cfg.EnableSearch {
 		root := cfg.IndexPath

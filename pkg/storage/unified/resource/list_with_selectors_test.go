@@ -301,7 +301,7 @@ func TestShouldUseSearchForList(t *testing.T) {
 				s.manifestSearchFields = NewSearchFieldsRegistry(map[LowerGroupResource][]string{
 					NewLowerGroupResource("advisor.grafana.app", "advisors"):                    {"spec.foo"},
 					NewLowerGroupResource("mobile.ext.grafana.app", "mobileverificationtokens"): {"spec.token"},
-				}, nil, nil)
+				}, nil, nil, nil)
 			}
 
 			require.Equal(t, tc.expectedAllowed, s.shouldUseSearchForList(tc.req))
@@ -1414,7 +1414,7 @@ func (b *batchFakeBackend) ReadResource(ctx context.Context, req *resourcepb.Rea
 	return b.fakeBackend.ReadResource(ctx, req)
 }
 
-func (b *batchFakeBackend) BatchReadResource(_ context.Context, requests []*resourcepb.ReadRequest) (iter.Seq[*BackendReadResponse], error) {
+func (b *batchFakeBackend) BatchReadResource(_ context.Context, requests []*resourcepb.ReadRequest, _ bool) (iter.Seq[*BackendReadResponse], error) {
 	b.batchCalls++
 	b.batchReqs += len(requests)
 	return func(yield func(*BackendReadResponse) bool) {

@@ -93,7 +93,7 @@ func TestStandardDocumentBuilder(t *testing.T) {
 func registryWithProvider(gvr schema.GroupVersionResource, provider SearchFieldsProvider) *SearchFieldsRegistry {
 	return NewSearchFieldsRegistry(nil, nil, map[LowerGroupResource]SearchFieldsProvider{
 		NewLowerGroupResource(gvr.Group, gvr.Resource): provider,
-	})
+	}, nil)
 }
 
 func TestStandardDocumentBuilder_DeclaredFields(t *testing.T) {
@@ -311,6 +311,7 @@ func TestStandardDocumentBuilder_ReloadThroughRegistry(t *testing.T) {
 		map[LowerGroupResource][]string{sfKey: {"spec.x"}},
 		nil,
 		map[LowerGroupResource]SearchFieldsProvider{sfKey: providerFor("a", "spec.a")},
+		nil,
 	)
 	builder := StandardDocumentBuilder(registry)
 
@@ -327,6 +328,7 @@ func TestStandardDocumentBuilder_ReloadThroughRegistry(t *testing.T) {
 		map[LowerGroupResource][]string{sfKey: {"spec.y"}},
 		nil,
 		map[LowerGroupResource]SearchFieldsProvider{sfKey: providerFor("b", "spec.b")},
+		nil,
 	)
 
 	doc, err = builder.BuildDocument(ctx, key, 1, body)

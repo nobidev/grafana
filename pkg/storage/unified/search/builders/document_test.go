@@ -54,7 +54,7 @@ func iamTestRegistry(t *testing.T) *resource.SearchFieldsRegistry {
 	t.Helper()
 	sel, hashes, providers, err := resource.SearchFieldsForManifests(iam.LocalManifest().ManifestData)
 	require.NoError(t, err)
-	return resource.NewSearchFieldsRegistry(sel, hashes, providers)
+	return resource.NewSearchFieldsRegistry(sel, hashes, providers, nil)
 }
 
 func TestUserDocumentBuilder(t *testing.T) {

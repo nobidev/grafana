@@ -111,7 +111,7 @@ func TestUserSearchFieldsAcceptedByIndex(t *testing.T) {
 	backend, err := unifiedsearch.NewBleveBackend(unifiedsearch.BleveOptions{
 		Root:          t.TempDir(),
 		FileThreshold: 100,
-		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, providers),
+		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, providers, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)

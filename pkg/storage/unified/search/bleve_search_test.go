@@ -1455,7 +1455,7 @@ func newTestDashboardsIndexWithMetrics(t testing.TB, threshold int64, size int64
 		FileThreshold: threshold, // use in-memory for tests
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, metrics)
 	require.NoError(t, err)
 
@@ -1497,7 +1497,7 @@ func newTestIndexWithFields(t testing.TB, key resource.NamespacedResource, colum
 	backend, err := search.NewBleveBackend(search.BleveOptions{
 		Root:          t.TempDir(),
 		FileThreshold: threshold,
-		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{sfKey: provider}),
+		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{sfKey: provider}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -1563,7 +1563,7 @@ func TestIndexAndSearchSelectableFields(t *testing.T) {
 		FileThreshold: threshold, // use in-memory for tests
 		SearchFields: resource.NewSearchFieldsRegistry(map[resource.LowerGroupResource][]string{
 			resource.NewLowerGroupResource(key.Group, key.Resource): {"spec.some.field", "spec.some.other.field"},
-		}, nil, nil),
+		}, nil, nil, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -1800,7 +1800,7 @@ func newTestDashboardsIndexPostRankWithConfig(t testing.TB, size int64, cfg sear
 		PostRankAuthz:        cfg,
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -4112,7 +4112,7 @@ func newTestIndexWithTypedFields(t testing.TB, key resource.NamespacedResource, 
 	backend, err := search.NewBleveBackend(search.BleveOptions{
 		Root:          t.TempDir(),
 		FileThreshold: threshold,
-		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{sfKey: provider}),
+		SearchFields:  resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{sfKey: provider}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -4279,7 +4279,7 @@ func newResourceVersionIndex(t testing.TB, key resource.NamespacedResource, post
 		PostRankAuthzEnabled: postRankAuthz,
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource(key.Group, key.Resource): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)

@@ -576,14 +576,15 @@ func (p *mapProvider) IndexAffectingHash(group, resource string) string {
 
 // SearchFieldsRegistry holds the per-kind search-field wiring shared by the
 // index backend (which builds the bleve mapping) and the search server (which
-// decides when an index must be rebuilt). A mutex guards all three maps so a
-// future live-manifest source can replace them together, keeping the mapping
+// decides when an index must be rebuilt). A mutex guards the manifest-derived
+// state so a live-manifest source can replace it together, keeping the mapping
 // the backend builds and the hash the server compares consistent.
 type SearchFieldsRegistry struct {
 	mu                   sync.RWMutex
 	selectableFields     map[LowerGroupResource][]string
 	searchFieldsHashes   map[LowerGroupResource]string
 	searchFieldsProvider map[LowerGroupResource]SearchFieldsProvider
+	knownKinds           map[LowerGroupResource]bool
 }
 
 // NewSearchFieldsRegistry returns a registry seeded with the given per-kind
@@ -592,11 +593,13 @@ func NewSearchFieldsRegistry(
 	selectableFields map[LowerGroupResource][]string,
 	searchFieldsHashes map[LowerGroupResource]string,
 	searchFieldsProvider map[LowerGroupResource]SearchFieldsProvider,
+	knownKinds map[LowerGroupResource]bool,
 ) *SearchFieldsRegistry {
 	return &SearchFieldsRegistry{
 		selectableFields:     selectableFields,
 		searchFieldsHashes:   searchFieldsHashes,
 		searchFieldsProvider: searchFieldsProvider,
+		knownKinds:           knownKinds,
 	}
 }
 
@@ -606,6 +609,14 @@ func (r *SearchFieldsRegistry) For(key LowerGroupResource) (selectableFields []s
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	return r.selectableFields[key], r.searchFieldsHashes[key], r.searchFieldsProvider[key]
+}
+
+// HasKind reports whether the latest manifest view contains the kind, including
+// kinds that declare no selectable or custom search fields.
+func (r *SearchFieldsRegistry) HasKind(key LowerGroupResource) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.knownKinds[key]
 }
 
 // ForKey is For for a whole index key. A namespace-wide index declares its own
@@ -618,12 +629,22 @@ func (r *SearchFieldsRegistry) ForKey(key NamespacedResource) (selectableFields 
 	return r.For(NewLowerGroupResource(key.Group, key.Resource))
 }
 
-// Replace atomically swaps all three maps. Callers must not mutate the maps
+// Replace atomically swaps the registry maps. Callers must not mutate the maps
 // afterwards. A live-manifest source uses this to reload search fields.
 func (r *SearchFieldsRegistry) Replace(
 	selectableFields map[LowerGroupResource][]string,
 	searchFieldsHashes map[LowerGroupResource]string,
 	searchFieldsProvider map[LowerGroupResource]SearchFieldsProvider,
+	knownKinds map[LowerGroupResource]bool,
+) {
+	r.replace(selectableFields, searchFieldsHashes, searchFieldsProvider, knownKinds)
+}
+
+func (r *SearchFieldsRegistry) replace(
+	selectableFields map[LowerGroupResource][]string,
+	searchFieldsHashes map[LowerGroupResource]string,
+	searchFieldsProvider map[LowerGroupResource]SearchFieldsProvider,
+	knownKinds map[LowerGroupResource]bool,
 ) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -631,6 +652,7 @@ func (r *SearchFieldsRegistry) Replace(
 	r.selectableFields = selectableFields
 	r.searchFieldsHashes = searchFieldsHashes
 	r.searchFieldsProvider = searchFieldsProvider
+	r.knownKinds = knownKinds
 }
 
 // warnRemovedKinds logs kinds that have search fields now but would not after

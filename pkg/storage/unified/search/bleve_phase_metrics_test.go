@@ -77,7 +77,7 @@ func newPhaseMetricsBackend(t *testing.T, metrics *resource.BleveIndexMetrics, f
 		BuildVersion:  "12.3.45-789",
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, metrics)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)

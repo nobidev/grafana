@@ -63,7 +63,7 @@ func benchmarkBuildIndex(b *testing.B, docs int, fileThreshold int64) {
 		BuildVersion:  "12.3.45-789",
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): search.DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(b, err)
 	defer backend.Stop()

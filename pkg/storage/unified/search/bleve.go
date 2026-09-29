@@ -325,7 +325,7 @@ func NewBleveBackend(opts BleveOptions, indexMetrics *resource.BleveIndexMetrics
 
 	fields := opts.SearchFields
 	if fields == nil {
-		fields = resource.NewSearchFieldsRegistry(nil, nil, nil)
+		fields = resource.NewSearchFieldsRegistry(nil, nil, nil, nil)
 	}
 
 	requiredFeatures := opts.RequiredIndexFeatures

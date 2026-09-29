@@ -534,7 +534,7 @@ func newSearchServer(opts SearchOptions, storage StorageBackend, vectorBackend v
 
 	searchFields := opts.SearchFields
 	if searchFields == nil {
-		searchFields = NewSearchFieldsRegistry(nil, nil, nil)
+		searchFields = NewSearchFieldsRegistry(nil, nil, nil, nil)
 	}
 
 	// Recording sites should not have to check for nil.

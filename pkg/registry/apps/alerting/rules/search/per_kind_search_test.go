@@ -81,7 +81,7 @@ func realRuleIndex(t *testing.T, key *resourcepb.ResourceKey, value string, getB
 	t.Helper()
 	selectable, hashes, providers, err := unifiedresource.SearchFieldsForManifests(rulesmanifest.LocalManifest().ManifestData)
 	require.NoError(t, err)
-	registry := unifiedresource.NewSearchFieldsRegistry(selectable, hashes, providers)
+	registry := unifiedresource.NewSearchFieldsRegistry(selectable, hashes, providers, nil)
 
 	info, err := getBuilder(registry)
 	require.NoError(t, err)

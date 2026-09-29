@@ -498,6 +498,7 @@ func TestSearchFieldsRegistry(t *testing.T) {
 		map[LowerGroupResource][]string{dash: {"spec.a", "spec.b"}},
 		map[LowerGroupResource]string{dash: "hash-1"},
 		map[LowerGroupResource]SearchFieldsProvider{dash: provider},
+		map[LowerGroupResource]bool{dash: true},
 	)
 
 	t.Run("reads the seeded values", func(t *testing.T) {
@@ -520,6 +521,7 @@ func TestSearchFieldsRegistry(t *testing.T) {
 			map[LowerGroupResource][]string{dash: {"spec.c"}},
 			map[LowerGroupResource]string{dash: "hash-2"},
 			nil,
+			map[LowerGroupResource]bool{dash: true},
 		)
 		selectable, hash, p := r.For(dash)
 		require.Equal(t, []string{"spec.c"}, selectable)

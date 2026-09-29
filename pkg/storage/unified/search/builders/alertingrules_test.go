@@ -70,7 +70,7 @@ func rulesTestRegistry(t *testing.T) *resource.SearchFieldsRegistry {
 	t.Helper()
 	sel, hashes, providers, err := resource.SearchFieldsForManifests(rulesManifestData)
 	require.NoError(t, err)
-	return resource.NewSearchFieldsRegistry(sel, hashes, providers)
+	return resource.NewSearchFieldsRegistry(sel, hashes, providers, nil)
 }
 
 func buildAlertRuleDoc(t *testing.T, value string) *resource.IndexableDocument {

@@ -1274,7 +1274,7 @@ func TestBulkIndexPopulatesFieldVariants(t *testing.T) {
 		FileThreshold: 5, // stay in memory
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource(group, kindResource): provider,
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)

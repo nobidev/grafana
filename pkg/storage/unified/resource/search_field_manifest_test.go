@@ -278,7 +278,7 @@ func TestSearchFieldsForManifests(t *testing.T) {
 }
 
 func TestApplyManifests(t *testing.T) {
-	registry := NewSearchFieldsRegistry(nil, nil, nil)
+	registry := NewSearchFieldsRegistry(nil, nil, nil, nil)
 	builtin := []*app.ManifestData{
 		mergeTestManifest("builtin", "a.test", app.ManifestVersion{Name: "v1", Kinds: []app.ManifestVersionKind{mergeTestKind("Foo", "builtinfield")}}),
 	}
@@ -307,4 +307,22 @@ func TestApplyManifests(t *testing.T) {
 	}
 	require.Contains(t, names, "livefield")
 	require.NotContains(t, names, "builtinfield")
+}
+
+func TestApplyManifestsTracksKindWithoutFields(t *testing.T) {
+	registry := NewSearchFieldsRegistry(nil, nil, nil, nil)
+	live := []*app.ManifestData{{
+		Group: "runtime.test",
+		Versions: []app.ManifestVersion{{
+			Name: "v1",
+			Kinds: []app.ManifestVersionKind{{
+				Kind:   "RuntimeKind",
+				Plural: "runtimekinds",
+			}},
+		}},
+	}}
+
+	require.NoError(t, ApplyManifests(registry, nil, live))
+	require.True(t, registry.HasKind(NewLowerGroupResource("runtime.test", "runtimekinds")))
+	require.False(t, registry.HasKind(NewLowerGroupResource("runtime.test", "unknown")))
 }

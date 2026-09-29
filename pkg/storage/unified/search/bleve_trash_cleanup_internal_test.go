@@ -157,7 +157,7 @@ func trashCleanupKey(group, res string) resource.NamespacedResource {
 func trashCleanupSearchFields(group, res string) *resource.SearchFieldsRegistry {
 	return resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 		resource.NewLowerGroupResource(group, res): DashboardSearchFieldsProviderForTest(),
-	})
+	}, nil)
 }
 
 func deletedTrashItem(key resource.NamespacedResource, name string, deletedAt *int64, rv int64) *resource.BulkIndexItem {

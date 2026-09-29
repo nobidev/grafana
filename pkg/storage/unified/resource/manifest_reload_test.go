@@ -42,7 +42,7 @@ func manifestReloadKind(obj *unstructured.Unstructured) map[string]interface{} {
 func manifestReloadOptions(t *testing.T, builtin []*app.ManifestData) SearchOptions {
 	t.Helper()
 	opts := SearchOptions{
-		SearchFields:    NewSearchFieldsRegistry(nil, nil, nil),
+		SearchFields:    NewSearchFieldsRegistry(nil, nil, nil, nil),
 		EmbeddingConfig: NewEmbeddingConfigRegistry(builtin),
 	}
 	require.NoError(t, opts.ReloadManifests(builtin, nil))

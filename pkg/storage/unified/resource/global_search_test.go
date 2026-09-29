@@ -122,7 +122,7 @@ func TestGlobalSearchFieldsHash(t *testing.T) {
 
 	// A namespace-wide index takes none of its inputs from a manifest, so the
 	// registry answers for it without being seeded.
-	registry := NewSearchFieldsRegistry(nil, nil, nil)
+	registry := NewSearchFieldsRegistry(nil, nil, nil, nil)
 	fields, got, provider := registry.ForKey(GlobalSearchKey("ns"))
 	assert.Equal(t, hash, got)
 	assert.Empty(t, fields)

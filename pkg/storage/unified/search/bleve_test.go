@@ -63,7 +63,7 @@ func TestBleveBackend(t *testing.T) {
 		FileThreshold: 5, // with more than 5 items we create a file on disk
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -82,7 +82,7 @@ func TestBleveSearchRootFolderExpansion(t *testing.T) {
 		FileThreshold: 5,
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource("dashboard.grafana.app", "dashboards"): DashboardSearchFieldsProviderForTest(),
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
@@ -2657,7 +2657,7 @@ func TestIndexBuildInfoSearchFieldsHashRoundTrip(t *testing.T) {
 		resource.NewLowerGroupResource(ns.Group, ns.Resource): hash,
 	}
 
-	be, _ := setupBleveBackend(t, withFileThreshold(100), withSearchFields(resource.NewSearchFieldsRegistry(nil, hashes, nil)))
+	be, _ := setupBleveBackend(t, withFileThreshold(100), withSearchFields(resource.NewSearchFieldsRegistry(nil, hashes, nil, nil)))
 	index, err := be.BuildIndex(t.Context(), ns, 10, "test", indexTestDocs(ns, 10, 100), nil, false, time.Time{}, 0)
 	require.NoError(t, err)
 
@@ -2769,7 +2769,7 @@ func TestBleveTextFieldFilterAndSort(t *testing.T) {
 		FileThreshold: 5,
 		SearchFields: resource.NewSearchFieldsRegistry(nil, nil, map[resource.LowerGroupResource]resource.SearchFieldsProvider{
 			resource.NewLowerGroupResource(group, kindResource): provider,
-		}),
+		}, nil),
 	}, nil)
 	require.NoError(t, err)
 	t.Cleanup(backend.Stop)
