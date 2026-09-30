@@ -38,23 +38,17 @@ export function GroupedView({
   const routeProxyActive = useRouteProxyActive();
   const externalRuleSources = useMemo(() => (routeProxyActive ? [] : getExternalRulesSources()), [routeProxyActive]);
 
-  // Use custom hook for centralized state management
   const { updateState, loadingDataSources, dataSourcesWithNoRules, settledDataSourceUids } =
     useDataSourceLoadingStates();
 
-  // Both counts are re-derived against the *current* set of external data sources, not just
-  // filtered from the raw reported-state map: a uid can linger in that map (e.g. reported empty
-  // on unmount) after it stops being one of externalRuleSources - e.g. once routeProxyActive
-  // flips true and drops every external source. Grafana-managed is never in this list either, so
-  // no separate exclusion for it is needed.
+  // Re-derived against the current external sources, since a uid can linger in the reported-state
+  // map after it stops being one (e.g. routeProxyActive flips true and drops every external source).
   const externalUidSet = useMemo(() => new Set(externalRuleSources.map((ds) => ds.uid)), [externalRuleSources]);
   const hiddenDataSourcesCount = hideEmptyDataSources
     ? dataSourcesWithNoRules.filter((uid) => externalUidSet.has(uid)).length
     : 0;
 
-  // A data source has no reported state at all until its feature discovery resolves, so treat
-  // "not yet in the map" as pending too - otherwise data sources stuck in slow discovery would be
-  // silently uncounted instead of showing up as still-being-checked.
+  // Treat "not yet reported" as pending too, so data sources stuck in slow discovery still count.
   const settledUidSet = useMemo(() => new Set(settledDataSourceUids), [settledDataSourceUids]);
   const pendingExternalCount = externalRuleSources.filter((ds) => !settledUidSet.has(ds.uid)).length;
 
