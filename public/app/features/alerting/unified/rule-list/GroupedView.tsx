@@ -41,14 +41,13 @@ export function GroupedView({
   const { updateState, loadingDataSources, dataSourcesWithNoRules, settledDataSourceUids } =
     useDataSourceLoadingStates();
 
-  // Re-derived against the current external sources, since a uid can linger in the reported-state
-  // map after it stops being one (e.g. routeProxyActive flips true and drops every external source).
+  // Unmounted loaders can leave stale state, so only count current external sources.
   const externalUidSet = useMemo(() => new Set(externalRuleSources.map((ds) => ds.uid)), [externalRuleSources]);
   const hiddenDataSourcesCount = hideEmptyDataSources
     ? dataSourcesWithNoRules.filter((uid) => externalUidSet.has(uid)).length
     : 0;
 
-  // Treat "not yet reported" as pending too, so data sources stuck in slow discovery still count.
+  // Sources have no reported state during discovery and must still count as pending.
   const settledUidSet = useMemo(() => new Set(settledDataSourceUids), [settledDataSourceUids]);
   const pendingExternalCount = externalRuleSources.filter((ds) => !settledUidSet.has(ds.uid)).length;
 
@@ -107,9 +106,7 @@ function DataSourceLoader({
 
   const { uid, name } = rulesSourceIdentifier;
 
-  // A discovery error means this data source is done loading (as far as we're concerned), but it
-  // never reaches PaginatedDataSourceLoader, so nothing else would ever report that. Without this,
-  // it would count as "still pending" forever in the aggregate loading state.
+  // Discovery errors bypass PaginatedDataSourceLoader, so report them here to clear the pending count.
   useEffect(() => {
     if (error) {
       onLoadingStateChange?.(uid, { isLoading: false, rulesCount: 0, error });
