@@ -64,6 +64,7 @@ Most [generally available](https://grafana.com/docs/release-life-cycle/#general-
 | `alertingNotificationHistory`                | Enables the notification history feature                                                                                            | Yes                |
 | `newClickhouseConfigPageDesign`              | Enables new design for the Clickhouse data source configuration page                                                                | Yes                |
 | `azureResourcePickerUpdates`                 | Enables the updated Azure Monitor resource picker                                                                                   | Yes                |
+| `profilesHeatmap`                            | Enables heatmap visualization support for Pyroscope profiles                                                                        | Yes                |
 | `panelTimeSettings`                          | Enables a new panel time settings drawer                                                                                            | Yes                |
 | `inlineLogDetailsNoScrolls`                  | Enables an inline version of Log Details that creates no new scrolls                                                                | Yes                |
 | `lokiAlignedQuerySplitting`                  | Aligns query splitting chunks with UTC midnight                                                                                     | Yes                |
