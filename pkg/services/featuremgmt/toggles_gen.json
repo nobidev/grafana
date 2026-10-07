@@ -533,7 +533,8 @@
       "metadata": {
         "name": "alertingNotificationHistoryDetail",
         "resourceVersion": "1789554268270",
-        "creationTimestamp": "2026-09-16T10:24:28Z"
+        "creationTimestamp": "2026-09-16T10:24:28Z",
+        "deletionTimestamp": "2026-10-07T11:38:56Z"
       },
       "spec": {
         "description": "Enables the notification history detail page",
@@ -546,7 +547,8 @@
       "metadata": {
         "name": "alertingNotificationHistoryGlobal",
         "resourceVersion": "1789554268270",
-        "creationTimestamp": "2026-09-16T10:24:28Z"
+        "creationTimestamp": "2026-09-16T10:24:28Z",
+        "deletionTimestamp": "2026-10-07T11:38:56Z"
       },
       "spec": {
         "description": "Enables the notification history global menu item viewer",
@@ -559,7 +561,8 @@
       "metadata": {
         "name": "alertingNotificationHistoryRuleViewer",
         "resourceVersion": "1789554268270",
-        "creationTimestamp": "2026-09-16T10:24:28Z"
+        "creationTimestamp": "2026-09-16T10:24:28Z",
+        "deletionTimestamp": "2026-10-07T11:38:56Z"
       },
       "spec": {
         "description": "Enables the notification history tab in the rule viewer",
@@ -572,7 +575,8 @@
       "metadata": {
         "name": "alertingNotificationHistoryTriage",
         "resourceVersion": "1789554268270",
-        "creationTimestamp": "2026-09-16T10:24:28Z"
+        "creationTimestamp": "2026-09-16T10:24:28Z",
+        "deletionTimestamp": "2026-10-07T11:38:56Z"
       },
       "spec": {
         "description": "Enables the notification history timeline in the triage instance details drawer",
@@ -3358,7 +3362,8 @@
       "metadata": {
         "name": "kubernetesAlertingHistorian",
         "resourceVersion": "1789554268270",
-        "creationTimestamp": "2025-11-27T16:14:16Z"
+        "creationTimestamp": "2025-11-27T16:14:16Z",
+        "deletionTimestamp": "2026-10-07T11:38:56Z"
       },
       "spec": {
         "description": "Adds support for Kubernetes alerting historian APIs",
