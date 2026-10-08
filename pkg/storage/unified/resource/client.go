@@ -94,6 +94,7 @@ func NewLocalResourceClient(srv ResourceServer) ResourceClient {
 		&resourcepb.ResourceIndex_ServiceDesc,
 		&resourcepb.ManagedObjectIndex_ServiceDesc,
 		&resourcepb.BlobStore_ServiceDesc,
+		&resourcepb.BlobStoreStreaming_ServiceDesc,
 		&resourcepb.BulkStore_ServiceDesc,
 		&resourcepb.Diagnostics_ServiceDesc,
 		&resourcepb.Quotas_ServiceDesc,
@@ -104,6 +105,9 @@ func NewLocalResourceClient(srv ResourceServer) ResourceClient {
 		}
 		if metricsInt != nil && isResourceStore {
 			desc = grpchan.InterceptServer(desc, metricsInt, nil)
+		}
+		if desc == &resourcepb.BlobStoreStreaming_ServiceDesc {
+			desc = grpchan.InterceptServer(desc, nil, BlobStreamServerInterceptor(srv))
 		}
 
 		// Recovery is listed first so it is outermost and catches panics in auth and the handler.
