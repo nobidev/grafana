@@ -100,13 +100,14 @@ func NewLocalResourceClient(srv ResourceServer) ResourceClient {
 		&resourcepb.Quotas_ServiceDesc,
 	} {
 		isResourceStore := desc == &resourcepb.ResourceStore_ServiceDesc
+		isBlobStreaming := desc == &resourcepb.BlobStoreStreaming_ServiceDesc
 		if convertErrors {
 			desc = grpchan.InterceptServer(desc, UnaryErrorResultInterceptor(), nil)
 		}
 		if metricsInt != nil && isResourceStore {
 			desc = grpchan.InterceptServer(desc, metricsInt, nil)
 		}
-		if desc == &resourcepb.BlobStoreStreaming_ServiceDesc {
+		if isBlobStreaming {
 			desc = grpchan.InterceptServer(desc, nil, BlobStreamServerInterceptor(srv))
 		}
 
