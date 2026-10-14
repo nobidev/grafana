@@ -12,13 +12,15 @@ const (
 	PERMISSION_VIEW PermissionType = 1 << iota
 	PERMISSION_EDIT
 	PERMISSION_ADMIN
+	PERMISSION_CREATE
 )
 
 func (p PermissionType) String() string {
 	names := map[int]string{
-		int(PERMISSION_VIEW):  "View",
-		int(PERMISSION_EDIT):  "Edit",
-		int(PERMISSION_ADMIN): "Admin",
+		int(PERMISSION_VIEW):   "View",
+		int(PERMISSION_EDIT):   "Edit",
+		int(PERMISSION_ADMIN):  "Admin",
+		int(PERMISSION_CREATE): "Create",
 	}
 	return names[int(p)]
 }
