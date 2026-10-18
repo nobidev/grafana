@@ -749,7 +749,8 @@ export class NotebookLayoutManager
   /** A fresh, unconfigured Panel VizPanel — shared by buildCellFor (insert) and convertCellToPanel. */
   private buildVisualizationPanel(): VizPanel {
     const nextId = dashboardSceneGraph.getPanelIdGenerator(this);
-    return new VizPanel(buildVizPanelState(defaultVisualizationPanelKind(), nextId()));
+    const state = buildVizPanelState(defaultVisualizationPanelKind(), nextId());
+    return new VizPanel({ ...state, hoverHeader: this.state.isEditing ? false : state.hoverHeader });
   }
 
   /**
