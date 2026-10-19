@@ -347,12 +347,6 @@ export class NotebookScene extends SceneObjectBase<NotebookSceneState> implement
   }
 
   public onExitEditMode = () => {
-    const pendingVizChanges = this.state.body.whenVizChangesSettled();
-    if (pendingVizChanges) {
-      void this.autosave.flushWhenSettled().then(() => this.onExitEditMode());
-      return;
-    }
-
     // Read before the state change below, which is itself what turns this false.
     const wasEditing = this.state.isEditing;
 
