@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/fullstorydev/grpchan"
+	appsdk "github.com/grafana/grafana-app-sdk/app"
 	grpcUtils "github.com/grafana/grafana/pkg/storage/unified/resource/grpc"
 	"github.com/grafana/grafana/pkg/storage/unified/resourcepb"
 	"github.com/prometheus/client_golang/prometheus"
@@ -78,6 +79,9 @@ type Options struct {
 	// gated on Enabled(), so a disabled bus starts nothing.
 	Subscriber  nats.Subscriber
 	WatchExpiry resource.WatchExpiry
+	// ManifestDiscovery serves the router's /apis/discovery tree in-process.
+	// In-process storage reads live AppManifests from it for search.
+	ManifestDiscovery *resource.LocalManifestDiscovery
 }
 
 // natsEventSubscriber adapts nats.Subscriber to resource.EventSubscriber for the
@@ -132,7 +136,7 @@ func ProvideUnifiedStorageClient(opts *Options,
 		BlobStoreURL:            apiserverCfg.Key("blob_url").MustString(""),
 		BlobThresholdBytes:      apiserverCfg.Key("blob_threshold_bytes").MustInt(options.BlobThresholdDefault),
 		GrpcClientKeepaliveTime: apiserverCfg.Key("grpc_client_keepalive_time").MustDuration(options.DefaultGrpcClientKeepaliveTime),
-	}, opts.Cfg, opts.Features, opts.Tracer, opts.Reg, opts.Authzc, opts.Docs, storageMetrics, indexMetrics, vectorMetrics, opts.SecureValues, opts.VectorBackend, opts.Embedder, opts.Reranker, opts.DashboardStats, opts.KV, opts.EDB, gcGate, opts.Publisher, opts.Subscriber, opts.ExperimentalKV, opts.WatchExpiry)
+	}, opts.Cfg, opts.Features, opts.Tracer, opts.Reg, opts.Authzc, opts.Docs, storageMetrics, indexMetrics, vectorMetrics, opts.SecureValues, opts.VectorBackend, opts.Embedder, opts.Reranker, opts.DashboardStats, opts.KV, opts.EDB, gcGate, opts.Publisher, opts.Subscriber, opts.ExperimentalKV, opts.WatchExpiry, opts.ManifestDiscovery)
 	if err == nil {
 		// Used to get the folder stats
 		// Pass cfg directly so the federated client reads the current dual-writer mode
@@ -170,6 +174,7 @@ func newClient(opts options.StorageOptions,
 	eventSubscriber nats.Subscriber,
 	experimentalKV *resource.ExperimentalKVOptions,
 	watchExpiry resource.WatchExpiry,
+	manifestDiscovery *resource.LocalManifestDiscovery,
 ) (resource.ResourceClient, error) {
 	ctx := context.Background()
 
@@ -247,16 +252,35 @@ func newClient(opts options.StorageOptions,
 		if err != nil {
 			return nil, err
 		}
+		if cfg.ManifestApiServerAddress != "" || cfg.ManifestDiscoveryAddress != "" {
+			cfg.Logger.Warn("manifest_api_server_address and manifest_discovery_url are ignored by in-process storage; search reads the router's discovery manifests in-process")
+		}
+		// The provisioned files are only the starting set: the router fills
+		// /apis/discovery after storage is built, and its manifests replace them
+		// once it lists any.
 		if cfg.EnableEmbeddedAPIExtensions {
-			if cfg.ManifestApiServerAddress != "" || cfg.ManifestDiscoveryAddress != "" {
-				cfg.Logger.Warn("manifest_api_server_address and manifest_discovery_url are ignored by in-process storage; embedded search reads startup-provisioned AppManifest files")
-			}
 			manifests, err := loadEmbeddedAppManifests(cfg.ProvisioningPath)
 			if err != nil {
 				cfg.Logger.Error("failed to load embedded app manifests for search", "error", err)
 			}
 			if err := searchOptions.ReloadManifests(resource.AppManifests(), manifests); err != nil {
 				cfg.Logger.Error("failed to load embedded search fields", "error", err)
+			}
+		}
+		if manifestDiscovery != nil && (searchOptions.SearchFields != nil || searchOptions.EmbeddingConfig != nil) {
+			watcherLog := log.New("search-manifest-watcher")
+			watcher, err := resource.NewLocalManifestWatcher(manifestDiscovery, reg, func(live []*appsdk.ManifestData) {
+				if err := searchOptions.ReloadManifests(resource.AppManifests(), live); err != nil {
+					watcherLog.Error("manifest reload failed, keeping current search fields", "error", err)
+					return
+				}
+				watcherLog.Info("manifest reload applied", "live_manifests", len(live))
+			}, watcherLog)
+			if err != nil {
+				return nil, err
+			}
+			if err := watcher.StartAsync(ctx); err != nil {
+				return nil, fmt.Errorf("failed to start manifest watcher: %w", err)
 			}
 		}
 

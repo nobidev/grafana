@@ -58,6 +58,11 @@ const (
 	manifestSourceAppManifests = "appmanifests"
 )
 
+// Until the first poll lists a set, polls retry after manifestRetryMin,
+// doubling up to the poll interval, so a server that was briefly unavailable
+// at startup doesn't leave search without live manifests for a whole interval.
+const manifestRetryMin = 5 * time.Second
+
 // manifestPollTimeout bounds one poll cycle so a hung request can't wedge the
 // watcher: without it a stalled initial poll would block reaching Running and a
 // stalled later poll would block all retries.
@@ -311,16 +316,28 @@ func (w *ManifestWatcher) starting(ctx context.Context) error {
 }
 
 func (w *ManifestWatcher) running(ctx context.Context) error {
-	ticker := time.NewTicker(w.pollInterval)
-	defer ticker.Stop()
+	retry := manifestRetryMin
 	for {
+		delay := w.pollInterval
+		if !w.hasSnapshot() {
+			delay = min(retry, w.pollInterval)
+			retry *= 2
+		}
+		timer := time.NewTimer(delay)
 		select {
 		case <-ctx.Done():
+			timer.Stop()
 			return nil
-		case <-ticker.C:
+		case <-timer.C:
 			w.runPollCycle(ctx)
 		}
 	}
+}
+
+func (w *ManifestWatcher) hasSnapshot() bool {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	return len(w.byName) > 0
 }
 
 // runPollCycle publishes the manifest set only if it changed. A failed list or
