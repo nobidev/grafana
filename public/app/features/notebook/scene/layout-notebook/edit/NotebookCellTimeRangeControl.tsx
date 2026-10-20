@@ -53,7 +53,10 @@ export function NotebookCellTimeRangeControl({ cell }: Props) {
     },
     overlayRef
   );
-  const { dialogProps } = useDialog({}, overlayRef);
+  const { dialogProps } = useDialog(
+    { 'aria-label': t('notebook.cell.time-range.dialog-label', 'Cell time range') },
+    overlayRef
+  );
 
   const ancestorTimeZone = getAncestorTimeZone(cell);
   const fiscalYearStartMonth = getAncestorFiscalYearStartMonth(cell);
