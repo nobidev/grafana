@@ -179,7 +179,7 @@ func dynamicManifestSource(name string, client dynamic.Interface, gvr schema.Gro
 // in-process.
 func discoveryManifestSource(discovery ManifestDiscovery) manifestSource {
 	return manifestSource{name: manifestSourceDiscovery, list: func(ctx context.Context) ([]listedManifest, error) {
-		list, err := discovery.List(ctx)
+		list, err := discovery.ListManifests(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("listing discovery manifests: %w", err)
 		}

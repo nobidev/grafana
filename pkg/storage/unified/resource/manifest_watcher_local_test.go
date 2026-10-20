@@ -17,7 +17,7 @@ type fakeManifestDiscovery struct {
 	items atomic.Pointer[[]appmanifestv1alpha2.AppManifest]
 }
 
-func (f *fakeManifestDiscovery) List(context.Context) (*appmanifestv1alpha2.AppManifestList, error) {
+func (f *fakeManifestDiscovery) ListManifests(context.Context) (*appmanifestv1alpha2.AppManifestList, error) {
 	list := &appmanifestv1alpha2.AppManifestList{}
 	if items := f.items.Load(); items != nil {
 		list.Items = *items
@@ -25,7 +25,7 @@ func (f *fakeManifestDiscovery) List(context.Context) (*appmanifestv1alpha2.AppM
 	return list, nil
 }
 
-func (f *fakeManifestDiscovery) Get(context.Context, string) (*appmanifestv1alpha2.AppManifest, error) {
+func (f *fakeManifestDiscovery) GetManifest(context.Context, string) (*appmanifestv1alpha2.AppManifest, error) {
 	return nil, nil
 }
 
