@@ -17,9 +17,11 @@ import (
 	"github.com/grafana/grafana/pkg/clientauth"
 	"github.com/grafana/grafana/pkg/setting"
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
@@ -104,13 +106,183 @@ func fakeManifestClient(objs ...runtime.Object) *dynamicfake.FakeDynamicClient {
 	return dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrToListKind, objs...)
 }
 
+func appManifestSources(client dynamic.Interface) []manifestSource {
+	return []manifestSource{{name: manifestSourceAppManifests, client: client, gvr: AppManifestGVR}}
+}
+
+// fakeDiscoveryClient serves the router's discovery list through a reactor:
+// the fake tracker files objects by their own kind, so it can't hold them under
+// the discovery resource.
+func fakeDiscoveryClient(list func() (*unstructured.UnstructuredList, error)) *dynamicfake.FakeDynamicClient {
+	client := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(runtime.NewScheme(), map[schema.GroupVersionResource]string{
+		ManifestDiscoveryGVR: "AppManifestList",
+	})
+	client.PrependReactor("list", ManifestDiscoveryGVR.Resource, func(k8stesting.Action) (bool, runtime.Object, error) {
+		l, err := list()
+		if err != nil {
+			return true, nil, err
+		}
+		return true, l, nil
+	})
+	return client
+}
+
+func discoveryList(objs ...*unstructured.Unstructured) *unstructured.UnstructuredList {
+	l := &unstructured.UnstructuredList{}
+	for _, o := range objs {
+		l.Items = append(l.Items, *o)
+	}
+	return l
+}
+
+func bothSources(discovery, appmanifests dynamic.Interface) []manifestSource {
+	return []manifestSource{
+		{name: manifestSourceDiscovery, client: discovery, gvr: ManifestDiscoveryGVR},
+		{name: manifestSourceAppManifests, client: appmanifests, gvr: AppManifestGVR},
+	}
+}
+
+// The router authenticates the authlib X-Access-Token header, against its own
+// audiences rather than the AppManifest API group.
+func TestManifestWatcher_DiscoveryAuthUsesAccessTokenHeader(t *testing.T) {
+	exchanger := &fakeTokenExchanger{token: "exchanged-token"}
+
+	var authorization, accessToken string
+	base := roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+		authorization = r.Header.Get("Authorization")
+		accessToken = r.Header.Get("X-Access-Token")
+		rr := httptest.NewRecorder()
+		rr.WriteHeader(http.StatusOK)
+		return rr.Result(), nil
+	})
+
+	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.org", nil)
+	resp, err := discoveryAuthWrapper(exchanger, "router-audience")(base).RoundTrip(req)
+	require.NoError(t, err)
+	_ = resp.Body.Close()
+
+	require.Equal(t, "Bearer exchanged-token", accessToken)
+	require.Empty(t, authorization)
+	require.NotNil(t, exchanger.gotReq)
+	require.Equal(t, []string{"router-audience"}, exchanger.gotReq.Audiences)
+	require.Equal(t, clientauth.WildcardNamespace, exchanger.gotReq.Namespace)
+}
+
+func TestManifestWatcher_PrefersDiscovery(t *testing.T) {
+	discovery := fakeDiscoveryClient(func() (*unstructured.UnstructuredList, error) {
+		return discoveryList(testAppManifestObj("folder.grafana.app", "folders", "folder.grafana.app", "Folder", "title")), nil
+	})
+	appmanifests := fakeManifestClient(
+		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
+	)
+	w := newManifestWatcher(bothSources(discovery, appmanifests), 0, nil, nil)
+	w.metrics = newManifestWatcherMetrics(prometheus.NewPedanticRegistry())
+	w.runPollCycle(t.Context())
+
+	got := w.Manifests()
+	require.Len(t, got, 1)
+	require.Equal(t, "folder.grafana.app", got[0].Group)
+	require.Equal(t, float64(1), testutil.ToFloat64(w.metrics.sourcePolls.WithLabelValues(manifestSourceDiscovery, "success")))
+	for _, a := range appmanifests.Actions() {
+		require.NotEqual(t, "list", a.GetVerb(), "the apiserver must not be asked when discovery answers")
+	}
+}
+
+func TestManifestWatcher_FallsBackFromDiscovery(t *testing.T) {
+	for name, list := range map[string]func() (*unstructured.UnstructuredList, error){
+		// A router without the endpoint yet answers 404.
+		"error": func() (*unstructured.UnstructuredList, error) {
+			return nil, apierrors.NewNotFound(schema.GroupResource{Group: "discovery", Resource: "manifests"}, "")
+		},
+		"empty": func() (*unstructured.UnstructuredList, error) { return discoveryList(), nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			appmanifests := fakeManifestClient(
+				testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
+			)
+			w := newManifestWatcher(bothSources(fakeDiscoveryClient(list), appmanifests), 0, nil, nil)
+			w.metrics = newManifestWatcherMetrics(prometheus.NewPedanticRegistry())
+			w.runPollCycle(t.Context())
+
+			got := w.Manifests()
+			require.Len(t, got, 1)
+			require.Equal(t, "dashboard.grafana.app", got[0].Group)
+			require.Equal(t, float64(1), testutil.ToFloat64(w.metrics.sourcePolls.WithLabelValues(manifestSourceDiscovery, name)))
+			require.Equal(t, float64(1), testutil.ToFloat64(w.metrics.sourcePolls.WithLabelValues(manifestSourceAppManifests, "success")))
+			require.Equal(t, float64(1), testutil.ToFloat64(w.metrics.polls.WithLabelValues("success")))
+		})
+	}
+}
+
+func TestManifestWatcher_AllSourcesFailKeepsPreviousSet(t *testing.T) {
+	fail := false
+	discovery := fakeDiscoveryClient(func() (*unstructured.UnstructuredList, error) {
+		if fail {
+			return nil, errors.New("router down")
+		}
+		return discoveryList(testAppManifestObj("dashboard.grafana.app", "dashboards", "dashboard.grafana.app", "Dashboard", "title")), nil
+	})
+	appmanifests := fakeManifestClient()
+	appmanifests.PrependReactor("list", "appmanifests", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, errors.New("apiserver down")
+	})
+	w := newManifestWatcher(bothSources(discovery, appmanifests), 0, nil, nil)
+	w.metrics = newManifestWatcherMetrics(prometheus.NewPedanticRegistry())
+	w.runPollCycle(t.Context())
+	require.Len(t, w.Manifests(), 1)
+
+	fail = true
+	w.runPollCycle(t.Context())
+	require.Len(t, w.Manifests(), 1)
+	require.Equal(t, float64(1), testutil.ToFloat64(w.metrics.polls.WithLabelValues("error")))
+}
+
+// Discovery names manifests by group and leaves out Operator and
+// ExtraPermissions; moving between sources with the same search content must
+// not publish, or every flap would force a reindex.
+func TestManifestWatcher_SwitchingSourcesDoesNotRepublish(t *testing.T) {
+	withOperator := func(o *unstructured.Unstructured) *unstructured.Unstructured {
+		o.Object["spec"].(map[string]interface{})["operator"] = map[string]interface{}{"url": "https://operator"}
+		return o
+	}
+	discoveryUp := false
+	discovery := fakeDiscoveryClient(func() (*unstructured.UnstructuredList, error) {
+		if !discoveryUp {
+			return nil, errors.New("not found")
+		}
+		return discoveryList(
+			testAppManifestObj("dashboard.grafana.app", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
+			testAppManifestObj("folder.grafana.app", "folders", "folder.grafana.app", "Folder", "title"),
+		), nil
+	})
+	// Object names sort the other way from their groups.
+	appmanifests := fakeManifestClient(
+		withOperator(testAppManifestObj("a-folders", "folders", "folder.grafana.app", "Folder", "title")),
+		withOperator(testAppManifestObj("b-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title")),
+	)
+	var calls int
+	w := newManifestWatcher(bothSources(discovery, appmanifests), 0, func([]*app.ManifestData) { calls++ }, nil)
+
+	w.runPollCycle(t.Context())
+	require.Equal(t, 1, calls)
+	require.Nil(t, w.Manifests()[0].Operator)
+
+	discoveryUp = true
+	w.runPollCycle(t.Context())
+	require.Equal(t, 1, calls)
+
+	discoveryUp = false
+	w.runPollCycle(t.Context())
+	require.Equal(t, 1, calls)
+}
+
 func TestManifestWatcher_PollConvertsManifests(t *testing.T) {
 	client := fakeManifestClient(
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 		testAppManifestObj("m-folders", "folders", "folder.grafana.app", "Folder", "title"),
 	)
 
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.runPollCycle(t.Context())
 
 	got := w.Manifests()
@@ -131,7 +303,7 @@ func TestManifestWatcher_OnChangeFiresOnlyWhenChanged(t *testing.T) {
 
 	var calls int
 	var last []*app.ManifestData
-	w := newManifestWatcher(client, 0, func(m []*app.ManifestData) {
+	w := newManifestWatcher(appManifestSources(client), 0, func(m []*app.ManifestData) {
 		calls++
 		last = m
 	}, nil)
@@ -150,7 +322,7 @@ func TestManifestWatcher_ListErrorKeepsPreviousSet(t *testing.T) {
 	client := fakeManifestClient(
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.runPollCycle(t.Context())
 	require.Len(t, w.Manifests(), 1)
 
@@ -166,7 +338,7 @@ func TestManifestWatcher_EmptyListKeepsPreviousSet(t *testing.T) {
 	client := fakeManifestClient(
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.runPollCycle(t.Context())
 	require.Len(t, w.Manifests(), 1)
 
@@ -182,7 +354,7 @@ func TestManifestWatcher_RecordsMetrics(t *testing.T) {
 	client := fakeManifestClient(
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.metrics = newManifestWatcherMetrics(prometheus.NewPedanticRegistry())
 
 	// First poll: one successful poll, one reload, one manifest, a fresh timestamp.
@@ -211,7 +383,7 @@ func TestManifestWatcher_PicksUpChangesOnNextPoll(t *testing.T) {
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
 	var calls int
-	w := newManifestWatcher(client, 0, func([]*app.ManifestData) { calls++ }, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, func([]*app.ManifestData) { calls++ }, nil)
 
 	w.runPollCycle(t.Context())
 	require.Len(t, w.Manifests(), 1)
@@ -230,7 +402,7 @@ func TestManifestWatcher_KeepsPreviousManifestOnParseFailure(t *testing.T) {
 	client := fakeManifestClient(
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.runPollCycle(t.Context())
 	require.Len(t, w.Manifests(), 1)
 
@@ -256,7 +428,7 @@ func TestManifestWatcher_KeepPreviousSurvivesRename(t *testing.T) {
 		testAppManifestObj("A", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
 	var calls int
-	w := newManifestWatcher(client, 0, func([]*app.ManifestData) { calls++ }, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, func([]*app.ManifestData) { calls++ }, nil)
 	w.runPollCycle(t.Context())
 	require.Equal(t, 1, calls)
 
@@ -293,7 +465,7 @@ func TestManifestWatcher_SkipsManifestThatFailsToConvert(t *testing.T) {
 		bad,
 		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
 	)
-	w := newManifestWatcher(client, 0, nil, nil)
+	w := newManifestWatcher(appManifestSources(client), 0, nil, nil)
 	w.runPollCycle(t.Context())
 
 	got := w.Manifests()
@@ -368,6 +540,28 @@ func TestNewManifestWatcherConfig(t *testing.T) {
 		require.Equal(t, "tok", wc.Token)
 		require.Equal(t, "http://exchange", wc.TokenExchangeURL)
 		require.Equal(t, 5*time.Minute, wc.PollInterval)
+	})
+
+	t.Run("configured with only the discovery endpoint", func(t *testing.T) {
+		cfg := newCfg()
+		cfg.ManifestDiscoveryAddress = "https://router"
+		cfg.ManifestDiscoveryAudience = "router-audience"
+		wc := NewManifestWatcherConfig(cfg)
+		require.NotNil(t, wc)
+		require.Equal(t, "https://router", wc.DiscoveryURL)
+		require.Equal(t, "router-audience", wc.DiscoveryAudience)
+		require.Empty(t, wc.APIServerURL)
+	})
+
+	t.Run("discovery ignored without an audience", func(t *testing.T) {
+		cfg := newCfg()
+		cfg.ManifestDiscoveryAddress = "https://router"
+		require.Nil(t, NewManifestWatcherConfig(cfg))
+
+		cfg.ManifestApiServerAddress = "https://apiserver"
+		wc := NewManifestWatcherConfig(cfg)
+		require.NotNil(t, wc)
+		require.Empty(t, wc.DiscoveryURL)
 	})
 
 	t.Run("insecure TLS ignored outside development", func(t *testing.T) {

@@ -248,8 +248,8 @@ func newClient(opts options.StorageOptions,
 			return nil, err
 		}
 		if cfg.EnableEmbeddedAPIExtensions {
-			if cfg.ManifestApiServerAddress != "" {
-				cfg.Logger.Warn("manifest_api_server_address is ignored by in-process storage; embedded search reads startup-provisioned AppManifest files")
+			if cfg.ManifestApiServerAddress != "" || cfg.ManifestDiscoveryAddress != "" {
+				cfg.Logger.Warn("manifest_api_server_address and manifest_discovery_url are ignored by in-process storage; embedded search reads startup-provisioned AppManifest files")
 			}
 			manifests, err := loadEmbeddedAppManifests(cfg.ProvisioningPath)
 			if err != nil {

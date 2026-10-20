@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -42,16 +43,37 @@ var AppManifestGVR = schema.GroupVersionResource{
 	Resource: "appmanifests",
 }
 
+// ManifestDiscoveryGVR is the router's read-only view of the AppManifests of
+// the groups it serves. Its items are apps.grafana.app/v1alpha2 AppManifests,
+// named by group, so they convert the same way as AppManifestGVR objects.
+var ManifestDiscoveryGVR = schema.GroupVersionResource{
+	Group:    "discovery",
+	Version:  "v1alpha2",
+	Resource: "manifests",
+}
+
+// Metric label values naming each manifest source.
+const (
+	manifestSourceDiscovery    = "discovery"
+	manifestSourceAppManifests = "appmanifests"
+)
+
 // manifestPollTimeout bounds one poll cycle so a hung request can't wedge the
 // watcher: without it a stalled initial poll would block reaching Running and a
 // stalled later poll would block all retries.
 const manifestPollTimeout = 1 * time.Minute
 
-// ManifestWatcherConfig holds the connection settings for the app-platform
-// apiserver that serves AppManifests.
+// ManifestWatcherConfig holds the connection settings for the servers that
+// publish AppManifests. When both are set, the router's discovery endpoint is
+// preferred and the app-platform apiserver is the fallback, while discovery is
+// still being rolled out.
 type ManifestWatcherConfig struct {
 	// APIServerURL is the URL of the app-platform apiserver serving AppManifests.
 	APIServerURL string
+	// DiscoveryURL is the URL of the router serving /apis/discovery/v1alpha2/manifests.
+	DiscoveryURL string
+	// DiscoveryAudience is the token audience the router accepts.
+	DiscoveryAudience string
 	// Token is the system token used to sign access tokens.
 	Token string
 	// TokenExchangeURL is the URL used to exchange the system token for an access token.
@@ -66,8 +88,9 @@ type ManifestWatcherConfig struct {
 }
 
 // NewManifestWatcherConfig builds a ManifestWatcherConfig from Grafana settings
-// and returns nil when the apiserver URL, token, or token exchange URL are
-// unset, so the watcher stays off unless explicitly configured.
+// and returns nil when neither the apiserver nor the discovery URL is set, or
+// the token or token exchange URL is unset, so the watcher stays off unless
+// explicitly configured.
 func NewManifestWatcherConfig(cfg *setting.Cfg) *ManifestWatcherConfig {
 	logger := log.New("search-manifest-watcher")
 	if cfg == nil {
@@ -82,30 +105,44 @@ func NewManifestWatcherConfig(cfg *setting.Cfg) *ManifestWatcherConfig {
 	}
 
 	wc := &ManifestWatcherConfig{
-		APIServerURL:     strings.TrimSpace(cfg.ManifestApiServerAddress),
-		Token:            strings.TrimSpace(grpcSection.Key("token").MustString("")),
-		TokenExchangeURL: strings.TrimSpace(grpcSection.Key("token_exchange_url").MustString("")),
-		CAFile:           strings.TrimSpace(cfg.ManifestWatcherCAFile),
-		AllowInsecure:    allowInsecure,
-		PollInterval:     cfg.ManifestWatcherPollInterval,
-		Log:              logger,
+		APIServerURL:      strings.TrimSpace(cfg.ManifestApiServerAddress),
+		DiscoveryURL:      strings.TrimSpace(cfg.ManifestDiscoveryAddress),
+		DiscoveryAudience: strings.TrimSpace(cfg.ManifestDiscoveryAudience),
+		Token:             strings.TrimSpace(grpcSection.Key("token").MustString("")),
+		TokenExchangeURL:  strings.TrimSpace(grpcSection.Key("token_exchange_url").MustString("")),
+		CAFile:            strings.TrimSpace(cfg.ManifestWatcherCAFile),
+		AllowInsecure:     allowInsecure,
+		PollInterval:      cfg.ManifestWatcherPollInterval,
+		Log:               logger,
 	}
 
-	if wc.APIServerURL == "" || wc.Token == "" || wc.TokenExchangeURL == "" {
-		logger.Warn("manifest watcher not configured - ensure manifest api server address, token, and token exchange url are set")
+	if wc.DiscoveryURL != "" && wc.DiscoveryAudience == "" {
+		logger.Error("manifest_discovery_url is set without manifest_discovery_audience; ignoring the discovery endpoint")
+		wc.DiscoveryURL = ""
+	}
+	if (wc.APIServerURL == "" && wc.DiscoveryURL == "") || wc.Token == "" || wc.TokenExchangeURL == "" {
+		logger.Warn("manifest watcher not configured - ensure a manifest api server or discovery address, token, and token exchange url are set")
 		return nil
 	}
 	return wc
 }
 
-// ManifestWatcher polls the app-platform apiserver for AppManifests and keeps a
-// current snapshot. It only produces the live manifest set; it does not wire it
-// into search.
+// manifestSource is one place the watcher can list AppManifests from.
+type manifestSource struct {
+	name   string // metric label value
+	client dynamic.Interface
+	gvr    schema.GroupVersionResource
+}
+
+// ManifestWatcher polls for AppManifests and keeps a current snapshot. It only
+// produces the live manifest set; it does not wire it into search.
 type ManifestWatcher struct {
 	services.Service
 
-	log          log.Logger
-	client       dynamic.Interface
+	log log.Logger
+	// sources are tried in order each poll; the first that lists a non-empty
+	// set wins.
+	sources      []manifestSource
 	pollInterval time.Duration
 	onChange     func([]*app.ManifestData)
 	metrics      *manifestWatcherMetrics
@@ -122,6 +159,7 @@ type ManifestWatcher struct {
 // registerer in tests, which promauto treats as a no-op.
 type manifestWatcherMetrics struct {
 	polls       *prometheus.CounterVec
+	sourcePolls *prometheus.CounterVec
 	reloads     prometheus.Counter
 	manifests   prometheus.Gauge
 	lastSuccess prometheus.Gauge
@@ -133,6 +171,10 @@ func newManifestWatcherMetrics(reg prometheus.Registerer) *manifestWatcherMetric
 			Name: "grafana_search_manifest_watcher_polls_total",
 			Help: "Manifest watcher poll cycles by result (success, empty, error).",
 		}, []string{"result"}),
+		sourcePolls: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "grafana_search_manifest_watcher_source_polls_total",
+			Help: "Manifest watcher list attempts by source (discovery, appmanifests) and result (success, empty, error).",
+		}, []string{"source", "result"}),
 		reloads: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "grafana_search_manifest_watcher_reloads_total",
 			Help: "Times the manifest watcher published a changed manifest set.",
@@ -148,10 +190,9 @@ func newManifestWatcherMetrics(reg prometheus.Registerer) *manifestWatcherMetric
 	}
 }
 
-// newManifestRESTConfig builds a rest.Config that authenticates to the
-// app-platform apiserver via token exchange, the same way the provisioning
-// operator reaches app-platform apiservers.
-func newManifestRESTConfig(cfg ManifestWatcherConfig) (*rest.Config, error) {
+// newManifestTokenExchanger builds the token exchange client shared by every
+// manifest source.
+func newManifestTokenExchanger(cfg ManifestWatcherConfig) (authnlib.TokenExchanger, error) {
 	var exchangeOpts []authnlib.ExchangeClientOpts
 	if cfg.AllowInsecure {
 		exchangeOpts = append(exchangeOpts, authnlib.WithHTTPClient(
@@ -168,17 +209,21 @@ func newManifestRESTConfig(cfg ManifestWatcherConfig) (*rest.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating token exchange client: %w", err)
 	}
+	return tc, nil
+}
 
+// newManifestRESTConfig builds a rest.Config for one manifest source.
+func newManifestRESTConfig(cfg ManifestWatcherConfig, host string, wrap transport.WrapperFunc) *rest.Config {
 	return &rest.Config{
 		APIPath:       "/apis",
-		Host:          cfg.APIServerURL,
+		Host:          host,
 		Timeout:       manifestPollTimeout,
-		WrapTransport: manifestAuthWrapper(tc),
+		WrapTransport: wrap,
 		TLSClientConfig: rest.TLSClientConfig{
 			CAFile:   cfg.CAFile,
 			Insecure: cfg.AllowInsecure && cfg.CAFile == "",
 		},
-	}, nil
+	}
 }
 
 // manifestAuthWrapper builds the transport wrapper used to reach the app-platform
@@ -189,18 +234,39 @@ func manifestAuthWrapper(exchanger authnlib.TokenExchanger) transport.WrapperFun
 	return clientauth.NewStaticTokenExchangeAuthorizationTransportWrapper(exchanger, AppManifestGVR.Group, clientauth.WildcardNamespace)
 }
 
+// discoveryAuthWrapper builds the transport wrapper used to reach the router,
+// which authenticates the authlib X-Access-Token header against its own
+// configured audiences.
+func discoveryAuthWrapper(exchanger authnlib.TokenExchanger, audience string) transport.WrapperFunc {
+	return clientauth.NewStaticTokenExchangeTransportWrapper(exchanger, audience, clientauth.WildcardNamespace)
+}
+
 // NewManifestWatcher creates a ManifestWatcher as a dskit service. The initial
 // poll runs in the starting state, so anything that waits for Running observes a
 // populated snapshot. onChange may be nil.
 func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, onChange func([]*app.ManifestData)) (*ManifestWatcher, error) {
-	restCfg, err := newManifestRESTConfig(cfg)
+	tc, err := newManifestTokenExchanger(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("building manifest REST config: %w", err)
+		return nil, err
 	}
 
-	client, err := dynamic.NewForConfig(restCfg)
-	if err != nil {
-		return nil, fmt.Errorf("creating dynamic client: %w", err)
+	var sources []manifestSource
+	if cfg.DiscoveryURL != "" {
+		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, cfg.DiscoveryURL, discoveryAuthWrapper(tc, cfg.DiscoveryAudience)))
+		if err != nil {
+			return nil, fmt.Errorf("creating discovery dynamic client: %w", err)
+		}
+		sources = append(sources, manifestSource{name: manifestSourceDiscovery, client: client, gvr: ManifestDiscoveryGVR})
+	}
+	if cfg.APIServerURL != "" {
+		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, cfg.APIServerURL, manifestAuthWrapper(tc)))
+		if err != nil {
+			return nil, fmt.Errorf("creating appmanifests dynamic client: %w", err)
+		}
+		sources = append(sources, manifestSource{name: manifestSourceAppManifests, client: client, gvr: AppManifestGVR})
+	}
+	if len(sources) == 0 {
+		return nil, fmt.Errorf("manifest watcher needs an apiserver or discovery URL")
 	}
 
 	interval := cfg.PollInterval
@@ -208,7 +274,7 @@ func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, on
 		interval = defaultPollInterval
 	}
 
-	w := newManifestWatcher(client, interval, onChange, cfg.Log)
+	w := newManifestWatcher(sources, interval, onChange, cfg.Log)
 	w.metrics = newManifestWatcherMetrics(reg)
 	w.Service = services.NewBasicService(w.starting, w.running, nil)
 	return w, nil
@@ -216,13 +282,13 @@ func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, on
 
 // newManifestWatcher builds the watcher without a service, so tests can drive
 // poll cycles directly.
-func newManifestWatcher(client dynamic.Interface, pollInterval time.Duration, onChange func([]*app.ManifestData), logger log.Logger) *ManifestWatcher {
+func newManifestWatcher(sources []manifestSource, pollInterval time.Duration, onChange func([]*app.ManifestData), logger log.Logger) *ManifestWatcher {
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
 	return &ManifestWatcher{
 		log:          logger,
-		client:       client,
+		sources:      sources,
 		pollInterval: pollInterval,
 		onChange:     onChange,
 		metrics:      newManifestWatcherMetrics(nil),
@@ -269,7 +335,7 @@ func (w *ManifestWatcher) runPollCycle(ctx context.Context) {
 	prev := w.byName
 	w.mu.RUnlock()
 
-	result, err := w.list(ctx, prev)
+	result, err := w.listFirst(ctx, prev)
 	if err != nil {
 		w.metrics.polls.WithLabelValues("error").Inc()
 		w.log.Error("manifest watcher poll cycle: list failed, keeping previous set", "error", err)
@@ -314,11 +380,41 @@ func (w *ManifestWatcher) runPollCycle(ctx context.Context) {
 	}
 }
 
-// list pages through all AppManifests, keyed by apiserver object name. When an
-// object fails to convert, its previously known version (from prev) is kept so a
-// transient parse failure can't drop its search fields; a genuinely unknown
+// listFirst returns the set from the first source that lists a non-empty one.
+// A later source is only asked when an earlier one fails or is empty, so while
+// the discovery endpoint is rolling out the apiserver covers stacks without it.
+// It returns an error only when every source failed.
+func (w *ManifestWatcher) listFirst(ctx context.Context, prev map[string]*app.ManifestData) (map[string]*app.ManifestData, error) {
+	var errs []error
+	listed := false
+	for _, src := range w.sources {
+		result, err := w.list(ctx, src, prev)
+		switch {
+		case err != nil:
+			w.metrics.sourcePolls.WithLabelValues(src.name, "error").Inc()
+			w.log.Warn("manifest watcher: source list failed", "source", src.name, "error", err)
+			errs = append(errs, fmt.Errorf("%s: %w", src.name, err))
+		case len(result) == 0:
+			w.metrics.sourcePolls.WithLabelValues(src.name, "empty").Inc()
+			w.log.Warn("manifest watcher: source listed zero manifests", "source", src.name)
+			listed = true
+		default:
+			w.metrics.sourcePolls.WithLabelValues(src.name, "success").Inc()
+			w.log.Debug("manifest watcher: listed manifests", "source", src.name, "manifests", len(result))
+			return result, nil
+		}
+	}
+	if listed {
+		return nil, nil
+	}
+	return nil, errors.Join(errs...)
+}
+
+// list pages through all AppManifests of one source, keyed by object name. When
+// an object fails to convert, its previously known version (from prev) is kept
+// so a transient parse failure can't drop its search fields; a genuinely unknown
 // object is skipped.
-func (w *ManifestWatcher) list(ctx context.Context, prev map[string]*app.ManifestData) (map[string]*app.ManifestData, error) {
+func (w *ManifestWatcher) list(ctx context.Context, src manifestSource, prev map[string]*app.ManifestData) (map[string]*app.ManifestData, error) {
 	result := make(map[string]*app.ManifestData)
 	var continueToken string
 	for {
@@ -328,12 +424,12 @@ func (w *ManifestWatcher) list(ctx context.Context, prev map[string]*app.Manifes
 		default:
 		}
 
-		page, err := w.client.Resource(AppManifestGVR).List(ctx, metav1.ListOptions{
+		page, err := src.client.Resource(src.gvr).List(ctx, metav1.ListOptions{
 			Limit:    pollPageSize,
 			Continue: continueToken,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("listing appmanifests: %w", err)
+			return nil, fmt.Errorf("listing %s: %w", src.gvr.Resource, err)
 		}
 		for i := range page.Items {
 			name := page.Items[i].GetName()
@@ -349,7 +445,7 @@ func (w *ManifestWatcher) list(ctx context.Context, prev map[string]*app.Manifes
 					"name", name, "error", err)
 				continue
 			}
-			result[name] = m
+			result[name] = searchManifest(m)
 		}
 		continueToken = page.GetContinue()
 		if continueToken == "" {
@@ -359,15 +455,33 @@ func (w *ManifestWatcher) list(ctx context.Context, prev map[string]*app.Manifes
 	return result, nil
 }
 
-// sortedManifests returns the map values ordered by apiserver object name. The
-// name is unique, so the published snapshot and its hash are deterministic even
-// when two objects share a group and app name.
+// searchManifest drops what the discovery endpoint leaves out, so both sources
+// publish the same data and switching between them does not force a reindex.
+// Search reads neither field.
+func searchManifest(m *app.ManifestData) *app.ManifestData {
+	out := *m
+	out.Operator = nil
+	out.ExtraPermissions = nil
+	return &out
+}
+
+// sortedManifests returns the map values ordered by group, then by object name.
+// Ordering by group first gives the same order whichever source listed them
+// (discovery names objects by group; the apiserver does not). The name is
+// unique, so the published snapshot and its hash stay deterministic even when
+// two objects share a group.
 func sortedManifests(byName map[string]*app.ManifestData) []*app.ManifestData {
 	names := make([]string, 0, len(byName))
 	for name := range byName {
 		names = append(names, name)
 	}
-	sort.Strings(names)
+	sort.Slice(names, func(i, j int) bool {
+		gi, gj := byName[names[i]].Group, byName[names[j]].Group
+		if gi != gj {
+			return gi < gj
+		}
+		return names[i] < names[j]
+	})
 	out := make([]*app.ManifestData, 0, len(byName))
 	for _, name := range names {
 		out = append(out, byName[name])
@@ -403,7 +517,7 @@ func ManifestFromUnstructured(item *unstructured.Unstructured) (*app.ManifestDat
 
 // hashManifests returns a stable hash of the manifest set, used to skip
 // publishing when a poll returns no real change. The input is already ordered by
-// sortedManifests (by unique object name), so the hash is deterministic.
+// sortedManifests, so the hash is deterministic.
 func hashManifests(manifests []*app.ManifestData) (string, error) {
 	datas := make([]app.ManifestData, 0, len(manifests))
 	for _, m := range manifests {
