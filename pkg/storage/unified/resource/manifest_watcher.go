@@ -134,9 +134,68 @@ func NewManifestWatcherConfig(cfg *setting.Cfg) *ManifestWatcherConfig {
 
 // manifestSource is one place the watcher can list AppManifests from.
 type manifestSource struct {
-	name   string // metric label value
-	client dynamic.Interface
-	gvr    schema.GroupVersionResource
+	name string // metric label value
+	list func(ctx context.Context) ([]listedManifest, error)
+}
+
+// listedManifest is one listed object, keyed by its object name. err is set
+// when the object could not be converted.
+type listedManifest struct {
+	name     string
+	manifest *app.ManifestData
+	err      error
+}
+
+// dynamicManifestSource pages through the AppManifests a Kubernetes API serves
+// as gvr.
+func dynamicManifestSource(name string, client dynamic.Interface, gvr schema.GroupVersionResource) manifestSource {
+	return manifestSource{name: name, list: func(ctx context.Context) ([]listedManifest, error) {
+		var listed []listedManifest
+		var continueToken string
+		for {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			page, err := client.Resource(gvr).List(ctx, metav1.ListOptions{
+				Limit:    pollPageSize,
+				Continue: continueToken,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("listing %s: %w", gvr.Resource, err)
+			}
+			for i := range page.Items {
+				m, err := ManifestFromUnstructured(&page.Items[i])
+				listed = append(listed, listedManifest{name: page.Items[i].GetName(), manifest: m, err: err})
+			}
+			continueToken = page.GetContinue()
+			if continueToken == "" {
+				return listed, nil
+			}
+		}
+	}}
+}
+
+// discoveryManifestSource lists the manifests the router publishes, read
+// in-process.
+func discoveryManifestSource(discovery ManifestDiscovery) manifestSource {
+	return manifestSource{name: manifestSourceDiscovery, list: func(ctx context.Context) ([]listedManifest, error) {
+		list, err := discovery.List(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("listing discovery manifests: %w", err)
+		}
+		listed := make([]listedManifest, 0, len(list.Items))
+		for i := range list.Items {
+			item := listedManifest{name: list.Items[i].Name}
+			data, err := list.Items[i].Spec.ToManifestData()
+			if err != nil {
+				item.err = fmt.Errorf("converting spec to manifest data: %w", err)
+			} else {
+				item.manifest = &data
+			}
+			listed = append(listed, item)
+		}
+		return listed, nil
+	}}
 }
 
 // ManifestWatcher polls for AppManifests and keeps a current snapshot. It only
@@ -261,14 +320,14 @@ func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, on
 		if err != nil {
 			return nil, fmt.Errorf("creating discovery dynamic client: %w", err)
 		}
-		sources = append(sources, manifestSource{name: manifestSourceDiscovery, client: client, gvr: ManifestDiscoveryGVR})
+		sources = append(sources, dynamicManifestSource(manifestSourceDiscovery, client, ManifestDiscoveryGVR))
 	}
 	if cfg.APIServerURL != "" {
 		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, cfg.APIServerURL, manifestAuthWrapper(tc)))
 		if err != nil {
 			return nil, fmt.Errorf("creating appmanifests dynamic client: %w", err)
 		}
-		sources = append(sources, manifestSource{name: manifestSourceAppManifests, client: client, gvr: AppManifestGVR})
+		sources = append(sources, dynamicManifestSource(manifestSourceAppManifests, client, AppManifestGVR))
 	}
 	if len(sources) == 0 {
 		return nil, fmt.Errorf("manifest watcher needs an apiserver or discovery URL")
@@ -432,42 +491,24 @@ func (w *ManifestWatcher) listFirst(ctx context.Context, prev map[string]*app.Ma
 // so a transient parse failure can't drop its search fields; a genuinely unknown
 // object is skipped.
 func (w *ManifestWatcher) list(ctx context.Context, src manifestSource, prev map[string]*app.ManifestData) (map[string]*app.ManifestData, error) {
-	result := make(map[string]*app.ManifestData)
-	var continueToken string
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		page, err := src.client.Resource(src.gvr).List(ctx, metav1.ListOptions{
-			Limit:    pollPageSize,
-			Continue: continueToken,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("listing %s: %w", src.gvr.Resource, err)
-		}
-		for i := range page.Items {
-			name := page.Items[i].GetName()
-			m, err := ManifestFromUnstructured(&page.Items[i])
-			if err != nil {
-				if p, ok := prev[name]; ok {
-					w.log.Warn("manifest watcher: keeping previous manifest, this poll failed to convert it",
-						"name", name, "error", err)
-					result[name] = p
-					continue
-				}
-				w.log.Warn("manifest watcher: skipping unknown manifest that failed to convert",
-					"name", name, "error", err)
+	listed, err := src.list(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[string]*app.ManifestData, len(listed))
+	for _, item := range listed {
+		if item.err != nil {
+			if p, ok := prev[item.name]; ok {
+				w.log.Warn("manifest watcher: keeping previous manifest, this poll failed to convert it",
+					"name", item.name, "error", item.err)
+				result[item.name] = p
 				continue
 			}
-			result[name] = searchManifest(m)
+			w.log.Warn("manifest watcher: skipping unknown manifest that failed to convert",
+				"name", item.name, "error", item.err)
+			continue
 		}
-		continueToken = page.GetContinue()
-		if continueToken == "" {
-			break
-		}
+		result[item.name] = searchManifest(item.manifest)
 	}
 	return result, nil
 }

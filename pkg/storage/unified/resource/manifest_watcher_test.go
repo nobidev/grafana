@@ -107,7 +107,7 @@ func fakeManifestClient(objs ...runtime.Object) *dynamicfake.FakeDynamicClient {
 }
 
 func appManifestSources(client dynamic.Interface) []manifestSource {
-	return []manifestSource{{name: manifestSourceAppManifests, client: client, gvr: AppManifestGVR}}
+	return []manifestSource{dynamicManifestSource(manifestSourceAppManifests, client, AppManifestGVR)}
 }
 
 // fakeDiscoveryClient serves the router's discovery list through a reactor:
@@ -137,8 +137,8 @@ func discoveryList(objs ...*unstructured.Unstructured) *unstructured.Unstructure
 
 func bothSources(discovery, appmanifests dynamic.Interface) []manifestSource {
 	return []manifestSource{
-		{name: manifestSourceDiscovery, client: discovery, gvr: ManifestDiscoveryGVR},
-		{name: manifestSourceAppManifests, client: appmanifests, gvr: AppManifestGVR},
+		dynamicManifestSource(manifestSourceDiscovery, discovery, ManifestDiscoveryGVR),
+		dynamicManifestSource(manifestSourceAppManifests, appmanifests, AppManifestGVR),
 	}
 }
 

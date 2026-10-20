@@ -79,9 +79,10 @@ type Options struct {
 	// gated on Enabled(), so a disabled bus starts nothing.
 	Subscriber  nats.Subscriber
 	WatchExpiry resource.WatchExpiry
-	// ManifestDiscovery serves the router's /apis/discovery tree in-process.
-	// In-process storage reads live AppManifests from it for search.
-	ManifestDiscovery *resource.LocalManifestDiscovery
+	// ManifestDiscovery reads the manifests the router publishes under
+	// /apis/discovery. In-process storage reads live AppManifests from it for
+	// search.
+	ManifestDiscovery resource.ManifestDiscovery
 }
 
 // natsEventSubscriber adapts nats.Subscriber to resource.EventSubscriber for the
@@ -174,7 +175,7 @@ func newClient(opts options.StorageOptions,
 	eventSubscriber nats.Subscriber,
 	experimentalKV *resource.ExperimentalKVOptions,
 	watchExpiry resource.WatchExpiry,
-	manifestDiscovery *resource.LocalManifestDiscovery,
+	manifestDiscovery resource.ManifestDiscovery,
 ) (resource.ResourceClient, error) {
 	ctx := context.Background()
 
@@ -269,16 +270,13 @@ func newClient(opts options.StorageOptions,
 		}
 		if manifestDiscovery != nil && (searchOptions.SearchFields != nil || searchOptions.EmbeddingConfig != nil) {
 			watcherLog := log.New("search-manifest-watcher")
-			watcher, err := resource.NewLocalManifestWatcher(manifestDiscovery, reg, func(live []*appsdk.ManifestData) {
+			watcher := resource.NewLocalManifestWatcher(manifestDiscovery, reg, func(live []*appsdk.ManifestData) {
 				if err := searchOptions.ReloadManifests(resource.AppManifests(), live); err != nil {
 					watcherLog.Error("manifest reload failed, keeping current search fields", "error", err)
 					return
 				}
 				watcherLog.Info("manifest reload applied", "live_manifests", len(live))
 			}, watcherLog)
-			if err != nil {
-				return nil, err
-			}
 			if err := watcher.StartAsync(ctx); err != nil {
 				return nil, fmt.Errorf("failed to start manifest watcher: %w", err)
 			}
