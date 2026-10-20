@@ -38,17 +38,15 @@ func testTypedAppManifest(t *testing.T, name, appName, group, kind string, searc
 	return m
 }
 
-// The local watcher waits for the router to be set, and keeps retrying while
-// the router has not published any manifests yet.
+// The router publishes nothing until its first reconcile, which runs after
+// storage is built, so the local watcher keeps retrying until it lists a set.
 func TestLocalManifestWatcher_ReadsDiscoveryOnceRouterPublishes(t *testing.T) {
-	eventual := ProvideEventualManifestDiscovery()
+	router := &fakeManifestDiscovery{}
 	got := make(chan []*app.ManifestData, 1)
-	w := NewLocalManifestWatcher(eventual, prometheus.NewPedanticRegistry(), func(m []*app.ManifestData) { got <- m }, nil)
+	w := NewLocalManifestWatcher(router, prometheus.NewPedanticRegistry(), func(m []*app.ManifestData) { got <- m }, nil)
 	require.NoError(t, w.StartAsync(t.Context()))
 	t.Cleanup(func() { w.StopAsync() })
 
-	router := &fakeManifestDiscovery{}
-	eventual.Set(router)
 	require.Eventually(t, func() bool { return w.State().String() == "Running" }, 5*time.Second, 10*time.Millisecond)
 	require.Empty(t, w.Manifests())
 

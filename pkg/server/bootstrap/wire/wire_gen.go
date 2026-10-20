@@ -564,7 +564,10 @@ func Initialize(ctx context.Context, cfg *setting.Cfg, opts server.Options, apiO
 	}
 	subscriberService := nats.ProvideSubscriber(config, registerer)
 	watchExpiry := resource.NewWatchExpiry()
-	eventualManifestDiscovery := resource.ProvideEventualManifestDiscovery()
+	grafanaRouter, err := router.ProvideGrafanaRouter(cfg)
+	if err != nil {
+		return nil, err
+	}
 	options := &unified.Options{
 		Cfg:               cfg,
 		Features:          featureToggles,
@@ -584,7 +587,7 @@ func Initialize(ctx context.Context, cfg *setting.Cfg, opts server.Options, apiO
 		Publisher:         publisherService,
 		Subscriber:        subscriberService,
 		WatchExpiry:       watchExpiry,
-		ManifestDiscovery: eventualManifestDiscovery,
+		ManifestDiscovery: grafanaRouter,
 	}
 	storageMetrics := resource.ProvideStorageMetrics(registerer)
 	bleveIndexMetrics := resource.ProvideIndexMetrics(registerer)
@@ -920,7 +923,7 @@ func Initialize(ctx context.Context, cfg *setting.Cfg, opts server.Options, apiO
 	if err != nil {
 		return nil, err
 	}
-	routerService, err := router.ProvideService(cfg, featureToggles, routesLoader, registerer, eventualManifestDiscovery)
+	routerService, err := router.ProvideService(cfg, featureToggles, routesLoader, registerer, grafanaRouter)
 	if err != nil {
 		return nil, err
 	}
@@ -1361,7 +1364,10 @@ func InitializeForTest(ctx context.Context, t sqlutil.ITestDB, testingT interfac
 	}
 	subscriberService := nats.ProvideSubscriber(config, registerer)
 	watchExpiry := resource.NewWatchExpiry()
-	eventualManifestDiscovery := resource.ProvideEventualManifestDiscovery()
+	grafanaRouter, err := router.ProvideGrafanaRouter(cfg)
+	if err != nil {
+		return nil, err
+	}
 	options := &unified.Options{
 		Cfg:               cfg,
 		Features:          featureToggles,
@@ -1381,7 +1387,7 @@ func InitializeForTest(ctx context.Context, t sqlutil.ITestDB, testingT interfac
 		Publisher:         publisherService,
 		Subscriber:        subscriberService,
 		WatchExpiry:       watchExpiry,
-		ManifestDiscovery: eventualManifestDiscovery,
+		ManifestDiscovery: grafanaRouter,
 	}
 	storageMetrics := resource.ProvideStorageMetrics(registerer)
 	bleveIndexMetrics := resource.ProvideIndexMetrics(registerer)
@@ -1719,7 +1725,7 @@ func InitializeForTest(ctx context.Context, t sqlutil.ITestDB, testingT interfac
 	if err != nil {
 		return nil, err
 	}
-	routerService, err := router.ProvideService(cfg, featureToggles, routesLoader, registerer, eventualManifestDiscovery)
+	routerService, err := router.ProvideService(cfg, featureToggles, routesLoader, registerer, grafanaRouter)
 	if err != nil {
 		return nil, err
 	}
