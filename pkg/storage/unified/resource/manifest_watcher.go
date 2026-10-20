@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/services"
 
 	authnlib "github.com/grafana/authlib/authn"
@@ -58,14 +59,15 @@ const (
 	manifestSourceAppManifests = "appmanifests"
 )
 
-// Until the first poll lists a set, polls retry after manifestRetryMin,
-// doubling up to the poll interval, so a server that was briefly unavailable
-// at startup doesn't leave search without live manifests for a whole interval.
+// Until a poll lists a set, polls retry with backoff from manifestRetryMin up
+// to the poll interval, so a server that was briefly unavailable at startup
+// doesn't leave search without live manifests for a whole interval.
 const manifestRetryMin = 5 * time.Second
 
-// manifestPollTimeout bounds one poll cycle so a hung request can't wedge the
-// watcher: without it a stalled initial poll would block reaching Running and a
-// stalled later poll would block all retries.
+// manifestPollTimeout bounds each source's list so a hung request can't wedge
+// the watcher: without it a stalled initial poll would block reaching Running
+// and a stalled later poll would block all retries. It is per source so a hung
+// source still leaves the next one its full time.
 const manifestPollTimeout = 1 * time.Minute
 
 // ManifestWatcherConfig holds the connection settings for the servers that
@@ -208,8 +210,10 @@ type ManifestWatcher struct {
 	// set wins.
 	sources      []manifestSource
 	pollInterval time.Duration
-	onChange     func([]*app.ManifestData)
-	metrics      *manifestWatcherMetrics
+	// sourceTimeout bounds each source's list; manifestPollTimeout outside tests.
+	sourceTimeout time.Duration
+	onChange      func([]*app.ManifestData)
+	metrics       *manifestWatcherMetrics
 
 	// byName is the current snapshot, keyed by apiserver object name. The name key
 	// lets a poll keep a known manifest when the same object later fails to
@@ -351,11 +355,12 @@ func newManifestWatcher(sources []manifestSource, pollInterval time.Duration, on
 		logger = log.NewNopLogger()
 	}
 	return &ManifestWatcher{
-		log:          logger,
-		sources:      sources,
-		pollInterval: pollInterval,
-		onChange:     onChange,
-		metrics:      newManifestWatcherMetrics(nil),
+		log:           logger,
+		sources:       sources,
+		pollInterval:  pollInterval,
+		sourceTimeout: manifestPollTimeout,
+		onChange:      onChange,
+		metrics:       newManifestWatcherMetrics(nil),
 	}
 }
 
@@ -375,12 +380,11 @@ func (w *ManifestWatcher) starting(ctx context.Context) error {
 }
 
 func (w *ManifestWatcher) running(ctx context.Context) error {
-	retry := manifestRetryMin
+	retry := backoff.New(ctx, backoff.Config{MinBackoff: min(manifestRetryMin, w.pollInterval), MaxBackoff: w.pollInterval})
 	for {
 		delay := w.pollInterval
 		if !w.hasSnapshot() {
-			delay = min(retry, w.pollInterval)
-			retry *= 2
+			delay = retry.NextDelay()
 		}
 		timer := time.NewTimer(delay)
 		select {
@@ -404,9 +408,6 @@ func (w *ManifestWatcher) hasSnapshot() bool {
 // apiserver must never blank the live set, which would drop search fields and
 // force a needless reindex.
 func (w *ManifestWatcher) runPollCycle(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, manifestPollTimeout)
-	defer cancel()
-
 	w.mu.RLock()
 	prev := w.byName
 	w.mu.RUnlock()
@@ -464,7 +465,9 @@ func (w *ManifestWatcher) listFirst(ctx context.Context, prev map[string]*app.Ma
 	var errs []error
 	listed := false
 	for _, src := range w.sources {
-		result, err := w.list(ctx, src, prev)
+		srcCtx, cancel := context.WithTimeout(ctx, w.sourceTimeout)
+		result, err := w.list(srcCtx, src, prev)
+		cancel()
 		switch {
 		case err != nil:
 			w.metrics.sourcePolls.WithLabelValues(src.name, "error").Inc()

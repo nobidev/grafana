@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -573,4 +574,39 @@ func TestNewManifestWatcherConfig(t *testing.T) {
 		require.NotNil(t, wc)
 		require.False(t, wc.AllowInsecure)
 	})
+}
+
+// A hung source must not use up the next source's time: each gets its own
+// timeout, so the fallback still answers.
+func TestManifestWatcher_HungSourceLeavesFallbackItsTime(t *testing.T) {
+	hung := manifestSource{name: manifestSourceDiscovery, list: func(ctx context.Context) ([]listedManifest, error) {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}}
+	appmanifests := fakeManifestClient(
+		testAppManifestObj("m-dashboards", "dashboards", "dashboard.grafana.app", "Dashboard", "title"),
+	)
+	w := newManifestWatcher([]manifestSource{hung, appManifestSources(appmanifests)[0]}, 0, nil, nil)
+	w.sourceTimeout = 50 * time.Millisecond
+
+	w.runPollCycle(t.Context())
+	require.Len(t, w.Manifests(), 1)
+}
+
+// While no source lists a set, the watcher keeps retrying at most once per
+// poll interval, however long that lasts, and never spins.
+func TestManifestWatcher_RetriesWithoutSpinningWhileEmpty(t *testing.T) {
+	var polls atomic.Int64
+	empty := manifestSource{name: manifestSourceDiscovery, list: func(context.Context) ([]listedManifest, error) {
+		polls.Add(1)
+		return nil, nil
+	}}
+	interval := 20 * time.Millisecond
+	w := newManifestWatcher([]manifestSource{empty}, interval, nil, nil)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*interval)
+	defer cancel()
+	require.NoError(t, w.running(ctx))
+	require.Greater(t, polls.Load(), int64(5), "keeps retrying")
+	require.LessOrEqual(t, polls.Load(), int64(31), "no faster than the poll interval")
 }
