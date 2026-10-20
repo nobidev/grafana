@@ -27,7 +27,6 @@ import (
 	"github.com/grafana/dskit/grpcclient"
 	"github.com/grafana/dskit/middleware"
 	"github.com/grafana/dskit/services"
-	appsdk "github.com/grafana/grafana-app-sdk/app"
 
 	infraDB "github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/infra/log"
@@ -271,13 +270,7 @@ func newClient(opts options.StorageOptions,
 		}
 		if manifestDiscovery != nil && (searchOptions.SearchFields != nil || searchOptions.EmbeddingConfig != nil) {
 			watcherLog := log.New("search-manifest-watcher")
-			watcher := resource.NewLocalManifestWatcher(manifestDiscovery, reg, func(live []*appsdk.ManifestData) {
-				if err := searchOptions.ReloadManifests(resource.AppManifests(), live); err != nil {
-					watcherLog.Error("manifest reload failed, keeping current search fields", "error", err)
-					return
-				}
-				watcherLog.Info("manifest reload applied", "live_manifests", len(live))
-			}, watcherLog)
+			watcher := resource.NewLocalManifestWatcher(manifestDiscovery, reg, searchOptions.ManifestReloader(watcherLog), watcherLog)
 			if err := watcher.StartAsync(ctx); err != nil {
 				return nil, fmt.Errorf("failed to start manifest watcher: %w", err)
 			}

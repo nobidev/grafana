@@ -3,7 +3,6 @@ package resource
 import (
 	"time"
 
-	"github.com/grafana/dskit/services"
 	"github.com/grafana/grafana-app-sdk/app"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -20,8 +19,5 @@ const localManifestPollInterval = time.Minute
 // on its first reconcile, which runs after storage is built, so the initial poll
 // usually finds nothing; the watcher retries quickly until it lists a set.
 func NewLocalManifestWatcher(discovery ManifestDiscovery, reg prometheus.Registerer, onChange func([]*app.ManifestData), logger log.Logger) *ManifestWatcher {
-	w := newManifestWatcher([]manifestSource{discoveryManifestSource(discovery)}, localManifestPollInterval, onChange, logger)
-	w.metrics = newManifestWatcherMetrics(reg)
-	w.Service = services.NewBasicService(w.starting, w.running, nil)
-	return w
+	return newManifestWatcherService([]manifestSource{discoveryManifestSource(discovery)}, localManifestPollInterval, onChange, logger, reg)
 }

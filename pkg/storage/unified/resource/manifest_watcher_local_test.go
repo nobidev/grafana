@@ -2,7 +2,6 @@ package resource
 
 import (
 	"context"
-	"encoding/json"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -11,6 +10,7 @@ import (
 	appmanifestv1alpha2 "github.com/grafana/grafana-app-sdk/app/appmanifest/v1alpha2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type fakeManifestDiscovery struct {
@@ -31,10 +31,9 @@ func (f *fakeManifestDiscovery) GetManifest(context.Context, string) (*appmanife
 
 func testTypedAppManifest(t *testing.T, name, appName, group, kind string, searchFields ...string) appmanifestv1alpha2.AppManifest {
 	t.Helper()
-	body, err := json.Marshal(testAppManifestObj(name, appName, group, kind, searchFields...).Object)
-	require.NoError(t, err)
 	var m appmanifestv1alpha2.AppManifest
-	require.NoError(t, json.Unmarshal(body, &m))
+	obj := testAppManifestObj(name, appName, group, kind, searchFields...)
+	require.NoError(t, runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &m))
 	return m
 }
 

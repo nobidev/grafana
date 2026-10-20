@@ -49,7 +49,7 @@ var AppManifestGVR = schema.GroupVersionResource{
 // named by group, so they convert the same way as AppManifestGVR objects.
 var ManifestDiscoveryGVR = schema.GroupVersionResource{
 	Group:    "discovery",
-	Version:  "v1alpha2",
+	Version:  appmanifestv1alpha2.APIVersion, // the router versions the group by the AppManifest kind
 	Resource: "manifests",
 }
 
@@ -187,14 +187,8 @@ func discoveryManifestSource(discovery ManifestDiscovery) manifestSource {
 		}
 		listed := make([]listedManifest, 0, len(list.Items))
 		for i := range list.Items {
-			item := listedManifest{name: list.Items[i].Name}
-			data, err := list.Items[i].Spec.ToManifestData()
-			if err != nil {
-				item.err = fmt.Errorf("converting spec to manifest data: %w", err)
-			} else {
-				item.manifest = &data
-			}
-			listed = append(listed, item)
+			m, err := manifestFromSpec(list.Items[i].Spec)
+			listed = append(listed, listedManifest{name: list.Items[i].Name, manifest: m, err: err})
 		}
 		return listed, nil
 	}}
@@ -285,7 +279,6 @@ func newManifestRESTConfig(cfg ManifestWatcherConfig, host string, wrap transpor
 	return &rest.Config{
 		APIPath:       "/apis",
 		Host:          host,
-		Timeout:       manifestPollTimeout,
 		WrapTransport: wrap,
 		TLSClientConfig: rest.TLSClientConfig{
 			CAFile:   cfg.CAFile,
@@ -318,20 +311,25 @@ func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, on
 		return nil, err
 	}
 
+	// Discovery first: the apiserver is the fallback while discovery rolls out.
 	var sources []manifestSource
-	if cfg.DiscoveryURL != "" {
-		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, cfg.DiscoveryURL, discoveryAuthWrapper(tc, cfg.DiscoveryAudience)))
-		if err != nil {
-			return nil, fmt.Errorf("creating discovery dynamic client: %w", err)
+	for _, s := range []struct {
+		name string
+		host string
+		wrap transport.WrapperFunc
+		gvr  schema.GroupVersionResource
+	}{
+		{manifestSourceDiscovery, cfg.DiscoveryURL, discoveryAuthWrapper(tc, cfg.DiscoveryAudience), ManifestDiscoveryGVR},
+		{manifestSourceAppManifests, cfg.APIServerURL, manifestAuthWrapper(tc), AppManifestGVR},
+	} {
+		if s.host == "" {
+			continue
 		}
-		sources = append(sources, dynamicManifestSource(manifestSourceDiscovery, client, ManifestDiscoveryGVR))
-	}
-	if cfg.APIServerURL != "" {
-		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, cfg.APIServerURL, manifestAuthWrapper(tc)))
+		client, err := dynamic.NewForConfig(newManifestRESTConfig(cfg, s.host, s.wrap))
 		if err != nil {
-			return nil, fmt.Errorf("creating appmanifests dynamic client: %w", err)
+			return nil, fmt.Errorf("creating %s dynamic client: %w", s.name, err)
 		}
-		sources = append(sources, dynamicManifestSource(manifestSourceAppManifests, client, AppManifestGVR))
+		sources = append(sources, dynamicManifestSource(s.name, client, s.gvr))
 	}
 	if len(sources) == 0 {
 		return nil, fmt.Errorf("manifest watcher needs an apiserver or discovery URL")
@@ -342,10 +340,16 @@ func NewManifestWatcher(cfg ManifestWatcherConfig, reg prometheus.Registerer, on
 		interval = defaultPollInterval
 	}
 
-	w := newManifestWatcher(sources, interval, onChange, cfg.Log)
+	return newManifestWatcherService(sources, interval, onChange, cfg.Log, reg), nil
+}
+
+// newManifestWatcherService builds a watcher that runs as a dskit service, with
+// its metrics registered on reg.
+func newManifestWatcherService(sources []manifestSource, pollInterval time.Duration, onChange func([]*app.ManifestData), logger log.Logger, reg prometheus.Registerer) *ManifestWatcher {
+	w := newManifestWatcher(sources, pollInterval, onChange, logger)
 	w.metrics = newManifestWatcherMetrics(reg)
 	w.Service = services.NewBasicService(w.starting, w.running, nil)
-	return w, nil
+	return w
 }
 
 // newManifestWatcher builds the watcher without a service, so tests can drive
@@ -569,6 +573,10 @@ func ManifestFromUnstructured(item *unstructured.Unstructured) (*app.ManifestDat
 	if err := json.Unmarshal(specJSON, &spec); err != nil {
 		return nil, fmt.Errorf("unmarshaling spec: %w", err)
 	}
+	return manifestFromSpec(spec)
+}
+
+func manifestFromSpec(spec appmanifestv1alpha2.AppManifestSpec) (*app.ManifestData, error) {
 	data, err := spec.ToManifestData()
 	if err != nil {
 		return nil, fmt.Errorf("converting spec to manifest data: %w", err)

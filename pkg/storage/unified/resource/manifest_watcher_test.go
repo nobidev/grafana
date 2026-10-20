@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/transport"
 )
 
 type fakeTokenExchanger struct {
@@ -40,33 +41,6 @@ func (f *fakeTokenExchanger) Exchange(_ context.Context, req authn.TokenExchange
 type roundTripperFunc func(*http.Request) (*http.Response, error)
 
 func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
-
-// The app-platform apiserver authenticates a standard bearer token, so the
-// watcher's transport must send the exchanged token in Authorization, not the
-// authlib X-Access-Token header (which the server ignores, yielding anonymous).
-func TestManifestWatcher_AuthUsesAuthorizationHeader(t *testing.T) {
-	exchanger := &fakeTokenExchanger{token: "exchanged-token"}
-
-	var authorization, accessToken string
-	base := roundTripperFunc(func(r *http.Request) (*http.Response, error) {
-		authorization = r.Header.Get("Authorization")
-		accessToken = r.Header.Get("X-Access-Token")
-		rr := httptest.NewRecorder()
-		rr.WriteHeader(http.StatusOK)
-		return rr.Result(), nil
-	})
-
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.org", nil)
-	resp, err := manifestAuthWrapper(exchanger)(base).RoundTrip(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-
-	require.Equal(t, "Bearer exchanged-token", authorization)
-	require.Empty(t, accessToken)
-	require.NotNil(t, exchanger.gotReq)
-	require.Equal(t, []string{AppManifestGVR.Group}, exchanger.gotReq.Audiences)
-	require.Equal(t, clientauth.WildcardNamespace, exchanger.gotReq.Namespace)
-}
 
 // testAppManifestObj builds an unstructured AppManifest (v1alpha2) with one
 // version declaring a single kind and the given search fields.
@@ -143,30 +117,44 @@ func bothSources(discovery, appmanifests dynamic.Interface) []manifestSource {
 	}
 }
 
-// The router authenticates the authlib X-Access-Token header, against its own
-// audiences rather than the AppManifest API group.
-func TestManifestWatcher_DiscoveryAuthUsesAccessTokenHeader(t *testing.T) {
-	exchanger := &fakeTokenExchanger{token: "exchanged-token"}
+// Each source sends the exchanged token where its server reads it, for that
+// server's audience: the app-platform apiserver authenticates a standard bearer
+// token in Authorization (it ignores X-Access-Token, yielding anonymous), while
+// the router reads the authlib X-Access-Token header.
+func TestManifestWatcher_AuthHeaders(t *testing.T) {
+	for name, tc := range map[string]struct {
+		wrap          func(authn.TokenExchanger) transport.WrapperFunc
+		header, unset string
+		audience      string
+	}{
+		"appmanifests": {wrap: manifestAuthWrapper, header: "Authorization", unset: "X-Access-Token", audience: AppManifestGVR.Group},
+		"discovery": {
+			wrap:   func(e authn.TokenExchanger) transport.WrapperFunc { return discoveryAuthWrapper(e, "router-audience") },
+			header: "X-Access-Token", unset: "Authorization", audience: "router-audience",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			exchanger := &fakeTokenExchanger{token: "exchanged-token"}
+			var got http.Header
+			base := roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+				got = r.Header.Clone()
+				rr := httptest.NewRecorder()
+				rr.WriteHeader(http.StatusOK)
+				return rr.Result(), nil
+			})
 
-	var authorization, accessToken string
-	base := roundTripperFunc(func(r *http.Request) (*http.Response, error) {
-		authorization = r.Header.Get("Authorization")
-		accessToken = r.Header.Get("X-Access-Token")
-		rr := httptest.NewRecorder()
-		rr.WriteHeader(http.StatusOK)
-		return rr.Result(), nil
-	})
+			req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.org", nil)
+			resp, err := tc.wrap(exchanger)(base).RoundTrip(req)
+			require.NoError(t, err)
+			_ = resp.Body.Close()
 
-	req, _ := http.NewRequestWithContext(t.Context(), http.MethodGet, "http://example.org", nil)
-	resp, err := discoveryAuthWrapper(exchanger, "router-audience")(base).RoundTrip(req)
-	require.NoError(t, err)
-	_ = resp.Body.Close()
-
-	require.Equal(t, "Bearer exchanged-token", accessToken)
-	require.Empty(t, authorization)
-	require.NotNil(t, exchanger.gotReq)
-	require.Equal(t, []string{"router-audience"}, exchanger.gotReq.Audiences)
-	require.Equal(t, clientauth.WildcardNamespace, exchanger.gotReq.Namespace)
+			require.Equal(t, "Bearer exchanged-token", got.Get(tc.header))
+			require.Empty(t, got.Get(tc.unset))
+			require.NotNil(t, exchanger.gotReq)
+			require.Equal(t, []string{tc.audience}, exchanger.gotReq.Audiences)
+			require.Equal(t, clientauth.WildcardNamespace, exchanger.gotReq.Namespace)
+		})
+	}
 }
 
 func TestManifestWatcher_PrefersDiscovery(t *testing.T) {
