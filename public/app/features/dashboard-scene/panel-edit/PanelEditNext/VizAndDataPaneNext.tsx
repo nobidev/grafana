@@ -57,7 +57,6 @@ export function VizAndDataPaneNext({ model }: SceneComponentProps<PanelEditor>) 
     </div>
   );
 
-  // Sits between the viz and the lower panel in both layouts.
   const banner = showBanner ? (
     <QueryEditorBanner
       useQueryExperienceNext={model.state.useQueryExperienceNext ?? false}
@@ -90,7 +89,6 @@ export function VizAndDataPaneNext({ model }: SceneComponentProps<PanelEditor>) 
     />
   );
 
-  // Mini: viz on top; sidebar + data pane nested in the collapsible bottom pane.
   const miniLayout = (
     <VizDataSplit
       splitter={vizDataSplitter}
@@ -112,7 +110,6 @@ export function VizAndDataPaneNext({ model }: SceneComponentProps<PanelEditor>) 
     </VizDataSplit>
   );
 
-  // Full: full-height sidebar on the left; the viz/data split on the right.
   const fullLayout = (
     <div {...sidebarSplitter.containerProps}>
       {sidebarPane}
