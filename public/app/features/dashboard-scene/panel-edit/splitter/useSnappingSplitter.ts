@@ -233,10 +233,13 @@ export function useSnappingSplitter({
       // Not shrinking means the shortfall lands entirely on the pane beside it, which `minWidth: 0`
       // above lets run all the way to zero. Cap this pane so that pane keeps its reserve instead —
       // but never below the threshold. A cap under it leaves the pane open at a size too small to use,
-      // with no expand affordance, and any drag collapses it the moment it starts.
+      // with no expand affordance, and any drag collapses it the moment it starts. Any cap
+      // `useSplitter` set still applies on top, so the drag handle stays inside the container.
       if (minFillingPixels !== undefined) {
-        collapsingProps.style[direction === 'row' ? 'maxWidth' : 'maxHeight'] =
-          `max(${collapseBelowPixels}px, calc(100% - ${minFillingPixels}px))`;
+        const maxDim = direction === 'row' ? 'maxWidth' : 'maxHeight';
+        const reserveCap = `max(${collapseBelowPixels}px, calc(100% - ${minFillingPixels}px))`;
+        const handleCap = collapsingProps.style[maxDim];
+        collapsingProps.style[maxDim] = handleCap ? `min(${handleCap}, ${reserveCap})` : reserveCap;
       }
     }
   }

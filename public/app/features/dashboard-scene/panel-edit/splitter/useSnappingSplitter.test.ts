@@ -518,6 +518,23 @@ describe('useSnappingSplitter', () => {
       jest.mocked(useSplitter).mockImplementation(realUseSplitter);
     });
 
+    // `useSplitter` caps a primary-pixel pane so its handle stays inside the container. The reserve
+    // cap must not replace that, or a container narrower than the threshold clips the handle.
+    it('keeps the handle cap alongside the reserve cap', () => {
+      const { result } = renderHook(() =>
+        useSnappingSplitter({
+          direction: 'row',
+          usePixels: true,
+          pixelPane: 'primary',
+          initialSize: 350,
+          collapseBelowPixels: 260,
+          minFillingPixels: 400,
+        })
+      );
+
+      expect(result.current.primaryProps.style.maxWidth).toBe('min(calc(100% - 16px), max(260px, calc(100% - 400px)))');
+    });
+
     it('lets the primary pane shrink in pixel mode so the other pane can be dragged wider', () => {
       const { result } = renderHook(() =>
         useSnappingSplitter({ direction: 'row', usePixels: true, initialSize: 330, collapseBelowPixels: 150 })
