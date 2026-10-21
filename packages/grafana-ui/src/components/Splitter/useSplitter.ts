@@ -1,5 +1,5 @@
 import { css } from '@emotion/css';
-import { useCallback, useId, useRef } from 'react';
+import { useCallback, useId, useLayoutEffect, useRef } from 'react';
 import type * as React from 'react';
 
 import { type GrafanaTheme2 } from '@grafana/data';
@@ -134,12 +134,16 @@ export function useSplitter(options: UseSplitterOptions) {
         // Handle is on the primary pane's trailing edge, so a positive drag grows it.
         const newSize = clamp(firstPanePixels + diff, dims[minDimProp], dims[maxDimProp]);
         firstPane.style.flexBasis = `${newSize}px`;
-        splitter.ariaValueNow = `${newSize}`;
-        onResizing?.(newSize, newSize, containerPixels - newSize - handleSize);
+        splitter.ariaValueNow = pixelAriaValue(newSize, containerPixels, handleSize);
+        onResizing?.(
+          clamp(newSize / (containerPixels - handleSize), 0, 1),
+          newSize,
+          containerPixels - newSize - handleSize
+        );
       } else if (usePixels) {
         const newSize = clamp(secondPanePixels - diff, dims[minDimProp], dims[maxDimProp]);
         secondPane.style.flexBasis = `${newSize}px`;
-        splitter.ariaValueNow = `${newSize}`;
+        splitter.ariaValueNow = pixelAriaValue(containerPixels - newSize - handleSize, containerPixels, handleSize);
         onResizing?.(newSize, firstPanePixels + diff, newSize);
       } else {
         const newSize = clamp(firstPanePixels + diff, dims[minDimProp], dims[maxDimProp]);
@@ -293,11 +297,13 @@ export function useSplitter(options: UseSplitterOptions) {
       pressedKeys.current.delete(e.key);
 
       if (primarySizeRef.current !== null) {
+        // `handlePressedKeys` measures before it resizes, so the stored size is a frame behind the DOM.
+        primarySizeRef.current = firstPaneRef.current!.getBoundingClientRect()[measurementProp];
         const secondPanePixels = containerSize.current! - primarySizeRef.current - handleSize;
         onSizeChanged?.(getPrimaryFlexSize(primarySizeRef.current), primarySizeRef.current, secondPanePixels);
       }
     },
-    [direction, onSizeChanged, handleSize, getPrimaryFlexSize]
+    [direction, onSizeChanged, handleSize, measurementProp, getPrimaryFlexSize]
   );
 
   const onDoubleClick = useCallback(() => {
@@ -324,6 +330,10 @@ export function useSplitter(options: UseSplitterOptions) {
     const firstPanePixels = primarySizeRef.current;
     const secondPanePixels = containerSize.current - firstPanePixels - handleSize;
 
+    if (usePixels) {
+      splitterRef.current!.ariaValueNow = pixelAriaValue(firstPanePixels, containerSize.current, handleSize);
+    }
+
     onSizeChanged?.(getPrimaryFlexSize(firstPanePixels), firstPanePixels, secondPanePixels);
   }, [measurementProp, usePixels, pixelPrimary, initialSize, handleSize, onSizeChanged, getPrimaryFlexSize]);
 
@@ -334,11 +344,26 @@ export function useSplitter(options: UseSplitterOptions) {
       dragStart.current = null;
 
       if (typeof primarySizeRef.current === 'number') {
+        primarySizeRef.current = firstPaneRef.current!.getBoundingClientRect()[measurementProp];
         const secondPanePixels = containerSize.current! - primarySizeRef.current - handleSize;
         onSizeChanged?.(getPrimaryFlexSize(primarySizeRef.current), primarySizeRef.current, secondPanePixels);
       }
     }
-  }, [onSizeChanged, handleSize, getPrimaryFlexSize]);
+  }, [onSizeChanged, handleSize, measurementProp, getPrimaryFlexSize]);
+
+  // A pixel size has no 0-100 value to render up front, since that depends on the container. Measure
+  // it once laid out; drags and resets keep it current from then on.
+  useLayoutEffect(() => {
+    if (!usePixels || !firstPaneRef.current || !containerRef.current || !splitterRef.current) {
+      return;
+    }
+
+    splitterRef.current.ariaValueNow = pixelAriaValue(
+      firstPaneRef.current.getBoundingClientRect()[measurementProp],
+      containerRef.current.getBoundingClientRect()[measurementProp],
+      handleSize
+    );
+  }, [usePixels, measurementProp, handleSize]);
 
   const styles = useStyles2(getStyles, direction);
   const dragStyles = useStyles2(getDragStyles, dragPosition);
@@ -402,7 +427,7 @@ export function useSplitter(options: UseSplitterOptions) {
       role: 'separator',
       'aria-valuemin': 0,
       'aria-valuemax': 100,
-      'aria-valuenow': initialSize * 100,
+      'aria-valuenow': usePixels ? undefined : initialSize * 100,
       'aria-controls': primaryId,
       'aria-label': 'Pane resize widget',
       tabIndex: 0,
@@ -413,6 +438,12 @@ export function useSplitter(options: UseSplitterOptions) {
 
 function ariaValue(value: number, min: number, max: number) {
   return `${clamp(((value - min) / (max - min)) * 100, 0, 100)}`;
+}
+
+/** The primary pane's share of the space beside the handle, as a whole percentage. */
+function pixelAriaValue(firstPanePixels: number, containerPixels: number, handleSize: number) {
+  const available = containerPixels - handleSize;
+  return available > 0 ? `${Math.round(clamp((firstPanePixels / available) * 100, 0, 100))}` : '0';
 }
 
 interface MeasureResult {

@@ -83,6 +83,38 @@ async function dragSplitterBy(pixels: number) {
 }
 
 describe('useSplitter', () => {
+  // `handlePressedKeys` measures the pane, then resizes it. Reporting that measurement on key-up
+  // reports where the pane was a frame ago, which a consumer persisting the size would save.
+  describe('keyboard', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('reports the size the pane ended at on key-up', async () => {
+      const onSizeChanged = jest.fn();
+      // No animation frame runs between the keys, so only key-up itself can see the new size.
+      jest.spyOn(window, 'requestAnimationFrame').mockImplementation(() => 0);
+      let primaryWidth = 300;
+      const { container } = render(
+        <Splitter direction="row" usePixels pixelPane="primary" initialSize={300} onSizeChanged={onSizeChanged} />
+      );
+      const containerEl = container.firstElementChild!;
+      const primaryEl = containerEl.firstElementChild!;
+      jest.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const width = this === containerEl ? 1016 : this === primaryEl ? primaryWidth : 0;
+        return { width, height: 100 } as DOMRect;
+      });
+
+      const user = userEvent.setup();
+      screen.getByRole('separator').focus();
+      await user.keyboard('{ArrowLeft>}');
+      primaryWidth = 258;
+      await user.keyboard('{/ArrowLeft}');
+
+      expect(onSizeChanged).toHaveBeenCalledWith(expect.any(Number), 258, 1016 - 258 - 16);
+    });
+  });
+
   describe('flex sizing (default)', () => {
     it('splits both panes by flexGrow and pins neither to pixels', () => {
       const { result } = renderHook(() => useSplitter({ direction: 'row', initialSize: 0.5 }));
@@ -225,6 +257,35 @@ describe('useSplitter', () => {
     });
   });
 
+  // `aria-valuenow` must sit inside the 0-100 range the separator declares, whatever the sizing mode.
+  describe('aria-valuenow', () => {
+    it('reports the primary pane share of the container for a pixel splitter', () => {
+      render(
+        <TestSplitter
+          direction="row"
+          usePixels
+          pixelPane="primary"
+          initialSize={350}
+          primaryWidth={350}
+          containerWidth={1016}
+        />
+      );
+
+      // 350 of the 1000px beside the 16px handle.
+      expect(screen.getByRole('separator').ariaValueNow).toBe('35');
+    });
+
+    it('stays in range while dragging a pixel splitter', async () => {
+      render(<TestSplitter direction="row" usePixels initialSize={330} primaryWidth={670} containerWidth={1016} />);
+
+      await dragSplitterBy(50);
+
+      const value = Number(screen.getByRole('separator').ariaValueNow);
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(100);
+    });
+  });
+
   // A pane with its min size unset can be dragged fully closed. The drag handler reads a measured
   // size where 0 is legitimate, so it must not treat a collapsed pane as an unmeasured one.
   describe('dragging', () => {
@@ -236,6 +297,28 @@ describe('useSplitter', () => {
       await dragSplitterBy(200);
 
       expect(onResizing).toHaveBeenCalled();
+    });
+
+    // `onSizeChanged` reports the primary pane as a 0-1 fraction in this mode, so the drag must too.
+    it('reports a fraction, not pixels, while dragging a primary-pixel splitter', async () => {
+      const onResizing = jest.fn();
+
+      render(
+        <TestSplitter
+          direction="row"
+          usePixels
+          pixelPane="primary"
+          initialSize={300}
+          primaryWidth={300}
+          containerWidth={1016}
+          onResizing={onResizing}
+        />
+      );
+
+      await dragSplitterBy(50);
+
+      // The stubbed pane measures 300 at both its min and max, so the drag clamps there.
+      expect(onResizing).toHaveBeenLastCalledWith(0.3, 300, 700);
     });
 
     it('responds to drags at a normal size', async () => {
