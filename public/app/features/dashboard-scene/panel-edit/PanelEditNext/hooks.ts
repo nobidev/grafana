@@ -114,6 +114,7 @@ export function useVizAndDataPaneLayout(model: PanelEditor) {
   // splitters in opposite orders, so switching remounts this one — holding the ratio here (this hook
   // is not remounted by the toggle) is what carries it across.
   const [vizRatio, setVizRatio] = useState(DEFAULT_VIZ_RATIO);
+  const onVizDataSizeChanged = useCallback((_sizePixels: number, flexSize: number) => setVizRatio(flexSize), []);
 
   // Disabled on short screens: the viz is pinned to 100vh there and the panes stack so the editor
   // scrolls, which a flex ratio splitting a fixed height cannot express.
@@ -124,7 +125,7 @@ export function useVizAndDataPaneLayout(model: PanelEditor) {
     initialSize: vizRatio,
     collapseBelowPixels: DATA_PANE_COLLAPSE_BELOW_PIXELS,
     disabled: isScrollingLayout,
-    onPaneSizeChanged: (_sizePixels, flexSize) => setVizRatio(flexSize),
+    onPaneSizeChanged: onVizDataSizeChanged,
   });
 
   // Stays enabled on short screens, unlike the splitter above. Disabling strips the flex container,
