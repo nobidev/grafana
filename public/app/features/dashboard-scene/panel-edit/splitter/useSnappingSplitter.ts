@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useLayoutEffect, useRef } from 'react';
 
 import { type ComponentSize, type DragHandlePosition, useSplitter } from '@grafana/ui';
 
@@ -71,6 +71,9 @@ export function useSnappingSplitter({
   // The pinned pane is also the one that collapses; the logic below targets it either way.
   const collapsePrimary = pixelPane === 'primary';
 
+  // The size the drag in progress last wrote to the DOM, or null between gestures.
+  const liveResize = useRef<{ flexSize: number; panePixels: number } | null>(null);
+
   const onResizing = useCallback(
     (flexSize: number, firstPanePixels: number, secondPanePixels: number) => {
       if (flexSize <= 0 && firstPanePixels <= 0 && secondPanePixels <= 0) {
@@ -78,6 +81,7 @@ export function useSnappingSplitter({
       }
 
       const panePixels = collapsePrimary ? firstPanePixels : secondPanePixels;
+      liveResize.current = { flexSize, panePixels };
 
       // Derived from the latest state, not a captured one: the final pointermove and the pointerup
       // of a single gesture land in the same commit, so a snapshot would be stale by then.
@@ -98,6 +102,8 @@ export function useSnappingSplitter({
 
   const onSizeChanged = useCallback(
     (flexSize: number, firstPanePixels: number, secondPanePixels: number) => {
+      liveResize.current = null;
+
       if (flexSize <= 0 && firstPanePixels <= 0 && secondPanePixels <= 0) {
         return;
       }
@@ -137,10 +143,6 @@ export function useSnappingSplitter({
     [initialSize, usePixels, collapsePrimary, collapseBelowPixels, onPaneSizeChanged]
   );
 
-  const onToggleCollapse = useCallback(() => {
-    setState((prev) => ({ collapsed: !prev.collapsed }));
-  }, []);
-
   const { containerProps, primaryProps, secondaryProps, splitterProps } = useSplitter({
     direction: direction,
     dragPosition: dragPosition,
@@ -152,6 +154,30 @@ export function useSnappingSplitter({
     onResizing,
     onSizeChanged,
   });
+
+  // Reopening mid-drag drops the closed-pane override, so the render puts back the configured size
+  // over the one the drag already wrote, and the pane jumps until the next move. Write the drag's
+  // size again before paint.
+  useLayoutEffect(() => {
+    const live = liveResize.current;
+    const primary = primaryProps.ref.current;
+    const secondary = secondaryProps.ref.current;
+    if (state.collapsed || !live || !primary || !secondary) {
+      return;
+    }
+
+    if (usePixels) {
+      (collapsePrimary ? primary : secondary).style.flexBasis = `${live.panePixels}px`;
+    } else {
+      primary.style.flexGrow = `${live.flexSize}`;
+      secondary.style.flexGrow = `${1 - live.flexSize}`;
+    }
+  }, [state.collapsed, usePixels, collapsePrimary, primaryProps.ref, secondaryProps.ref]);
+
+  const onToggleCollapse = useCallback(() => {
+    liveResize.current = null;
+    setState((prev) => ({ collapsed: !prev.collapsed }));
+  }, []);
 
   // This does cause the loss of the adjustment position when toggling disabled on and off again.
   // Fixing this properly would require changing how useSplitter works to not both pass and

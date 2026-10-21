@@ -278,6 +278,22 @@ describe('useSnappingSplitter', () => {
         expect(onPaneSizeChanged).toHaveBeenCalledWith(400, flex);
       });
 
+      // The drag writes its size straight to the DOM. Reopening re-renders without the closed-pane
+      // override, which puts the configured size back over it until the next move.
+      it('keeps the dragged size when a drag reopens the pane', () => {
+        const { result } = renderSplitter(pixelPane, true);
+        const args: [number, number, number] =
+          pixelPane === 'primary' ? [1, THRESHOLD + 20, 600] : [0.5, 600, THRESHOLD + 20];
+
+        act(() => {
+          latestOptions().onResizing?.(...args);
+        });
+
+        const pane = pixelPane === 'primary' ? result.current.primaryProps.ref : result.current.secondaryProps.ref;
+        expect(result.current.splitterState.collapsed).toBe(false);
+        expect(pane.current?.style.flexBasis).toBe(`${THRESHOLD + 20}px`);
+      });
+
       // Nudging a closed pane without clearing the threshold reopens it at the configured size
       // rather than the tiny dragged size.
       it('reopens to at least the configured size when nudged below the threshold', () => {
