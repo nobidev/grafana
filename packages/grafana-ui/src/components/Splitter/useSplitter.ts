@@ -141,7 +141,7 @@ export function useSplitter(options: UseSplitterOptions) {
         // Handle is on the primary pane's trailing edge, so a positive drag grows it.
         const newSize = clamp(firstPanePixels + diff, dims[minDimProp], dims[maxDimProp]);
         firstPane.style.flexBasis = `${newSize}px`;
-        splitter.ariaValueNow = pixelAriaValue(newSize, containerPixels, handleSize);
+        splitter.setAttribute('aria-valuenow', pixelAriaValue(newSize, containerPixels, handleSize));
         onResizing?.(
           clamp(newSize / (containerPixels - handleSize), 0, 1),
           newSize,
@@ -150,7 +150,10 @@ export function useSplitter(options: UseSplitterOptions) {
       } else if (usePixels) {
         const newSize = clamp(secondPanePixels - diff, dims[minDimProp], dims[maxDimProp]);
         secondPane.style.flexBasis = `${newSize}px`;
-        splitter.ariaValueNow = pixelAriaValue(containerPixels - newSize - handleSize, containerPixels, handleSize);
+        splitter.setAttribute(
+          'aria-valuenow',
+          pixelAriaValue(containerPixels - newSize - handleSize, containerPixels, handleSize)
+        );
         onResizing?.(newSize, firstPanePixels + diff, newSize);
       } else {
         const newSize = clamp(firstPanePixels + diff, dims[minDimProp], dims[maxDimProp]);
@@ -337,7 +340,10 @@ export function useSplitter(options: UseSplitterOptions) {
     const secondPanePixels = containerSize.current - firstPanePixels - handleSize;
 
     if (usePixels) {
-      splitterRef.current!.ariaValueNow = pixelAriaValue(firstPanePixels, containerSize.current, handleSize);
+      splitterRef.current!.setAttribute(
+        'aria-valuenow',
+        pixelAriaValue(firstPanePixels, containerSize.current, handleSize)
+      );
     }
 
     onSizeChanged?.(getPrimaryFlexSize(firstPanePixels), firstPanePixels, secondPanePixels);
@@ -358,18 +364,28 @@ export function useSplitter(options: UseSplitterOptions) {
   }, [onSizeChanged, handleSize, measurementProp, getPrimaryFlexSize]);
 
   // A pixel size has no 0-100 value to render up front, since that depends on the container. Measure
-  // it once laid out; drags and resets keep it current from then on.
+  // it once laid out; drags and resets keep it current from then on. Checks after every render, not
+  // just the first: the panes can mount later than the hook, or remount as new elements.
   useLayoutEffect(() => {
-    if (!usePixels || !firstPaneRef.current || !containerRef.current || !splitterRef.current) {
+    if (
+      !usePixels ||
+      !firstPaneRef.current ||
+      !containerRef.current ||
+      !splitterRef.current ||
+      splitterRef.current.hasAttribute('aria-valuenow')
+    ) {
       return;
     }
 
-    splitterRef.current.ariaValueNow = pixelAriaValue(
-      firstPaneRef.current.getBoundingClientRect()[measurementProp],
-      containerRef.current.getBoundingClientRect()[measurementProp],
-      handleSize
+    splitterRef.current.setAttribute(
+      'aria-valuenow',
+      pixelAriaValue(
+        firstPaneRef.current.getBoundingClientRect()[measurementProp],
+        containerRef.current.getBoundingClientRect()[measurementProp],
+        handleSize
+      )
     );
-  }, [usePixels, measurementProp, handleSize]);
+  });
 
   const styles = useStyles2(getStyles, direction);
   const dragStyles = useStyles2(getDragStyles, dragPosition);

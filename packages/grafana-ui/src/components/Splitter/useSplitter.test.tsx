@@ -285,7 +285,33 @@ describe('useSplitter', () => {
       );
 
       // 350 of the 1000px beside the 16px handle.
-      expect(screen.getByRole('separator').ariaValueNow).toBe('35');
+      expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow', '35');
+    });
+
+    // The query editor sidebar calls the hook before its panes render, so a mount-only measurement
+    // finds no elements and the separator never gets a value.
+    it('reports a value for panes that mount after the hook', () => {
+      function LateSplitter({ showPanes }: { showPanes: boolean }) {
+        const { containerProps, primaryProps, secondaryProps, splitterProps } = useSplitter({
+          direction: 'row',
+          usePixels: true,
+          pixelPane: 'primary',
+          initialSize: 350,
+        });
+
+        return showPanes ? (
+          <div {...containerProps}>
+            <div {...primaryProps} />
+            <div {...splitterProps} />
+            <div {...secondaryProps} />
+          </div>
+        ) : null;
+      }
+
+      const { rerender } = render(<LateSplitter showPanes={false} />);
+      rerender(<LateSplitter showPanes />);
+
+      expect(screen.getByRole('separator')).toHaveAttribute('aria-valuenow');
     });
 
     it('stays in range while dragging a pixel splitter', async () => {
@@ -293,7 +319,7 @@ describe('useSplitter', () => {
 
       await dragSplitterBy(50);
 
-      const value = Number(screen.getByRole('separator').ariaValueNow);
+      const value = Number(screen.getByRole('separator').getAttribute('aria-valuenow'));
       expect(value).toBeGreaterThanOrEqual(0);
       expect(value).toBeLessThanOrEqual(100);
     });
