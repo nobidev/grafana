@@ -16,6 +16,12 @@ export interface UseSplitterOptions {
    * pane by default, or the primary pane when `pixelPane` is `'primary'`.
    */
   initialSize?: number;
+  /**
+   * The size a double-click on the handle restores, in the same units as `initialSize`. Defaults to
+   * `initialSize` with `usePixels`, or an even split otherwise. Set it when `initialSize` is a
+   * restored size, such as a persisted width, so the reset still returns to a default.
+   */
+  resetSize?: number;
   direction: 'row' | 'column';
   dragPosition?: DragHandlePosition;
   usePixels?: boolean;
@@ -69,6 +75,7 @@ export function useSplitter(options: UseSplitterOptions) {
     onSizeChanged,
     usePixels,
     pixelPane = 'secondary',
+    resetSize = options.usePixels ? initialSize : 0.5,
   } = options;
 
   // In primary-pixel mode the fixed pane is the first one, not the second.
@@ -312,14 +319,13 @@ export function useSplitter(options: UseSplitterOptions) {
     }
 
     if (pixelPrimary) {
-      firstPaneRef.current.style.flexBasis = `${initialSize}px`;
-      splitterRef.current!.ariaValueNow = `${initialSize}`;
+      firstPaneRef.current.style.flexBasis = `${resetSize}px`;
     } else if (usePixels) {
-      secondPaneRef.current.style.flexBasis = `${initialSize}px`;
+      secondPaneRef.current.style.flexBasis = `${resetSize}px`;
     } else {
-      firstPaneRef.current.style.flexGrow = '0.5';
-      secondPaneRef.current.style.flexGrow = '0.5';
-      splitterRef.current!.ariaValueNow = `50`;
+      firstPaneRef.current.style.flexGrow = `${resetSize}`;
+      secondPaneRef.current.style.flexGrow = `${1 - resetSize}`;
+      splitterRef.current!.ariaValueNow = `${resetSize * 100}`;
     }
 
     // Report the reset like any other resize. A consumer that keeps the size outside the DOM would
@@ -335,7 +341,7 @@ export function useSplitter(options: UseSplitterOptions) {
     }
 
     onSizeChanged?.(getPrimaryFlexSize(firstPanePixels), firstPanePixels, secondPanePixels);
-  }, [measurementProp, usePixels, pixelPrimary, initialSize, handleSize, onSizeChanged, getPrimaryFlexSize]);
+  }, [measurementProp, usePixels, pixelPrimary, resetSize, handleSize, onSizeChanged, getPrimaryFlexSize]);
 
   const onBlur = useCallback(() => {
     // If focus is lost while keys are held, stop changing panel sizes

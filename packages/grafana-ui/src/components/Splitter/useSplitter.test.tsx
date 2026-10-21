@@ -255,6 +255,19 @@ describe('useSplitter', () => {
 
       expect(onSizeChanged).toHaveBeenCalledWith(330 / (CONTAINER - HANDLE), 330, CONTAINER - 330 - HANDLE);
     });
+
+    // A consumer that restores a stored size passes it as `initialSize`, so resetting to that would
+    // leave the pane where it already is.
+    it('resets to resetSize instead of initialSize when given', () => {
+      const separator = mountSplitter(
+        { direction: 'row', usePixels: true, pixelPane: 'primary', initialSize: 600, resetSize: 350 },
+        350
+      );
+
+      fireEvent.doubleClick(separator);
+
+      expect(document.getElementById(separator.getAttribute('aria-controls')!)?.style.flexBasis).toBe('350px');
+    });
   });
 
   // `aria-valuenow` must sit inside the 0-100 range the separator declares, whatever the sizing mode.

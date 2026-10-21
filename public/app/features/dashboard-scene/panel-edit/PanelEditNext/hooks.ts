@@ -139,6 +139,7 @@ export function useVizAndDataPaneLayout(model: PanelEditor) {
     usePixels: true,
     pixelPane: 'primary',
     initialSize: sidebarWidth,
+    resetSize: DEFAULT_SIDEBAR_WIDTH,
     collapsed: isInitiallyCollapsed,
     collapseBelowPixels: SIDEBAR_COLLAPSE_BELOW_PIXELS,
     minFillingPixels: MIN_DATA_PANE_WIDTH,

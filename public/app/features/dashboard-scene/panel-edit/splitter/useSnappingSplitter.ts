@@ -8,6 +8,8 @@ export interface UseSnappingSplitterOptions {
    * If `usePixels` is true, this is the initial size in pixels of the pinned pane.
    */
   initialSize?: number;
+  /** The size a double-click on the handle restores. See `UseSplitterOptions.resetSize`. */
+  resetSize?: number;
   direction: 'row' | 'column';
   dragPosition?: DragHandlePosition;
   collapsed?: boolean;
@@ -49,6 +51,7 @@ interface PaneState {
 export function useSnappingSplitter({
   direction,
   initialSize,
+  resetSize,
   dragPosition,
   collapseBelowPixels,
   collapsed,
@@ -142,6 +145,7 @@ export function useSnappingSplitter({
     dragPosition: dragPosition,
     handleSize: handleSize,
     initialSize: initialSize,
+    resetSize: resetSize,
     usePixels: usePixels,
     pixelPane: pixelPane,
     onResizing,
