@@ -366,10 +366,12 @@ describe('useSnappingSplitter', () => {
 
       // Not shrinking sends the whole shortfall to the pane beside it, which is floored at 0 — so
       // without a reserve a narrow enough container leaves that pane nothing at all.
-      it('caps itself so the filling pane keeps its reserve', () => {
+      // The cap never drops below the threshold: under it, the pane would sit open at a size too
+      // small to use, with no expand affordance, and collapse the moment a drag starts.
+      it('caps itself so the filling pane keeps its reserve, down to the threshold', () => {
         const { collapsingStyle } = mountSplitter(pixelPane, false, 400);
 
-        expect(collapsingStyle()[mainAxisMaxDim(pixelPane)]).toBe('calc(100% - 400px)');
+        expect(collapsingStyle()[mainAxisMaxDim(pixelPane)]).toBe('max(260px, calc(100% - 400px))');
       });
 
       it('stays uncapped when no reserve is asked for', () => {

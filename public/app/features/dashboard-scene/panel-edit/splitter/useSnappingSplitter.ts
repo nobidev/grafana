@@ -31,7 +31,8 @@ export interface UseSnappingSplitterOptions {
    * Width/height reserved for the pane that fills the remaining space. Only meaningful with
    * `usePixels`, which pins the other pane against shrinking: without a reserve, a container too
    * narrow for both leaves the filling pane with whatever is left, down to nothing. Must exceed the
-   * drag handle, which `useSplitter` already reserves on its own.
+   * drag handle, which `useSplitter` already reserves on its own. The pinned pane never yields below
+   * `collapseBelowPixels`, so a narrower container still cuts into the reserve.
    */
   minFillingPixels?: number;
 
@@ -204,9 +205,12 @@ export function useSnappingSplitter({
       collapsingProps.style.flexShrink = 0;
 
       // Not shrinking means the shortfall lands entirely on the pane beside it, which `minWidth: 0`
-      // above lets run all the way to zero. Cap this pane so that pane keeps its reserve instead.
+      // above lets run all the way to zero. Cap this pane so that pane keeps its reserve instead —
+      // but never below the threshold. A cap under it leaves the pane open at a size too small to use,
+      // with no expand affordance, and any drag collapses it the moment it starts.
       if (minFillingPixels !== undefined) {
-        collapsingProps.style[direction === 'row' ? 'maxWidth' : 'maxHeight'] = `calc(100% - ${minFillingPixels}px)`;
+        collapsingProps.style[direction === 'row' ? 'maxWidth' : 'maxHeight'] =
+          `max(${collapseBelowPixels}px, calc(100% - ${minFillingPixels}px))`;
       }
     }
   }

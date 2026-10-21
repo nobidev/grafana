@@ -41,7 +41,8 @@ export const SIDEBAR_COLLAPSE_BELOW_PIXELS = 260;
 /**
  * Width the data pane keeps for itself. The sidebar holds its own width against a shrinking
  * container right up to this point, then yields instead — a pinned sidebar that squeezes the query
- * editor down to its footer chrome is worse than a narrower one.
+ * editor down to its footer chrome is worse than a narrower one. It yields only down to
+ * `SIDEBAR_COLLAPSE_BELOW_PIXELS`; past that the data pane gives way instead.
  */
 export const MIN_DATA_PANE_WIDTH = 400;
 /** Share of the editor height given to the viz before the user drags the viz/data splitter. */
