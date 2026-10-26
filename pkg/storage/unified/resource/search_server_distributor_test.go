@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	gokitlog "github.com/go-kit/log"
@@ -83,44 +84,50 @@ func TestSearchRingReadOpReplicaSetExtension(t *testing.T) {
 	t.Run("replication factor 1", func(t *testing.T) {
 		for _, state := range []ring.InstanceState{ring.LEAVING, ring.JOINING} {
 			t.Run(state.String(), func(t *testing.T) {
-				testRing, store := newSearchRingForTest(t, 1, ring.ACTIVE)
+				synctest.Test(t, func(t *testing.T) {
+					testRing, store := newSearchRingForTest(t, 1, ring.ACTIVE)
 
-				requireSearchReplicaSetIDs(t, testRing, true, []string{"instance-a"})
-				requireSearchReplicaSetIDs(t, testRing, false, []string{"instance-a"})
+					requireSearchReplicaSetIDs(t, testRing, true, []string{"instance-a"})
+					requireSearchReplicaSetIDs(t, testRing, false, []string{"instance-a"})
 
-				updateSearchRingForTest(t, store, state)
+					updateSearchRingForTest(t, store, state)
 
-				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					// Apply the in-memory ring update before checking replica-set selection.
+					synctest.Wait()
+
 					extendedIDs, err := searchReplicaSetIDs(testRing, true)
-					require.NoError(c, err)
-					require.Equal(c, []string{"instance-b"}, extendedIDs)
+					require.NoError(t, err)
+					require.Equal(t, []string{"instance-b"}, extendedIDs)
 
 					_, err = searchReplicaSetIDs(testRing, false)
-					require.ErrorContains(c, err, "at least 1 healthy replica required, could only find 0")
-				}, time.Second, 10*time.Millisecond)
+					require.ErrorContains(t, err, "at least 1 healthy replica required, could only find 0")
+				})
 			})
 		}
 	})
 
 	t.Run("replication factor 2", func(t *testing.T) {
-		testRing, store := newSearchRingForTest(t, 2, ring.ACTIVE)
-
-		requireSearchReplicaSetIDs(t, testRing, true, []string{"instance-a", "instance-b"})
-		requireSearchReplicaSetIDs(t, testRing, false, []string{"instance-a", "instance-b"})
-
 		for _, state := range []ring.InstanceState{ring.LEAVING, ring.JOINING} {
 			t.Run(state.String(), func(t *testing.T) {
-				updateSearchRingForTest(t, store, state)
+				synctest.Test(t, func(t *testing.T) {
+					testRing, store := newSearchRingForTest(t, 2, ring.ACTIVE)
 
-				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					requireSearchReplicaSetIDs(t, testRing, true, []string{"instance-a", "instance-b"})
+					requireSearchReplicaSetIDs(t, testRing, false, []string{"instance-a", "instance-b"})
+
+					updateSearchRingForTest(t, store, state)
+
+					// Apply the in-memory ring update before checking replica-set selection.
+					synctest.Wait()
+
 					extendedIDs, err := searchReplicaSetIDs(testRing, true)
-					require.NoError(c, err)
-					require.Equal(c, []string{"instance-b", "instance-c"}, extendedIDs)
+					require.NoError(t, err)
+					require.Equal(t, []string{"instance-b", "instance-c"}, extendedIDs)
 
 					noExtensionIDs, err := searchReplicaSetIDs(testRing, false)
-					require.NoError(c, err)
-					require.Equal(c, []string{"instance-b"}, noExtensionIDs)
-				}, time.Second, 10*time.Millisecond)
+					require.NoError(t, err)
+					require.Equal(t, []string{"instance-b"}, noExtensionIDs)
+				})
 			})
 		}
 	})
@@ -170,28 +177,33 @@ func TestDistributorCheckHealth(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			testRing, _ := newSearchRingWithDescForTest(t, 1, tt.desc, tt.startRing)
-			ds := &distributorServer{ring: testRing}
+			synctest.Test(t, func(t *testing.T) {
+				testRing, _ := newSearchRingWithDescForTest(t, 1, tt.desc, tt.startRing)
+				ds := &distributorServer{ring: testRing}
 
-			assertHealth := func(c *assert.CollectT) {
-				healthy, err := ds.CheckHealth(t.Context())
-				assert.Equal(c, tt.wantHealthy, healthy)
-				if tt.wantError == "" {
-					assert.NoError(c, err)
-				} else {
-					assert.ErrorContains(c, err, tt.wantError)
+				assertHealth := func(t *testing.T) {
+					healthy, err := ds.CheckHealth(t.Context())
+					assert.Equal(t, tt.wantHealthy, healthy)
+					if tt.wantError == "" {
+						assert.NoError(t, err)
+					} else {
+						assert.ErrorContains(t, err, tt.wantError)
+					}
+
+					response, responseErr := ds.IsHealthy(t.Context(), &resourcepb.HealthCheckRequest{})
+					assert.NoError(t, responseErr)
+					if tt.wantHealthy {
+						assert.Equal(t, resourcepb.HealthCheckResponse_SERVING, response.Status)
+					} else {
+						assert.Equal(t, resourcepb.HealthCheckResponse_NOT_SERVING, response.Status)
+					}
 				}
 
-				response, responseErr := ds.IsHealthy(t.Context(), &resourcepb.HealthCheckRequest{})
-				assert.NoError(c, responseErr)
-				if tt.wantHealthy {
-					assert.Equal(c, resourcepb.HealthCheckResponse_SERVING, response.Status)
-				} else {
-					assert.Equal(c, resourcepb.HealthCheckResponse_NOT_SERVING, response.Status)
-				}
-			}
+				// Finish the ring's initial KV watch before checking both health interfaces.
+				synctest.Wait()
 
-			require.EventuallyWithT(t, assertHealth, time.Second, 10*time.Millisecond)
+				assertHealth(t)
+			})
 		})
 	}
 }
