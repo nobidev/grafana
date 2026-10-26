@@ -613,7 +613,7 @@ func (r *githubClient) ListPullRequestComments(ctx context.Context, number int) 
 	return result, nil
 }
 
-func (r *githubClient) EditPullRequestComment(ctx context.Context, commentID int64, body string) error {
+func (r *githubClient) EditPullRequestComment(ctx context.Context, _ int, commentID int64, body string) error {
 	if _, _, err := r.gh.Issues.EditComment(ctx, r.owner, r.repo, commentID, &github.IssueComment{Body: &body}); err != nil {
 		return translateGitHubError(err)
 	}

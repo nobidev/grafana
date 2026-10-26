@@ -21,24 +21,28 @@ import (
 	"github.com/grafana/grafana/pkg/registry/apis/provisioning/resources"
 )
 
-func newPullRequestRepo(t *testing.T) *repository.MockPullRequestRepo {
+func newPullRequestRepo(t *testing.T) (*repository.MockPullRequestRepo, *repository.MockPullRequestClient) {
+	client := repository.NewMockPullRequestClient(t)
 	repo := repository.NewMockPullRequestRepo(t)
 	repo.On("Config").Return(&v0alpha1.Repository{ObjectMeta: metav1.ObjectMeta{UID: "repo-uid", Generation: 1}}).Maybe()
-	return repo
+	repo.On("PullRequestClient").Return(client).Maybe()
+	return repo, client
 }
 
-func newPullRequestRepoWithoutComments(t *testing.T) *repository.MockPullRequestRepo {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", mock.Anything, mock.Anything).Return(nil, nil)
-	return repo
+func newPullRequestRepoWithoutComments(t *testing.T) (*repository.MockPullRequestRepo, *repository.MockPullRequestClient) {
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", mock.Anything, mock.Anything).Return(nil, nil)
+	return repo, client
 }
 
 func TestCommenter_UnsupportedFork(t *testing.T) {
+	client := repository.NewMockPullRequestClient(t)
 	repo := repository.NewMockPullRequestRepo(t)
-	repo.On("ListPullRequestComments", mock.Anything, mock.Anything).Return(nil, nil)
+	repo.On("PullRequestClient").Return(client)
+	client.On("ListPullRequestComments", mock.Anything, mock.Anything).Return(nil, nil)
 	expected, err := os.ReadFile("testdata/unsupported-fork.md")
 	require.NoError(t, err)
-	repo.On("CommentPullRequest", mock.Anything, 123, previewCommentMarker+"\n\n"+string(expected)).Return(nil).Once()
+	client.On("CreatePullRequestComment", mock.Anything, 123, previewCommentMarker+"\n\n"+string(expected)).Return(nil).Once()
 
 	repo.On("Config").Return(&v0alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: "my-repo", Namespace: "org-2"},
@@ -54,10 +58,10 @@ func TestCommenter_UnsupportedFork(t *testing.T) {
 }
 
 func TestGenerateComment_EscapesTitle(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
+	repo, client := newPullRequestRepoWithoutComments(t)
 
 	var captured string
-	repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 		captured = comment
 		return true
 	})).Return(nil)
@@ -86,8 +90,8 @@ func TestGenerateComment_EscapesTitle(t *testing.T) {
 }
 
 func TestCommenter_Comment_FailedToComment(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
-	repo.On("CommentPullRequest", context.Background(), 1, mock.Anything).Return(errors.New("failed"))
+	repo, client := newPullRequestRepoWithoutComments(t)
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.Anything).Return(errors.New("failed"))
 
 	commenter := NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry())
 	err := commenter.Comment(context.Background(), repo, 1, changeInfo{})
@@ -95,14 +99,14 @@ func TestCommenter_Comment_FailedToComment(t *testing.T) {
 }
 
 func TestCommenter_Comment_EditsNewestPreviewComment(t *testing.T) {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{
 		{ID: 9, Body: "> " + previewCommentMarker},
 		{ID: 3, Body: previewCommentMarker + "\n\nold"},
 		{ID: 7, Body: previewCommentMarker + "\n\nnewer"},
 		{ID: 8, Body: "unrelated"},
 	}, nil)
-	repo.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.MatchedBy(func(comment string) bool {
+	client.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.MatchedBy(func(comment string) bool {
 		return strings.HasPrefix(comment, previewCommentMarker+"\n\n")
 	})).Return(nil).Once()
 
@@ -110,24 +114,24 @@ func TestCommenter_Comment_EditsNewestPreviewComment(t *testing.T) {
 }
 
 func TestCommenter_Comment_FailedToEdit(t *testing.T) {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil)
-	repo.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(errors.New("failed"))
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil)
+	client.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(errors.New("failed"))
 
 	require.ErrorContains(t, NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry()).Comment(context.Background(), repo, 1, changeInfo{}), "edit pull request comment")
 }
 
 func TestCommenter_Comment_FailedToListComments(t *testing.T) {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", context.Background(), 1).Return(nil, errors.New("failed"))
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", context.Background(), 1).Return(nil, errors.New("failed"))
 
 	require.ErrorContains(t, NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry()).Comment(context.Background(), repo, 1, changeInfo{}), "list pull request comments")
 }
 
 func TestCommenter_Comment_EditsCachedPreviewCommentWithoutListing(t *testing.T) {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil).Once()
-	repo.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(nil).Twice()
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil).Once()
+	client.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(nil).Twice()
 
 	commenter := NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry())
 	hits := testutil.ToFloat64(pullRequestMetricsInstance.commentCache.WithLabelValues("hit"))
@@ -137,15 +141,15 @@ func TestCommenter_Comment_EditsCachedPreviewCommentWithoutListing(t *testing.T)
 }
 
 func TestCommenter_Comment_RelistsWhenCachedPreviewCommentIsGone(t *testing.T) {
-	repo := newPullRequestRepo(t)
-	repo.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil).Once()
-	repo.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(nil).Once()
+	repo, client := newPullRequestRepo(t)
+	client.On("ListPullRequestComments", context.Background(), 1).Return([]repository.PullRequestComment{{ID: 7, Body: previewCommentMarker}}, nil).Once()
+	client.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(nil).Once()
 	commenter := NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry())
 	require.NoError(t, commenter.Comment(context.Background(), repo, 1, changeInfo{}))
 
-	repo.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(repository.ErrFileNotFound).Once()
-	repo.On("ListPullRequestComments", context.Background(), 1).Return(nil, nil).Once()
-	repo.On("CommentPullRequest", context.Background(), 1, mock.Anything).Return(nil).Once()
+	client.On("EditPullRequestComment", context.Background(), 1, int64(7), mock.Anything).Return(repository.ErrFileNotFound).Once()
+	client.On("ListPullRequestComments", context.Background(), 1).Return(nil, nil).Once()
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.Anything).Return(nil).Once()
 	stale := testutil.ToFloat64(pullRequestMetricsInstance.commentCache.WithLabelValues("stale"))
 	require.NoError(t, commenter.Comment(context.Background(), repo, 1, changeInfo{}))
 	require.Equal(t, stale+1, testutil.ToFloat64(pullRequestMetricsInstance.commentCache.WithLabelValues("stale")))
@@ -449,7 +453,7 @@ func TestGenerateComment(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.Name, func(t *testing.T) {
-			repo := newPullRequestRepoWithoutComments(t)
+			repo, client := newPullRequestRepoWithoutComments(t)
 
 			// expectation on the comment
 			fpath := filepath.Join("testdata", strings.ReplaceAll(tc.Name, " ", "-")+".md")
@@ -457,7 +461,7 @@ func TestGenerateComment(t *testing.T) {
 			// nolint:gosec
 			expect, err := os.ReadFile(fpath)
 			require.NoError(t, err)
-			repo.On("CommentPullRequest", context.Background(), 1, previewCommentMarker+"\n\n"+string(expect)).Return(nil)
+			client.On("CreatePullRequestComment", context.Background(), 1, previewCommentMarker+"\n\n"+string(expect)).Return(nil)
 
 			commenter := NewCommenter(false, URLProvider{}, prometheus.NewPedanticRegistry())
 			err = commenter.Comment(context.Background(), repo, 1, tc.Input)
@@ -467,10 +471,10 @@ func TestGenerateComment(t *testing.T) {
 }
 
 func TestGenerateComment_NilParsedDeletedInTableTemplate(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
+	repo, client := newPullRequestRepoWithoutComments(t)
 
 	var capturedComment string
-	repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 		capturedComment = comment
 		return true
 	})).Return(nil)
@@ -512,10 +516,10 @@ func TestGenerateComment_NilParsedDeletedInTableTemplate(t *testing.T) {
 // The action label must fall back to the FileAction ("deleted") instead of
 // rendering a blank Action column.
 func TestGenerateComment_ParsedDeletedWithoutResourceAction(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
+	repo, client := newPullRequestRepoWithoutComments(t)
 
 	var capturedComment string
-	repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 		capturedComment = comment
 		return true
 	})).Return(nil)
@@ -559,10 +563,10 @@ func TestGenerateComment_ParsedDeletedWithoutResourceAction(t *testing.T) {
 }
 
 func TestGenerateComment_SingleChangeNilParsed(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
+	repo, client := newPullRequestRepoWithoutComments(t)
 
 	var capturedComment string
-	repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 		capturedComment = comment
 		return true
 	})).Return(nil)
@@ -588,10 +592,10 @@ func TestGenerateComment_SingleChangeNilParsed(t *testing.T) {
 }
 
 func TestGenerateComment_ParseFailureErrorSurfaced(t *testing.T) {
-	repo := newPullRequestRepoWithoutComments(t)
+	repo, client := newPullRequestRepoWithoutComments(t)
 
 	var capturedComment string
-	repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+	client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 		capturedComment = comment
 		return true
 	})).Return(nil)
@@ -632,7 +636,7 @@ func TestGenerateComment_ParseFailureErrorSurfaced(t *testing.T) {
 
 func TestCommenter_ShowImageRendererNote(t *testing.T) {
 	t.Run("note appears when showImageRendererNote is true", func(t *testing.T) {
-		repo := newPullRequestRepoWithoutComments(t)
+		repo, client := newPullRequestRepoWithoutComments(t)
 		info := changeInfo{
 			GrafanaBaseURL:  "http://host/",
 			RepositoryName:  "my-repo",
@@ -655,7 +659,7 @@ func TestCommenter_ShowImageRendererNote(t *testing.T) {
 		}
 
 		var capturedComment string
-		repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+		client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 			capturedComment = comment
 			return true
 		})).Return(nil)
@@ -668,7 +672,7 @@ func TestCommenter_ShowImageRendererNote(t *testing.T) {
 	})
 
 	t.Run("note does not appear when showImageRendererNote is false", func(t *testing.T) {
-		repo := newPullRequestRepoWithoutComments(t)
+		repo, client := newPullRequestRepoWithoutComments(t)
 		info := changeInfo{
 			GrafanaBaseURL:  "http://host/",
 			RepositoryName:  "my-repo",
@@ -691,7 +695,7 @@ func TestCommenter_ShowImageRendererNote(t *testing.T) {
 		}
 
 		var capturedComment string
-		repo.On("CommentPullRequest", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
+		client.On("CreatePullRequestComment", context.Background(), 1, mock.MatchedBy(func(comment string) bool {
 			capturedComment = comment
 			return true
 		})).Return(nil)

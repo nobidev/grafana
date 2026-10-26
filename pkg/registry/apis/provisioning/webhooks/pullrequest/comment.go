@@ -83,10 +83,11 @@ func (c *commenter) Comment(ctx context.Context, prRepo repository.PullRequestRe
 
 	comment = previewCommentMarker + "\n\n" + comment
 
+	client := prRepo.PullRequestClient()
 	key := commentCacheKey(prRepo.Config(), pr)
 	result := "miss"
 	if id, ok := c.commentIDs.Get(key); ok {
-		err := prRepo.EditPullRequestComment(ctx, pr, id, comment)
+		err := client.EditPullRequestComment(ctx, pr, id, comment)
 		if err == nil {
 			c.recordCommentCache(ctx, pr, "hit")
 			return nil
@@ -99,7 +100,7 @@ func (c *commenter) Comment(ctx context.Context, prRepo repository.PullRequestRe
 	}
 	c.recordCommentCache(ctx, pr, result)
 
-	existing, err := prRepo.ListPullRequestComments(ctx, pr)
+	existing, err := client.ListPullRequestComments(ctx, pr)
 	if err != nil {
 		return fmt.Errorf("list pull request comments: %w", err)
 	}
@@ -112,14 +113,14 @@ func (c *commenter) Comment(ctx context.Context, prRepo repository.PullRequestRe
 	}
 
 	if previewCommentID != 0 {
-		if err := prRepo.EditPullRequestComment(ctx, pr, previewCommentID, comment); err != nil {
+		if err := client.EditPullRequestComment(ctx, pr, previewCommentID, comment); err != nil {
 			return fmt.Errorf("edit pull request comment: %w", err)
 		}
 		c.commentIDs.Add(key, previewCommentID)
 		return nil
 	}
 
-	if err := prRepo.CommentPullRequest(ctx, pr, comment); err != nil {
+	if err := client.CreatePullRequestComment(ctx, pr, comment); err != nil {
 		return fmt.Errorf("comment pull request: %w", err)
 	}
 

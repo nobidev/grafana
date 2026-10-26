@@ -240,17 +240,17 @@ func (_c *MockClient_DeleteWebhook_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// EditPullRequestComment provides a mock function with given fields: ctx, commentID, body
-func (_m *MockClient) EditPullRequestComment(ctx context.Context, commentID int64, body string) error {
-	ret := _m.Called(ctx, commentID, body)
+// EditPullRequestComment provides a mock function with given fields: ctx, number, commentID, body
+func (_m *MockClient) EditPullRequestComment(ctx context.Context, number int, commentID int64, body string) error {
+	ret := _m.Called(ctx, number, commentID, body)
 
 	if len(ret) == 0 {
 		panic("no return value specified for EditPullRequestComment")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
-		r0 = rf(ctx, commentID, body)
+	if rf, ok := ret.Get(0).(func(context.Context, int, int64, string) error); ok {
+		r0 = rf(ctx, number, commentID, body)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -265,15 +265,16 @@ type MockClient_EditPullRequestComment_Call struct {
 
 // EditPullRequestComment is a helper method to define mock.On call
 //   - ctx context.Context
+//   - number int
 //   - commentID int64
 //   - body string
-func (_e *MockClient_Expecter) EditPullRequestComment(ctx interface{}, commentID interface{}, body interface{}) *MockClient_EditPullRequestComment_Call {
-	return &MockClient_EditPullRequestComment_Call{Call: _e.mock.On("EditPullRequestComment", ctx, commentID, body)}
+func (_e *MockClient_Expecter) EditPullRequestComment(ctx interface{}, number interface{}, commentID interface{}, body interface{}) *MockClient_EditPullRequestComment_Call {
+	return &MockClient_EditPullRequestComment_Call{Call: _e.mock.On("EditPullRequestComment", ctx, number, commentID, body)}
 }
 
-func (_c *MockClient_EditPullRequestComment_Call) Run(run func(ctx context.Context, commentID int64, body string)) *MockClient_EditPullRequestComment_Call {
+func (_c *MockClient_EditPullRequestComment_Call) Run(run func(ctx context.Context, number int, commentID int64, body string)) *MockClient_EditPullRequestComment_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(string))
+		run(args[0].(context.Context), args[1].(int), args[2].(int64), args[3].(string))
 	})
 	return _c
 }
@@ -283,7 +284,7 @@ func (_c *MockClient_EditPullRequestComment_Call) Return(_a0 error) *MockClient_
 	return _c
 }
 
-func (_c *MockClient_EditPullRequestComment_Call) RunAndReturn(run func(context.Context, int64, string) error) *MockClient_EditPullRequestComment_Call {
+func (_c *MockClient_EditPullRequestComment_Call) RunAndReturn(run func(context.Context, int, int64, string) error) *MockClient_EditPullRequestComment_Call {
 	_c.Call.Return(run)
 	return _c
 }
