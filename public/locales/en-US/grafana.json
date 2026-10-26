@@ -1449,7 +1449,8 @@
       "interval": "Evaluated every {{interval}}",
       "recording-rules": {
         "no-rules": "No recording rules found",
-        "rules-error": "Failed to load recording rules"
+        "rules-error": "Failed to load recording rules",
+        "search-issues": "Change the search to see results"
       },
       "result-count": {
         "alert-rules_one": "{{formatted}} alert rule",
