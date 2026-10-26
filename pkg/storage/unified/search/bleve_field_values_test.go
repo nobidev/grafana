@@ -21,14 +21,7 @@ func TestHitsToFieldValuesUsesZeroForMalformedLegacyID(t *testing.T) {
 		},
 	}
 	hits := blevesearch.DocumentMatchCollection{match}
-	index := &bleveIndex{standard: resource.StandardSearchFields(), logger: log.NewNopLogger()}
-
-	table, err := index.hitsToTable(t.Context(), []string{resource.SEARCH_FIELD_LEGACY_ID, resource.SEARCH_FIELD_TITLE}, hits, nil, false)
-	require.NoError(t, err)
-	require.Len(t, table.Rows, 1)
-	legacyID, err := resource.DecodeCell(table.Columns[0], 0, table.Rows[0].Cells[0])
-	require.NoError(t, err)
-	require.Equal(t, int64(0), legacyID)
+	index := &bleveIndex{logger: log.NewNopLogger()}
 
 	schema := &fieldValueResultSchema{
 		fields: []*resourcepb.ResourceSearchField{
@@ -59,7 +52,7 @@ func TestHitsToFieldValuesUsesZeroForInvalidResourceVersion(t *testing.T) {
 	}}
 	index := &bleveIndex{logger: log.NewNopLogger()}
 
-	_, rows, err := index.hitsToFieldValues(&fieldValueResultSchema{includeResourceVersion: true}, hits, nil)
+	_, rows, err := index.hitsToFieldValues(&fieldValueResultSchema{}, hits, nil)
 	require.NoError(t, err)
 	require.Len(t, rows, 1)
 	require.Equal(t, key, rows[0].Key)

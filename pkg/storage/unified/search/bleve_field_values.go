@@ -1,7 +1,6 @@
 package search
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -18,21 +17,9 @@ import (
 // fieldValueResultSchema keeps the public field declarations aligned with the
 // internal definitions used to encode each row value at the same index.
 type fieldValueResultSchema struct {
-	fields                 []*resourcepb.ResourceSearchField
-	definitions            []resource.SearchFieldDefinition
-	includeScore           bool
-	includeResourceVersion bool
-}
-
-func selectedResultFormat(format resourcepb.ResourceSearchRequest_ResultFormat) (resourcepb.ResourceSearchRequest_ResultFormat, error) {
-	switch format {
-	case resourcepb.ResourceSearchRequest_UNSPECIFIED, resourcepb.ResourceSearchRequest_RESOURCE_TABLE:
-		return resourcepb.ResourceSearchRequest_RESOURCE_TABLE, nil
-	case resourcepb.ResourceSearchRequest_FIELD_VALUES:
-		return resourcepb.ResourceSearchRequest_FIELD_VALUES, nil
-	default:
-		return resourcepb.ResourceSearchRequest_UNSPECIFIED, fmt.Errorf("unsupported search result format %d", format)
-	}
+	fields       []*resourcepb.ResourceSearchField
+	definitions  []resource.SearchFieldDefinition
+	includeScore bool
 }
 
 // fieldValueDefinitions keeps result types on the same manifest-backed source
@@ -78,23 +65,11 @@ func fieldValueDefinitions(provider resource.SearchFieldsProvider, group, kindRe
 }
 
 func (b *bleveIndex) setSearchResults(
-	ctx context.Context,
 	response *resourcepb.ResourceSearchResponse,
-	selectFields []string,
 	fieldValueSchema *fieldValueResultSchema,
 	hits blevesearch.DocumentMatchCollection,
 	sort blevesearch.SortOrder,
-	explain bool,
 ) error {
-	if response.ResultFormat == resourcepb.ResourceSearchRequest_RESOURCE_TABLE {
-		results, err := b.hitsToTable(ctx, selectFields, hits, sort, explain)
-		if err != nil {
-			return err
-		}
-		response.Results = results
-		return nil
-	}
-
 	if fieldValueSchema == nil {
 		return fmt.Errorf("missing field-value result schema")
 	}
@@ -154,7 +129,6 @@ func (b *bleveIndex) resolveFieldValueSchema(selectFields []string) (*fieldValue
 			// ResourceSearchRow.key already carries the resource identity.
 			continue
 		case resource.SEARCH_FIELD_RV:
-			schema.includeResourceVersion = true
 			continue
 		}
 
@@ -180,9 +154,10 @@ func (b *bleveIndex) hitsToFieldValues(
 	rows := make([]*resourcepb.ResourceSearchRow, len(hits))
 	for rowIndex, match := range hits {
 		row := &resourcepb.ResourceSearchRow{
-			Key:        &resourcepb.ResourceKey{},
-			SortFields: hitSortFields(match, sort),
-			Values:     make([]*resourcepb.ResourceSearchValue, 0, len(schema.definitions)),
+			Key:             &resourcepb.ResourceKey{},
+			ResourceVersion: b.hitResourceVersion(match),
+			SortFields:      hitSortFields(match, sort),
+			Values:          make([]*resourcepb.ResourceSearchValue, 0, len(schema.definitions)),
 		}
 		if err := resource.ReadSearchID(row.Key, match.ID); err != nil {
 			return nil, nil, err
@@ -190,10 +165,6 @@ func (b *bleveIndex) hitsToFieldValues(
 		if schema.includeScore {
 			row.Score = new(match.Score)
 		}
-		if schema.includeResourceVersion {
-			row.ResourceVersion = b.hitResourceVersion(match)
-		}
-
 		for fieldIndex, definition := range schema.definitions {
 			value, ok, err := searchHitFieldValue(match, definition.Name)
 			if err != nil {
