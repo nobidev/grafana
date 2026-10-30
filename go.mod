@@ -293,7 +293,7 @@ require (
 	k8s.io/client-go v0.37.1 // @grafana/grafana-app-platform-squad
 	k8s.io/component-base v0.37.1 // @grafana/grafana-app-platform-squad
 	k8s.io/klog/v2 v2.140.0 // @grafana/grafana-app-platform-squad
-	k8s.io/kube-aggregator v0.37.0 // @grafana/grafana-app-platform-squad
+	k8s.io/kube-aggregator v0.37.1 // @grafana/grafana-app-platform-squad
 	k8s.io/kube-openapi v0.0.0-20260821135717-be32def86098 // @grafana/grafana-app-platform-squad
 	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab // @grafana/data-sources-plugins
 	pgregory.net/rapid v1.3.0 // @grafana/grafana-operator-experience-squad
